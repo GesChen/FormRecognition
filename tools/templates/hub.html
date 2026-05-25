@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Web Tools Hub</title>
+  <script src="/static/theme.js"></script>
+  <link rel="stylesheet" href="/static/theme.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.45;
+      min-height: 100vh;
+    }
+    a { color: var(--accent); }
+    a:hover { color: var(--accent-hover); }
+    .hub-shell {
+      display: flex;
+      min-height: 100vh;
+      align-items: stretch;
+    }
+    .hub-sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      padding: 20px 0 24px;
+      display: flex;
+      flex-direction: column;
+      position: sticky;
+      top: 0;
+      align-self: flex-start;
+      min-height: 100vh;
+      max-height: 100vh;
+      overflow-y: auto;
+    }
+    .sidebar-brand {
+      font-weight: 800;
+      font-size: 1.1rem;
+      letter-spacing: 0.04em;
+      padding: 0 18px 16px;
+      border-bottom: 1px solid var(--border);
+      color: var(--accent);
+    }
+    .sidebar-heading {
+      margin: 18px 18px 8px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+    .sidebar-nav {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 10px 18px;
+      color: var(--text);
+      text-decoration: none;
+      font-size: 13px;
+      border-left: 3px solid transparent;
+    }
+    .sidebar-link:hover {
+      background: var(--surface-hover);
+      color: var(--text);
+    }
+    .sidebar-link.active {
+      border-left-color: var(--accent);
+      background: var(--surface-selected);
+      color: var(--text);
+    }
+    .sidebar-link .port {
+      font-size: 11px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      flex-shrink: 0;
+    }
+    .sidebar-link .name { font-weight: 600; }
+    .sidebar-link .desc {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 400;
+      margin-top: 2px;
+      line-height: 1.3;
+    }
+    .sidebar-link-inner { flex: 1; min-width: 0; }
+    .sidebar-footer {
+      margin-top: auto;
+      padding: 16px 18px 0;
+      border-top: 1px solid var(--border);
+    }
+    .sidebar-open-all {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      background: var(--cli-bg);
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .sidebar-open-all:hover { background: var(--surface-hover-strong); }
+    .server-start-note {
+      margin: 12px 14px 0;
+      padding: 10px 12px;
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--muted);
+      background: var(--ui-callout-bg);
+      border: 1px solid var(--warn);
+      border-radius: var(--radius-lg);
+    }
+    .server-start-note strong {
+      color: var(--warn);
+      display: block;
+      margin-bottom: 6px;
+      font-size: 11px;
+    }
+    .server-start-note code {
+      display: block;
+      margin-top: 8px;
+      padding: 8px;
+      font-size: 10px;
+      background: var(--cli-bg);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      word-break: break-all;
+      color: var(--text);
+    }
+    .server-start-note--mobile-bottom {
+      display: none;
+      margin-top: 28px;
+    }
+    @media (max-width: 900px) {
+      .server-start-note--mobile-bottom { display: block; }
+    }
+    .hub-main {
+      flex: 1;
+      min-width: 0;
+      padding: 20px 24px 48px;
+      max-width: min(960px, 100%);
+    }
+    .tool-nav-mobile-wrap {
+      display: none;
+      margin-bottom: 20px;
+    }
+    .tool-nav-mobile-wrap label {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+    .tool-nav-select {
+      width: 100%;
+      max-width: 420px;
+      padding: 10px 12px;
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      background: var(--cli-bg);
+      color: var(--text);
+      font-size: 14px;
+      cursor: pointer;
+    }
+    @media (max-width: 900px) {
+      .hub-sidebar { display: none; }
+      .tool-nav-mobile-wrap { display: block; }
+      .hub-main { padding: 16px 16px 40px; max-width: 100%; }
+    }
+    h1 {
+      margin: 0 0 6px 0;
+      font-size: 1.65rem;
+      font-weight: 700;
+    }
+    .sub {
+      color: var(--muted);
+      margin-bottom: 24px;
+      font-size: 13px;
+    }
+    h2 {
+      margin: 28px 0 12px 0;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-2xl);
+      padding: 18px;
+      margin-top: 12px;
+    }
+    .recognition-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+    }
+    .recognition-main { min-width: 0; }
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-xl);
+      padding: 28px 16px;
+      text-align: center;
+      cursor: pointer;
+      background: var(--cli-bg);
+      transition: border-color 0.15s, background 0.15s;
+      margin-bottom: 16px;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background: var(--surface-selected);
+    }
+    .dropzone p { margin: 0; color: var(--muted); font-size: 13px; }
+    .dropzone .file-name {
+      margin-top: 10px;
+      color: var(--accent);
+      font-weight: 600;
+      word-break: break-all;
+    }
+    input[type="file"] { display: none; }
+    label.opt {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 8px 0;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    label.opt input { width: 16px; height: 16px; }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px 20px;
+      align-items: flex-end;
+      margin-top: 8px;
+    }
+    .field { display: flex; flex-direction: column; gap: 4px; min-width: 140px; }
+    .field label { font-size: 12px; color: var(--muted); }
+    .field input[type="text"], .field input[type="number"] {
+      padding: 8px 10px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: var(--cli-bg);
+      color: var(--text);
+      font-size: 14px;
+      width: 100%;
+      max-width: 320px;
+    }
+    .btn {
+      padding: 10px 20px;
+      border: none;
+      border-radius: var(--radius-lg);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--accent);
+      color: var(--on-accent);
+    }
+    .btn:hover:not(:disabled) { background: var(--accent-dim); color: var(--on-accent); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-cancel {
+      padding: 10px 20px;
+      border: none;
+      border-radius: var(--radius-lg);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--danger);
+      color: var(--on-danger);
+    }
+    .btn-cancel:hover:not(:disabled) { background: var(--danger-hover); }
+    .btn-cancel:disabled { opacity: 0.35; cursor: not-allowed; }
+    .cli-wrap {
+      margin-top: 20px;
+    }
+    .cli-wrap h2 { margin-top: 0; }
+    #cli-out {
+      margin: 0;
+      padding: 14px;
+      background: var(--cli-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: pre;
+      overflow-x: auto;
+      overflow-y: auto;
+      word-break: normal;
+      overflow-wrap: normal;
+      max-height: min(420px, 50vh);
+      color: var(--text);
+    }
+    #cli-out:empty::before {
+      content: "Recognition output will appear here when you run the pipeline.";
+      color: var(--muted);
+    }
+    .xlsx-banner {
+      display: none;
+      margin-top: 20px;
+      padding: 18px 20px;
+      border-radius: var(--radius-2xl);
+      border: 2px solid var(--accent);
+      background: var(--panel);
+    }
+    .xlsx-banner.visible { display: block; }
+    .xlsx-banner h3 {
+      margin: 0 0 10px 0;
+      font-size: 1.1rem;
+      color: var(--text);
+    }
+    .xlsx-banner .path {
+      font-family: var(--font-mono);
+      font-size: 13px;
+      word-break: break-all;
+      margin: 8px 0;
+      padding: 10px;
+      background: var(--surface-hover);
+      border-radius: var(--radius-md);
+    }
+    .xlsx-banner .actions { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .xlsx-banner .btn-secondary {
+      padding: 8px 14px;
+      background: var(--secondary-btn);
+      color: var(--text);
+      border: none;
+      border-radius: var(--radius-md);
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13px;
+    }
+    .xlsx-banner .btn-secondary:hover { background: var(--secondary-btn-hover); }
+    .xlsx-banner .warn { color: var(--warn); font-size: 13px; margin-top: 8px; }
+    .path-hint { font-size: 12px; color: var(--muted); margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div class="hub-shell">
+    <aside class="hub-sidebar" aria-label="Web tools">
+      <div class="sidebar-brand">TOOLS</div>
+      <p class="sidebar-heading">Web tools</p>
+      <nav class="sidebar-nav" id="sidebar-nav"></nav>
+      <div class="server-start-note" id="sidebar-server-note">
+        <strong>Other tools offline?</strong>
+        Each app uses its own port (5000–5004). This hub is 4999 only. From the project root run:
+        <code>python3 tools/start_web_tools.py --watch</code>
+        <span style="font-size:10px;display:block;margin-top:6px;">Background: <code style="display:inline;padding:2px 4px;">python3 tools/start_web_tools.py</code> · logs in <code style="display:inline;padding:2px 4px;">testing/output/web_tools/</code></span>
+      </div>
+      <div class="sidebar-footer">
+        <button type="button" class="sidebar-open-all" id="btn-open-all-tabs">Open all tools in new tabs</button>
+        <p style="margin:8px 0 0;font-size:10px;color:var(--muted);line-height:1.4;">Requires all servers running. Allow pop-ups if prompted.</p>
+      </div>
+    </aside>
+
+    <main class="hub-main">
+    <div class="tool-nav-mobile-wrap">
+      <label for="tool-nav-select">Jump to tool</label>
+      <select id="tool-nav-select" class="tool-nav-select" aria-label="Jump to tool"></select>
+    </div>
+
+    <h1>Web Tools Hub</h1>
+    <p class="sub">Run PDF recognition from the browser; CLI output streams below (tqdm refreshes in place like a terminal). Use the sidebar (or dropdown on narrow screens) to switch tools.</p>
+
+    <h2>PDF recognition</h2>
+    <p class="path-hint">Same options as <code>python3 py/pdf_recognize.py</code>. Drop a PDF here or click to choose a file. Or set a project-relative path (e.g. <code>data/myform.pdf</code>) and leave the file empty.</p>
+
+    <div class="panel">
+      <div class="recognition-grid">
+        <div class="recognition-main">
+          <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose PDF(s) or drop here">
+            <p><strong>Drop PDF(s) here</strong> or click to browse</p>
+            <p class="file-name" id="file-label" style="display:none;"></p>
+          </div>
+          <input type="file" id="file-input" accept=".pdf,application/pdf" multiple />
+
+          <div class="field" style="max-width:100%; margin-bottom:12px;">
+            <label for="pdf_rel_path">Project-relative PDF path (optional)</label>
+            <input type="text" id="pdf_rel_path" placeholder="e.g. data/scans/example.pdf" autocomplete="off" />
+          </div>
+
+          <label class="opt"><input type="checkbox" id="opt_verbose" checked /> <span><code>-v</code> / <code>--verbose</code> — verbose logging and progress bars</span></label>
+          <label class="opt"><input type="checkbox" id="opt_no_json" /> <span><code>--no-json</code> — do not write recognition JSON</span></label>
+          <label class="opt"><input type="checkbox" id="opt_recache" /> <span><code>--recache</code> — clear cached images for this PDF first</span></label>
+          <label class="opt"><input type="checkbox" id="opt_debug" checked /> <span><code>--debug</code> — write debug JSON</span></label>
+
+          <div class="row">
+            <div class="field">
+              <label for="opt_max_pages"><code>--max-pages</code></label>
+              <input type="number" id="opt_max_pages" min="1" placeholder="(no limit)" />
+            </div>
+            <div class="field">
+              <label for="opt_output_suffix"><code>--output-suffix</code></label>
+              <input type="text" id="opt_output_suffix" placeholder="e.g. run1" />
+            </div>
+            <div class="field" style="flex:1; min-width:220px;">
+              <label for="opt_debug_path"><code>--debug-path</code></label>
+              <input type="text" id="opt_debug_path" placeholder="Default: output/recognition/&lt;stem&gt;_debug.json" />
+            </div>
+          </div>
+
+          <div class="row" style="margin-top:16px; align-items:center;">
+            <button type="button" class="btn" id="btn-run">Run recognition</button>
+            <button type="button" class="btn-cancel" id="btn-cancel" disabled title="Stop the current pipeline (SIGTERM to process group)">Cancel</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="cli-wrap">
+      <h2>CLI output</h2>
+      <pre id="cli-out"></pre>
+    </div>
+
+    <div class="xlsx-banner" id="xlsx-banner" aria-live="polite">
+      <h3>Final data-entry workbook (XLSX)</h3>
+      <p style="margin:0;color:var(--muted);font-size:13px;">Written by <code>fill_from_pipeline</code> when the run finishes (PDF stem + optional output suffix):</p>
+      <div class="path" id="xlsx-path"></div>
+      <p style="margin:12px 0 4px;color:var(--muted);font-size:12px;">Recognition JSON (human review / pipeline output):</p>
+      <div class="path" id="json-path" style="font-size:12px;"></div>
+      <div class="actions">
+        <button type="button" class="btn-secondary" id="btn-copy-xlsx">Copy path</button>
+        <a class="btn-secondary" id="link-human-review" href="#" target="_blank" rel="noopener">Open human review</a>
+        <a class="btn-secondary" id="link-debug" href="#" target="_blank" rel="noopener" style="display:none;">Open pipeline debug viewer</a>
+      </div>
+      <p class="warn" id="xlsx-warn" style="display:none;"></p>
+    </div>
+
+    <div class="server-start-note server-start-note--mobile-bottom" id="mobile-server-note" aria-label="Starting web servers">
+      <strong>Other tools offline?</strong>
+      Each app uses its own port (5000–5004). This hub is 4999 only. From the project root run:
+      <code>python3 tools/start_web_tools.py --watch</code>
+      <span style="font-size:10px;display:block;margin-top:6px;">Background: <code style="display:inline;padding:2px 4px;">python3 tools/start_web_tools.py</code> · logs in <code style="display:inline;padding:2px 4px;">testing/output/web_tools/</code></span>
+    </div>
+    </main>
+  </div>
+
+  <script>
+(function () {
+  const TOOLS = [
+    { name: "Web Tools Hub", port: 4999, desc: "PDF recognition launcher", here: true },
+    { name: "ROI editor", port: 5000, desc: "Draw and edit ROI schemas" },
+    { name: "ROI previewer", port: 5001, desc: "Preview ROIs on normalized pages" },
+    { name: "Pipeline debug viewer", port: 5002, desc: "Inspect *_debug.json" },
+    { name: "Human review", port: 5003, desc: "Correct human_review.pending" },
+    { name: "XLSX compare (temp)", port: 5004, desc: "Truth vs test workbook comparer" },
+  ];
+  const host = window.location.hostname || "127.0.0.1";
+  const nav = document.getElementById("sidebar-nav");
+  const sel = document.getElementById("tool-nav-select");
+
+  TOOLS.forEach(function (t) {
+    const url = "http://" + host + ":" + t.port + "/";
+    const a = document.createElement("a");
+    a.className = "sidebar-link" + (t.here ? " active" : "");
+    a.href = t.here ? "/" : url;
+    if (!t.here) {
+      a.target = "_blank";
+      a.rel = "noopener noreferrer";
+    }
+    a.innerHTML =
+      "<span class=\"sidebar-link-inner\"><span class=\"name\">" + t.name + "</span>" +
+      "<span class=\"desc\">" + t.desc + "</span></span>" +
+      "<span class=\"port\">" + t.port + "</span>";
+    nav.appendChild(a);
+
+    const opt = document.createElement("option");
+    opt.value = String(t.port);
+    opt.textContent = t.name + " (" + t.port + ")";
+    if (t.here) opt.selected = true;
+    sel.appendChild(opt);
+  });
+
+  sel.addEventListener("change", function () {
+    const port = sel.value;
+    if (!port) return;
+    var p = parseInt(port, 10);
+    if (p === 4999) {
+      window.location.href = "/";
+      return;
+    }
+    window.location.href = "http://" + host + ":" + port + "/";
+  });
+
+  document.getElementById("btn-open-all-tabs").addEventListener("click", function () {
+    TOOLS.forEach(function (t) {
+      window.open("http://" + host + ":" + t.port + "/", "_blank", "noopener,noreferrer");
+    });
+  });
+
+  const dropzone = document.getElementById("dropzone");
+  const fileInput = document.getElementById("file-input");
+  const fileLabel = document.getElementById("file-label");
+  const cliOut = document.getElementById("cli-out");
+  const btnRun = document.getElementById("btn-run");
+  const btnCancel = document.getElementById("btn-cancel");
+  let selectedFiles = [];
+  let currentJobId = null;
+  let isProcessing = false;
+
+  function setFiles(files) {
+    selectedFiles = Array.isArray(files) ? files : [];
+    if (selectedFiles.length) {
+      if (selectedFiles.length === 1) {
+        fileLabel.textContent = selectedFiles[0].name;
+      } else {
+        fileLabel.textContent = selectedFiles.length + " PDFs selected";
+      }
+      fileLabel.style.display = "block";
+    } else {
+      fileLabel.style.display = "none";
+      fileLabel.textContent = "";
+    }
+  }
+
+  function getCurrentOptions() {
+    return {
+      verbose: document.getElementById("opt_verbose").checked,
+      no_json: document.getElementById("opt_no_json").checked,
+      recache: document.getElementById("opt_recache").checked,
+      debug: document.getElementById("opt_debug").checked,
+      max_pages: document.getElementById("opt_max_pages").value.trim(),
+      output_suffix: document.getElementById("opt_output_suffix").value.trim(),
+      debug_path: document.getElementById("opt_debug_path").value.trim(),
+    };
+  }
+
+  function buildJobFromInputs() {
+    const rel = document.getElementById("pdf_rel_path").value.trim();
+    if (!selectedFiles.length && !rel) return null;
+    const mode = selectedFiles.length ? "upload" : "path";
+    const displayName = selectedFiles.length ? (selectedFiles.length === 1 ? selectedFiles[0].name : (selectedFiles.length + " PDFs (merged)")) : rel;
+    return {
+      mode: mode,
+      files: selectedFiles.slice(),
+      rel: selectedFiles.length ? "" : rel,
+      displayName: displayName,
+      options: getCurrentOptions(),
+    };
+  }
+
+  function formatElapsed(ms) {
+    return (ms / 1000).toFixed(2) + "s";
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
+  }
+
+  function extractPdfFiles(fileList) {
+    return Array.prototype.filter.call(fileList || [], function (f) {
+      return !!f && /\.pdf$/i.test(f.name || "");
+    });
+  }
+
+  function selectFiles(files) {
+    setFiles(files || []);
+    try {
+      if (files && files.length) {
+        const dt = new DataTransfer();
+        files.forEach(function (f) { dt.items.add(f); });
+        fileInput.files = dt.files;
+      } else {
+        fileInput.value = "";
+      }
+    } catch (e) {}
+  }
+
+  function handleIncomingFiles(fileList) {
+    const files = extractPdfFiles(fileList);
+    if (!files.length) return;
+    selectFiles(files);
+  }
+
+  dropzone.addEventListener("click", function () {
+    fileInput.click();
+  });
+  dropzone.addEventListener("keydown", function (e) {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      fileInput.click();
+    }
+  });
+  fileInput.addEventListener("change", function () {
+    handleIncomingFiles(fileInput.files);
+  });
+
+  ["dragenter", "dragover"].forEach(function (ev) {
+    dropzone.addEventListener(ev, function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.add("dragover");
+    });
+  });
+  ["dragleave", "drop"].forEach(function (ev) {
+    dropzone.addEventListener(ev, function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.remove("dragover");
+    });
+  });
+  dropzone.addEventListener("drop", function (e) {
+    handleIncomingFiles(e.dataTransfer.files);
+  });
+
+  /**
+   * Emulate a small subset of terminal behavior for streamed CLI output.
+   * Supports:
+   * - \\r (carriage return rewrite)
+   * - ANSI CSI A/B (cursor up/down)
+   * - ANSI CSI K (clear line)
+   * - ANSI styling codes (m) ignored
+   */
+  function ttyStyleDisplay(raw) {
+    var s = raw.replace(/\r\n/g, "\n");
+    var lines = [""];
+    var row = 0;
+
+    function ensureRow(r) {
+      while (lines.length <= r) lines.push("");
+    }
+
+    for (var i = 0; i < s.length; i++) {
+      var c = s.charAt(i);
+      if (c === "\u001b" && s.charAt(i + 1) === "[") {
+        var j = i + 2;
+        while (j < s.length && !/[A-Za-z]/.test(s.charAt(j))) j++;
+        if (j >= s.length) break;
+        var params = s.slice(i + 2, j);
+        var cmd = s.charAt(j);
+        var n = parseInt(params, 10);
+        if (!Number.isFinite(n) || n <= 0) n = 1;
+        if (cmd === "A") {
+          row = Math.max(0, row - n);
+        } else if (cmd === "B") {
+          row = row + n;
+          ensureRow(row);
+        } else if (cmd === "K") {
+          ensureRow(row);
+          lines[row] = "";
+        } else if (cmd === "m") {
+          // style-only; ignore
+        }
+        i = j;
+        continue;
+      }
+      if (c === "\r") {
+        ensureRow(row);
+        lines[row] = "";
+      } else if (c === "\n") {
+        row += 1;
+        ensureRow(row);
+      } else {
+        ensureRow(row);
+        lines[row] += c;
+      }
+    }
+    return lines.join("\n");
+  }
+
+  function parseResultFooter(text) {
+    const mark = "__RESULT__";
+    const i = text.lastIndexOf(mark);
+    if (i < 0) return null;
+    try {
+      return JSON.parse(text.slice(i + mark.length).trim());
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function showXlsxPanel(res, ranDebug) {
+    const banner = document.getElementById("xlsx-banner");
+    const pathEl = document.getElementById("xlsx-path");
+    const warnEl = document.getElementById("xlsx-warn");
+    const linkDbg = document.getElementById("link-debug");
+    pathEl.textContent = res.xlsx_rel || "";
+    const jp = document.getElementById("json-path");
+    if (res.no_json) {
+      jp.textContent = "(not written — you used --no-json)";
+      jp.style.opacity = "0.75";
+    } else {
+      jp.textContent = res.json_rel || "";
+      jp.style.opacity = "1";
+    }
+    banner.classList.add("visible");
+    if (res.cancelled) {
+      warnEl.style.display = "block";
+      warnEl.textContent = "Run was stopped (process terminated). Outputs may be incomplete or missing.";
+    } else if (res.exit_code !== 0) {
+      warnEl.style.display = "block";
+      warnEl.textContent = "Process exited with code " + res.exit_code + ". The XLSX may be missing or stale; check the log above.";
+    } else {
+      warnEl.style.display = "none";
+      warnEl.textContent = "";
+    }
+    const hr = "http://" + host + ":5003/";
+    document.getElementById("link-human-review").href = hr;
+    if (ranDebug && res.stem) {
+      linkDbg.style.display = "inline-block";
+      linkDbg.href = "http://" + host + ":5002/";
+    } else {
+      linkDbg.style.display = "none";
+    }
+  }
+
+  document.getElementById("btn-copy-xlsx").addEventListener("click", function () {
+    const t = document.getElementById("xlsx-path").textContent;
+    if (t && navigator.clipboard) navigator.clipboard.writeText(t);
+  });
+
+  btnCancel.addEventListener("click", async function () {
+    if (!currentJobId) return;
+    try {
+      const r = await fetch("/api/cancel-recognition", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ job_id: currentJobId }),
+      });
+      const j = await r.json().catch(function () { return {}; });
+      if (r.ok && j.ok) {
+        cliOut.textContent += "\n\n--- Cancel requested (SIGTERM to process group) ---\n";
+        cliOut.scrollTop = cliOut.scrollHeight;
+        btnCancel.disabled = true;
+      } else if (r.status === 404) {
+        cliOut.textContent += "\n\n--- Cancel: job already finished ---\n";
+        cliOut.scrollTop = cliOut.scrollHeight;
+        btnCancel.disabled = true;
+      }
+    } catch (e) {
+      cliOut.textContent += "\n\n--- Cancel request failed: " + String(e) + " ---\n";
+      cliOut.scrollTop = cliOut.scrollHeight;
+    }
+  });
+
+  async function runRecognition(job) {
+    const runStartMs = (typeof performance !== "undefined" ? performance.now() : Date.now());
+    const runStartStamp = new Date().toLocaleString();
+
+    isProcessing = true;
+    const fd = new FormData();
+    if (job.files && job.files.length) {
+      job.files.forEach(function (f) { fd.append("pdf", f); });
+    }
+    if (job.rel) fd.append("pdf_rel_path", job.rel);
+    if (job.options.verbose) fd.append("verbose", "1");
+    if (job.options.no_json) fd.append("no_json", "1");
+    if (job.options.recache) fd.append("recache", "1");
+    if (job.options.debug) fd.append("debug", "1");
+    if (job.options.max_pages) fd.append("max_pages", job.options.max_pages);
+    if (job.options.output_suffix) fd.append("output_suffix", job.options.output_suffix);
+    if (job.options.debug_path) fd.append("debug_path", job.options.debug_path);
+
+    btnRun.disabled = true;
+    btnCancel.disabled = true;
+    currentJobId = null;
+    cliOut.textContent = "";
+    cliOut.textContent +=
+      "\n--- Start " + runStartStamp + " · " + (job.displayName || "(unnamed)") + " ---\n";
+    const baseOutput = cliOut.textContent;
+    document.getElementById("xlsx-banner").classList.remove("visible");
+
+    let runResult = null;
+    let runFailure = null;
+    try {
+      const res = await fetch("/api/run-recognition", { method: "POST", body: fd });
+      if (!res.ok) {
+        const err = await res.json().catch(function () { return {}; });
+        const msg = "Error: " + (err.error || res.statusText);
+        cliOut.textContent = baseOutput + msg;
+        runFailure = msg;
+        return;
+      }
+      currentJobId = res.headers.get("X-Job-Id");
+      if (currentJobId) btnCancel.disabled = false;
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        const idx = buf.indexOf("__RESULT__");
+        cliOut.textContent = baseOutput + ttyStyleDisplay(idx >= 0 ? buf.slice(0, idx) : buf);
+        cliOut.scrollTop = cliOut.scrollHeight;
+      }
+      const idxEnd = buf.indexOf("__RESULT__");
+      cliOut.textContent = baseOutput + ttyStyleDisplay(idxEnd >= 0 ? buf.slice(0, idxEnd) : buf);
+      const result = parseResultFooter(buf);
+      if (result) {
+        runResult = result;
+        showXlsxPanel(result, job.options.debug);
+      } else if (buf.indexOf("__RESULT__") < 0 && buf.length > 0) {
+        cliOut.textContent += "\n\n--- Stream ended without result footer (connection closed or error) ---\n";
+      }
+    } catch (e) {
+      runFailure = String(e);
+      cliOut.textContent = baseOutput + "Request failed: " + runFailure;
+    } finally {
+      const endMs = (typeof performance !== "undefined" ? performance.now() : Date.now());
+      const elapsed = formatElapsed(endMs - runStartMs);
+      let status = "unknown";
+      if (runFailure) {
+        status = "request_failed";
+      } else if (runResult) {
+        if (runResult.cancelled) status = "cancelled";
+        else if (runResult.exit_code === 0) status = "ok";
+        else status = "exit_" + String(runResult.exit_code);
+      } else {
+        status = "no_result_footer";
+      }
+      cliOut.textContent +=
+        "\n--- Done · elapsed=" + elapsed + " · status=" + status + " ---\n";
+      isProcessing = false;
+      btnRun.disabled = false;
+      btnCancel.disabled = true;
+      currentJobId = null;
+      cliOut.scrollTop = cliOut.scrollHeight;
+    }
+  }
+
+  btnRun.addEventListener("click", async function () {
+    if (isProcessing) return;
+    const job = buildJobFromInputs();
+    if (!job) {
+      alert("Choose one or more PDF files, or enter a project-relative path.");
+      return;
+    }
+    await runRecognition(job);
+  });
+})();
+  </script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+# System dependency for roi_editor.py (tkinter): install with
+#   sudo apt install python3-tk
+# (Debian/Ubuntu)
+
+pymupdf>=1.24.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+openpyxl>=3.1.0
+Pillow>=10.0.0
+requests>=2.31.0
+pytesseract>=0.3.10
+easyocr>=1.7.0
+# OCR engine uses locally hosted vision model via HTTP (Ollama /api/generate).
+# Optional for paddle-first OCR workflow:
+# paddlepaddle>=2.5.0
+# paddleocr>=2.7.0
+
+# Web ROI editor (tools/roi_editor.py --serve)
+flask>=3.0.0
+
+openai>=1.40.0

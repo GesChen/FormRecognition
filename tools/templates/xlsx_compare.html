@@ -1,0 +1,706 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>XLSX Compare (Temporary)</title>
+  <script src="/static/theme.js"></script>
+  <link rel="stylesheet" href="/static/theme.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.45;
+    }
+    .wrap {
+      width: min(1100px, 96vw);
+      margin: 20px auto 28px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .sub {
+      margin: 0 0 20px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 920px) {
+      .grid { grid-template-columns: 1fr; }
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-2xl);
+      padding: 16px;
+    }
+    .panel h2 {
+      margin: 0 0 10px;
+      font-size: 14px;
+      letter-spacing: 0.02em;
+    }
+    .dropzone {
+      border: 2px dashed var(--border);
+      border-radius: var(--radius-xl);
+      padding: 22px 12px;
+      text-align: center;
+      cursor: pointer;
+      background: var(--cli-bg);
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .dropzone:hover, .dropzone.dragover {
+      border-color: var(--accent);
+      background: var(--surface-selected);
+    }
+    .dropzone p { margin: 0; color: var(--muted); font-size: 13px; }
+    input[type="file"] { display: none; }
+    .file-meta {
+      margin-top: 12px;
+      font-size: 12px;
+      color: var(--muted);
+      word-break: break-all;
+      min-height: 34px;
+    }
+    .field {
+      margin-top: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .field label { font-size: 12px; color: var(--muted); }
+    .hint {
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--muted);
+      word-break: break-word;
+    }
+    select, input[type="text"], input[type="number"] {
+      width: 100%;
+      padding: 9px 10px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      background: var(--cli-bg);
+      color: var(--text);
+      font-size: 13px;
+    }
+    .opts {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+    @media (max-width: 920px) {
+      .opts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .btn-row {
+      margin-top: 16px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 10px 16px;
+      border: none;
+      border-radius: var(--radius-lg);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      background: var(--accent);
+      color: var(--on-accent);
+    }
+    .btn:hover:not(:disabled) { background: var(--accent-dim); }
+    .btn:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn.secondary {
+      background: var(--secondary-btn);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn.secondary:hover:not(:disabled) { background: var(--secondary-btn-hover); }
+    .status {
+      font-size: 12px;
+      color: var(--muted);
+      min-height: 18px;
+    }
+    .output {
+      margin-top: 16px;
+      background: var(--cli-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 12px;
+    }
+    .output h3 {
+      margin: 0 0 8px;
+      font-size: 13px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    @media (max-width: 920px) {
+      .summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .kpi {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--panel);
+      padding: 8px 10px;
+    }
+    .kpi .label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .kpi .value {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--text);
+      word-break: break-word;
+    }
+    pre {
+      margin: 0;
+      max-height: 420px;
+      overflow: auto;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: pre;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px;
+    }
+    .json-tabs {
+      display: flex;
+      gap: 4px;
+      margin: 10px 0 8px;
+    }
+    .json-tabs button {
+      padding: 7px 11px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--secondary-btn);
+      color: var(--muted);
+      cursor: pointer;
+      font-size: 12px;
+    }
+    .json-tabs button.active {
+      color: var(--accent);
+      border-color: var(--accent);
+    }
+    .json-panel { display: none; }
+    .json-panel.active { display: block; }
+    #json-tree-root {
+      margin: 0;
+      max-height: 420px;
+      overflow: auto;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      line-height: 1.35;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 10px;
+    }
+    #json-tree-root details { margin: 2px 0; }
+    #json-tree-root summary { cursor: pointer; color: var(--muted); }
+    #json-tree-root summary:hover { color: var(--text); }
+    #json-tree-root .row { margin: 2px 0; }
+    #json-tree-root .indent { margin-left: 18px; border-left: 1px solid var(--border); padding-left: 8px; }
+    #json-tree-root .key { color: var(--key); }
+    #json-tree-root .str { color: var(--str); white-space: pre-wrap; word-break: break-word; }
+    #json-tree-root .lit { color: var(--num); }
+    #json-tree-root .null { color: var(--null); }
+    #json-tree-root .bool { color: var(--bool); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>XLSX Compare (Temporary)</h1>
+    <p class="sub">
+      Upload truth and test workbooks, pick one sheet from each, then compare.
+      By default this assumes row order is aligned (same PDF/order), and compares only rows where the test workbook has a non-empty ID.
+      Optional ID-match mode can search all truth sheets by ID to reduce ordering errors.
+    </p>
+
+    <div class="grid">
+      <section class="panel">
+        <h2>Truth Workbook</h2>
+        <div class="dropzone" id="truth-drop" tabindex="0" role="button" aria-label="Choose truth workbook">
+          <p><strong>Drop truth XLSX here</strong> or click to choose file</p>
+        </div>
+        <input type="file" id="truth-file" accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12" />
+        <div class="file-meta" id="truth-meta">No truth workbook chosen.</div>
+        <div class="field">
+          <label for="truth-path-input">Or type filename in <code>data/2025 NPS FLE Session Delivery/</code> and press Enter</label>
+          <input type="text" id="truth-path-input" placeholder="e.g. MyWorkbook.xlsx" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="truth-sheet">Truth sheet / page</label>
+          <select id="truth-sheet" disabled>
+            <option value="">Choose truth workbook first</option>
+          </select>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Test Workbook</h2>
+        <div class="dropzone" id="test-drop" tabindex="0" role="button" aria-label="Choose test workbook">
+          <p><strong>Drop test XLSX here</strong> or click to choose file</p>
+        </div>
+        <input type="file" id="test-file" accept=".xlsx,.xlsm,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel.sheet.macroEnabled.12" />
+        <div class="file-meta" id="test-meta">No test workbook chosen.</div>
+        <div class="field">
+          <label for="test-path-input">Or type filename in <code>output/xlsx/</code> and press Enter</label>
+          <input type="text" id="test-path-input" placeholder="e.g. output.xlsx" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="test-sheet">Test sheet / page</label>
+          <select id="test-sheet" disabled>
+            <option value="">Choose test workbook first</option>
+          </select>
+        </div>
+      </section>
+    </div>
+
+    <section class="panel" style="margin-top:16px;">
+      <h2>Compare Options</h2>
+      <div class="opts">
+        <div class="field">
+          <label for="opt-start-row">Start row</label>
+          <input id="opt-start-row" type="number" min="1" value="4" />
+        </div>
+        <div class="field">
+          <label for="opt-end-col">End col (optional)</label>
+          <input id="opt-end-col" type="text" placeholder="auto" />
+        </div>
+        <div class="field">
+          <label for="opt-id-col">ID column</label>
+          <input id="opt-id-col" type="text" value="A" />
+        </div>
+        <div class="field">
+          <label for="opt-id-regex">ID regex</label>
+          <input id="opt-id-regex" type="text" value="^ID:[A-Z0-9]{8}$" />
+        </div>
+      </div>
+      <div class="field" style="margin-top:10px;">
+        <label style="display:flex;gap:8px;align-items:center;font-size:13px;color:var(--text);">
+          <input id="opt-id-match-any-truth-sheet" type="checkbox" />
+          Match each test row by ID across all truth sheets (ignore truth sheet / row order)
+        </label>
+      </div>
+      <div class="btn-row">
+        <button type="button" class="btn" id="btn-compare" disabled>Run compare</button>
+        <button type="button" class="btn secondary" id="btn-copy-json" disabled>Copy JSON</button>
+        <span class="status" id="status"></span>
+      </div>
+
+      <div class="output" id="output" style="display:none;">
+        <h3>Summary</h3>
+        <div class="summary" id="summary"></div>
+        <div class="btn-row" style="margin:0 0 8px 0;">
+          <button type="button" class="btn secondary" id="btn-expand-json">Expand all</button>
+          <button type="button" class="btn secondary" id="btn-collapse-json">Collapse all</button>
+        </div>
+        <div class="json-tabs">
+          <button type="button" id="tab-tree" class="active" data-panel="tree">Tree View</button>
+          <button type="button" id="tab-raw" data-panel="raw">Raw JSON</button>
+        </div>
+        <div id="json-panel-tree" class="json-panel active">
+          <div id="json-tree-root"></div>
+        </div>
+        <div id="json-panel-raw" class="json-panel">
+          <pre id="json-out"></pre>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+(function () {
+  "use strict";
+
+  const state = {
+    truthUploadId: "",
+    testUploadId: "",
+    result: null,
+  };
+
+  const el = {
+    truthDrop: document.getElementById("truth-drop"),
+    testDrop: document.getElementById("test-drop"),
+    truthFile: document.getElementById("truth-file"),
+    testFile: document.getElementById("test-file"),
+    truthMeta: document.getElementById("truth-meta"),
+    testMeta: document.getElementById("test-meta"),
+    truthSheet: document.getElementById("truth-sheet"),
+    testSheet: document.getElementById("test-sheet"),
+    startRow: document.getElementById("opt-start-row"),
+    endCol: document.getElementById("opt-end-col"),
+    idCol: document.getElementById("opt-id-col"),
+    idRegex: document.getElementById("opt-id-regex"),
+    idMatchAnyTruthSheet: document.getElementById("opt-id-match-any-truth-sheet"),
+    btnCompare: document.getElementById("btn-compare"),
+    btnCopyJson: document.getElementById("btn-copy-json"),
+    status: document.getElementById("status"),
+    output: document.getElementById("output"),
+    summary: document.getElementById("summary"),
+    jsonOut: document.getElementById("json-out"),
+    jsonTreeRoot: document.getElementById("json-tree-root"),
+    btnExpandJson: document.getElementById("btn-expand-json"),
+    btnCollapseJson: document.getElementById("btn-collapse-json"),
+  };
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function renderTree(value, key, depth) {
+    const d = depth === undefined ? 0 : depth;
+    const keyHtml = key !== undefined
+      ? '<span class="key">' + escapeHtml(String(key)) + "</span>: "
+      : "";
+
+    if (value === null) {
+      return '<span class="row">' + keyHtml + '<span class="null">null</span></span>';
+    }
+    const t = typeof value;
+    if (t === "number" || t === "bigint") {
+      return '<span class="row">' + keyHtml + '<span class="lit">' + String(value) + "</span></span>";
+    }
+    if (t === "boolean") {
+      return '<span class="row">' + keyHtml + '<span class="bool">' + String(value) + "</span></span>";
+    }
+    if (t === "string") {
+      return '<span class="row">' + keyHtml + '<span class="str">"' + escapeHtml(value) + '"</span></span>';
+    }
+    if (Array.isArray(value)) {
+      if (value.length === 0) {
+        return '<span class="row">' + keyHtml + '<span class="lit">[]</span></span>';
+      }
+      const open = d < 2;
+      const inner = value.map(function (v, i) {
+        return '<div class="indent">' + renderTree(v, i, d + 1) + "</div>";
+      }).join("");
+      return (
+        '<details' + (open ? " open" : "") + ' class="row">' +
+        "<summary>" + keyHtml + "Array(" + value.length + ")</summary>" +
+        inner +
+        "</details>"
+      );
+    }
+    if (t === "object") {
+      const keys = Object.keys(value);
+      if (keys.length === 0) {
+        return '<span class="row">' + keyHtml + '<span class="lit">{}</span></span>';
+      }
+      const open = d < 2;
+      const inner = keys.map(function (k) {
+        return '<div class="indent">' + renderTree(value[k], k, d + 1) + "</div>";
+      }).join("");
+      return (
+        '<details' + (open ? " open" : "") + ' class="row">' +
+        "<summary>" + keyHtml + "{" + keys.length + " keys}</summary>" +
+        inner +
+        "</details>"
+      );
+    }
+    return '<span class="row">' + keyHtml + '<span class="str">' + escapeHtml(String(value)) + "</span></span>";
+  }
+
+  function renderJsonViewer(data) {
+    el.jsonTreeRoot.innerHTML = renderTree(data, undefined, 0);
+    el.jsonOut.textContent = JSON.stringify(data, null, 2);
+  }
+
+  function setStatus(msg, isErr) {
+    el.status.textContent = msg || "";
+    el.status.style.color = isErr ? "var(--danger)" : "var(--muted)";
+  }
+
+  function setSelectOptions(select, options, emptyText) {
+    select.innerHTML = "";
+    if (!options || !options.length) {
+      const op = document.createElement("option");
+      op.value = "";
+      op.textContent = emptyText;
+      select.appendChild(op);
+      select.disabled = true;
+      return;
+    }
+    options.forEach(function (name, idx) {
+      const op = document.createElement("option");
+      op.value = name;
+      op.textContent = name;
+      if (idx === 0) op.selected = true;
+      select.appendChild(op);
+    });
+    select.disabled = false;
+  }
+
+  function refreshCompareEnabled() {
+    const truthSheetReady = el.idMatchAnyTruthSheet.checked ? true : !!el.truthSheet.value;
+    const ok = !!state.truthUploadId && !!state.testUploadId &&
+      truthSheetReady && !!el.testSheet.value;
+    el.btnCompare.disabled = !ok;
+  }
+
+  function refreshTruthSheetUi() {
+    const disableTruthSheet = !!el.idMatchAnyTruthSheet.checked;
+    el.truthSheet.disabled = disableTruthSheet || !state.truthUploadId;
+    el.truthSheet.title = disableTruthSheet ? "Ignored in ID-match mode." : "";
+  }
+
+  async function uploadWorkbook(file, role) {
+    const fd = new FormData();
+    fd.append("file", file);
+    fd.append("role", role);
+    const res = await fetch("/api/upload-xlsx", { method: "POST", body: fd });
+    const json = await res.json().catch(function () { return {}; });
+    if (!res.ok || !json.ok) {
+      throw new Error(json.error || ("Upload failed (" + res.status + ")"));
+    }
+    return json;
+  }
+
+  async function loadWorkbookByPath(role, filePath) {
+    if (!filePath) return;
+    setStatus("Loading " + filePath + "...", false);
+    try {
+      const res = await fetch("/api/load-workbook", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ role: role, file_path: filePath }),
+      });
+      const info = await res.json().catch(function () { return {}; });
+      if (!res.ok || !info.ok) {
+        setStatus(info.error || ("Load failed (" + res.status + ")"), true);
+        return;
+      }
+      if (role === "truth") {
+        state.truthUploadId = info.upload_id || "";
+        el.truthMeta.textContent = info.filename + " • " + (info.saved_path || "");
+        setSelectOptions(el.truthSheet, info.sheets || [], "No sheets found");
+      } else {
+        state.testUploadId = info.upload_id || "";
+        el.testMeta.textContent = info.filename + " • " + (info.saved_path || "");
+        setSelectOptions(el.testSheet, info.sheets || [], "No sheets found");
+      }
+      state.result = null;
+      el.output.style.display = "none";
+      el.btnCopyJson.disabled = true;
+      refreshTruthSheetUi();
+      refreshCompareEnabled();
+      setStatus("Loaded " + info.filename, false);
+    } catch (err) {
+      setStatus(String(err), true);
+    }
+  }
+
+  async function handleFilePicked(file, role) {
+    if (!file) return;
+    setStatus("Uploading " + file.name + "...", false);
+    try {
+      const info = await uploadWorkbook(file, role);
+      if (role === "truth") {
+        state.truthUploadId = info.upload_id || "";
+        el.truthMeta.textContent = info.filename + " • " + (info.saved_path || "");
+        setSelectOptions(el.truthSheet, info.sheets || [], "No sheets found");
+      } else {
+        state.testUploadId = info.upload_id || "";
+        el.testMeta.textContent = info.filename + " • " + (info.saved_path || "");
+        setSelectOptions(el.testSheet, info.sheets || [], "No sheets found");
+      }
+      state.result = null;
+      el.output.style.display = "none";
+      el.btnCopyJson.disabled = true;
+      refreshTruthSheetUi();
+      refreshCompareEnabled();
+      setStatus("Uploaded " + file.name, false);
+    } catch (err) {
+      setStatus(String(err), true);
+    }
+  }
+
+  function attachDrop(drop, input, role) {
+    drop.addEventListener("click", function () { input.click(); });
+    drop.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        input.click();
+      }
+    });
+    input.addEventListener("change", function () {
+      const f = input.files && input.files[0];
+      handleFilePicked(f, role);
+      try { input.value = ""; } catch (e) {}
+    });
+    ["dragenter", "dragover"].forEach(function (ev) {
+      drop.addEventListener(ev, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        drop.classList.add("dragover");
+      });
+    });
+    ["dragleave", "drop"].forEach(function (ev) {
+      drop.addEventListener(ev, function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        drop.classList.remove("dragover");
+      });
+    });
+    drop.addEventListener("drop", function (e) {
+      const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      handleFilePicked(f, role);
+    });
+  }
+
+  function fmt(v) {
+    if (v === null || v === undefined || v === "") return "—";
+    if (typeof v === "number") return Number.isFinite(v) ? v.toFixed(6).replace(/0+$/, "").replace(/\.$/, "") : String(v);
+    return String(v);
+  }
+
+  function renderSummary(r) {
+    const id = r.id_metrics || {};
+    const cell = r.cell_metrics || {};
+    const mcq = r.mcq_metrics || {};
+    const cat = r.categorical_metrics || {};
+    const rows = r.rows || {};
+    const foundCount = (id.test_ids_found_in_truth_count === null || id.test_ids_found_in_truth_count === undefined)
+      ? "—"
+      : String(id.test_ids_found_in_truth_count) + " / " + String(id.test_nonempty_id_rows || 0);
+    const entries = [
+      ["MCQ overall accuracy", cat.overall_mcq_accuracy ?? mcq.overall_mcq_accuracy],
+      ["Test IDs found", foundCount],
+      ["Test IDs found rate", id.test_ids_found_in_truth_rate],
+      ["ID precision", id.id_precision],
+      ["ID recall", id.id_recall],
+      ["ID F1", id.id_f1],
+      ["ID row accuracy", id.id_row_accuracy],
+      ["Cell micro accuracy", cell.cell_micro_accuracy],
+      ["Cell macro accuracy", cell.cell_macro_accuracy_by_column],
+      ["Rows compared", rows.total_rows_compared],
+      ["Non-empty cells", cell.cells_compared_nonempty_union]
+    ];
+    el.summary.innerHTML = "";
+    entries.forEach(function (kv) {
+      const card = document.createElement("div");
+      card.className = "kpi";
+      card.innerHTML =
+        "<div class='label'>" + kv[0] + "</div>" +
+        "<div class='value'>" + fmt(kv[1]) + "</div>";
+      el.summary.appendChild(card);
+    });
+  }
+
+  document.querySelectorAll(".json-tabs button").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      document.querySelectorAll(".json-tabs button").forEach(function (b) { b.classList.remove("active"); });
+      btn.classList.add("active");
+      const panel = btn.getAttribute("data-panel");
+      document.querySelectorAll(".json-panel").forEach(function (p) {
+        p.classList.toggle("active", p.id === ("json-panel-" + panel));
+      });
+    });
+  });
+
+  el.btnExpandJson.addEventListener("click", function () {
+    el.jsonTreeRoot.querySelectorAll("details").forEach(function (node) { node.open = true; });
+  });
+  el.btnCollapseJson.addEventListener("click", function () {
+    el.jsonTreeRoot.querySelectorAll("details").forEach(function (node) { node.open = false; });
+  });
+
+  el.truthSheet.addEventListener("change", refreshCompareEnabled);
+  el.testSheet.addEventListener("change", refreshCompareEnabled);
+  el.idMatchAnyTruthSheet.addEventListener("change", function () {
+    refreshTruthSheetUi();
+    refreshCompareEnabled();
+  });
+
+  el.btnCompare.addEventListener("click", async function () {
+    if (el.btnCompare.disabled) return;
+    setStatus("Comparing…", false);
+    el.btnCompare.disabled = true;
+    try {
+      const payload = {
+        truth_upload_id: state.truthUploadId,
+        test_upload_id: state.testUploadId,
+        truth_sheet: el.truthSheet.value,
+        test_sheet: el.testSheet.value,
+        id_match_any_truth_sheet: !!el.idMatchAnyTruthSheet.checked,
+        start_row: parseInt(el.startRow.value || "4", 10) || 4,
+        end_col: (el.endCol.value || "").trim(),
+        id_column: (el.idCol.value || "A").trim() || "A",
+        id_regex: (el.idRegex.value || "^ID:[A-Z0-9]{8}$").trim() || "^ID:[A-Z0-9]{8}$",
+      };
+      const res = await fetch("/api/compare", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const json = await res.json().catch(function () { return {}; });
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error || ("Compare failed (" + res.status + ")"));
+      }
+      state.result = json.result;
+      renderSummary(state.result);
+      renderJsonViewer(state.result);
+      el.output.style.display = "block";
+      el.btnCopyJson.disabled = false;
+      setStatus("Compare complete.", false);
+    } catch (err) {
+      setStatus(String(err), true);
+    } finally {
+      refreshCompareEnabled();
+    }
+  });
+
+  el.btnCopyJson.addEventListener("click", function () {
+    if (!state.result || !navigator.clipboard) return;
+    navigator.clipboard.writeText(JSON.stringify(state.result, null, 2));
+    setStatus("JSON copied.", false);
+  });
+
+  attachDrop(el.truthDrop, el.truthFile, "truth");
+  attachDrop(el.testDrop, el.testFile, "test");
+
+  document.getElementById("truth-path-input").addEventListener("keydown", async function (e) {
+    if (e.key === "Enter") {
+      const p = e.target.value.trim();
+      if (p) await loadWorkbookByPath("truth", p);
+    }
+  });
+  document.getElementById("test-path-input").addEventListener("keydown", async function (e) {
+    if (e.key === "Enter") {
+      const p = e.target.value.trim();
+      if (p) await loadWorkbookByPath("test", p);
+    }
+  });
+
+  refreshTruthSheetUi();
+})();
+  </script>
+</body>
+</html>

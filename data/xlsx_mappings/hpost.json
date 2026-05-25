@@ -1,0 +1,71 @@
+{
+  "form_type": "hpost",
+  "sheet": "HS Post-Assessment Data",
+  "start_row": 4,
+  "mappings": [
+    { "source": "id", "column": "A", "type": "direct" },
+    { "source": "date", "column": "B", "type": "direct" },
+    { "source": "teacher", "column": "K", "type": "direct" },
+    
+    { "source": "1", "column": "L", "type": "direct", "transform": "upper"},
+    { "source": "2", "column": "M", "type": "direct", "transform": "upper"},
+    { "source": "3", "column": "N", "type": "direct", "transform": "upper"},
+    { "source": "4", "column": "O", "type": "direct", "transform": "upper"},
+    { "source": "5", "column": "P", "type": "direct", "transform": "upper"},
+    { "source": "6", "column": "Q", "type": "direct", "transform": "upper"},
+    { "source": "7", "column": "R", "type": "direct", "transform": "upper"},
+    { "source": "8", "column": "S", "type": "direct", "transform": "upper"},
+    { "source": "9", "column": "T", "type": "direct", "transform": "upper"},
+    { "source": "10", "column": "U", "type": "direct", "transform": "upper"},
+    { "source": "11", "column": "V", "type": "direct", "transform": "upper"},
+    { "source": "12", "column": "W", "type": "direct", "transform": "upper"},
+    { "source": "13", "column": "X", "type": "direct", "transform": "upper"},
+    { "source": "14", "column": "Y", "type": "direct", "transform": "upper"},
+    { "source": "15", "column": "Z", "type": "direct", "transform": "upper"},
+
+    { "source": "16", "column": "AA", "type": "lookup",
+      "map": { "a": "Strongly Disagree", "b": "Disagree",
+               "c": "Neither Agree nor Disagree", "d": "Agree",
+               "e": "Strongly Agree" } },
+    { "source": "17", "column": "AB", "type": "lookup",
+      "map": { "a": "Strongly Disagree", "b": "Disagree",
+               "c": "Neither Agree nor Disagree", "d": "Agree",
+               "e": "Strongly Agree" } },
+    { "source": "18", "column": "AC", "type": "lookup",
+      "map": { "a": "Strongly Disagree", "b": "Disagree",
+               "c": "Neither Agree nor Disagree", "d": "Agree",
+               "e": "Strongly Agree" } },
+    { "source": "19", "column": "AD", "type": "lookup",
+      "map": { "a": "Strongly Disagree", "b": "Disagree",
+               "c": "Neither Agree nor Disagree", "d": "Agree",
+               "e": "Strongly Agree" } },
+    { "source": "20", "column": "AE", "type": "lookup",
+      "map": { "a": "Strongly Disagree", "b": "Disagree",
+               "c": "Neither Agree nor Disagree", "d": "Agree",
+               "e": "Strongly Agree" } },
+
+    { "source": "21", "column": "AF", "type": "lookup",
+      "map": { 
+        "a": "6th Grade", 
+        "b": "7th Grade", 
+        "c": "8th Grade", 
+        "d": "9th Grade",
+        "e": "Other Grade" },
+      "default": "Other Grade"  },
+
+    { "source": "22", "column": "AG", "type": "direct", "transform": "number" },
+
+    { "source": "23", "type": "multi_column", "mark": "Yes",
+      "no_answer": "AO",
+      "choices": {
+        "a": "AH", "b": "AI", "c": "AJ", "d": "AK",
+        "e": "AL", "f": "AM", "g": "AN", "h": "AO"
+      }
+    },
+
+    { "source": "24", "column": "AP", "type": "lookup",
+      "map": { "a": "Boy", "b": "Girl" },
+      "default": "Unknown/Not Reported" 
+    }
+  ]
+}

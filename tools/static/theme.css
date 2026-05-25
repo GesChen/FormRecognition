@@ -1,0 +1,231 @@
+/**
+ * Web tools — shared theme (dark / light + static accent).
+ * Configure defaults in this file.
+ * theme.js stores only appearance mode in localStorage:
+ *   theme.mode  → "dark" | "light"
+ *
+ * html[data-theme="dark|light"] is set by the script on load.
+ */
+
+/* -------------------------------------------------------------------------- */
+/* Core tokens (dark) */
+/* -------------------------------------------------------------------------- */
+html[data-theme="dark"] {
+  color-scheme: dark;
+
+  --ui-font-sans: "IBM Plex Sans", "Segoe UI", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --ui-font-mono: "JetBrains Mono", "Cascadia Code", "Consolas", "Liberation Mono", monospace;
+
+  --ui-bg: #0f0f12;
+  --ui-panel: #1c1c21;
+  --ui-border: #3f3f46;
+  --ui-text: #f4f4f5;
+  --ui-muted: #a1a1aa;
+
+  --ui-danger: #ef4444;
+  --ui-success: #22c55e;
+  --ui-warn: #f59e0b;
+  --ui-danger-hover: color-mix(in srgb, var(--ui-danger) 88%, black);
+  --ui-success-hover: color-mix(in srgb, var(--ui-success) 80%, white);
+
+  --ui-input-bg: #09090b;
+  --ui-canvas-bg: #0c0c0e;
+  --ui-modal-overlay: rgba(0, 0, 0, 0.65);
+
+  --ui-secondary-btn: #3f3f46;
+  --ui-secondary-btn-hover: #52525b;
+  --ui-surface-hover: rgba(255, 255, 255, 0.06);
+  --ui-surface-hover-strong: rgba(255, 255, 255, 0.1);
+  --ui-surface-selected: color-mix(in srgb, var(--ui-accent) 18%, transparent);
+  --ui-tooltip-bg: rgba(0, 0, 0, 0.82);
+
+  --ui-callout-bg: #1e1b16;
+  --ui-callout-border: var(--ui-warn);
+
+  /* Pipeline debug syntax */
+  --ui-syntax-key: #a5b4fc;
+  --ui-syntax-str: #86efac;
+  --ui-syntax-num: #fcd34d;
+  --ui-syntax-null: #f472b6;
+  --ui-syntax-bool: #c4b5fd;
+
+  /* Accent is static and defined here. */
+  --ui-accent: #c52222;
+  --ui-accent-hover: color-mix(in srgb, var(--ui-accent) 78%, white);
+  --ui-accent-dim: color-mix(in srgb, var(--ui-accent) 72%, black);
+  --ui-accent-muted-bg: color-mix(in srgb, var(--ui-accent) 22%, transparent);
+  --ui-on-accent: #fff;
+  --ui-on-danger: #fff;
+  --ui-on-success: #052e16;
+  --ui-status-ok: #86efac;
+  --ui-status-error: #fca5a5;
+  --ui-badge-done-bg: #14532d;
+  --ui-badge-done-text: #86efac;
+  --ui-badge-todo-bg: #422006;
+  --ui-badge-todo-text: #fcd34d;
+
+  --ui-shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Core tokens (light) */
+/* -------------------------------------------------------------------------- */
+html[data-theme="light"] {
+  color-scheme: light;
+
+  --ui-font-sans: "IBM Plex Sans", "Segoe UI", "Noto Sans", "Helvetica Neue", Arial, sans-serif;
+  --ui-font-mono: "JetBrains Mono", "Cascadia Code", "Consolas", "Liberation Mono", monospace;
+
+  --ui-bg: #f4f4f5;
+  --ui-panel: #ffffff;
+  --ui-border: #d4d4d8;
+  --ui-text: #18181b;
+  --ui-muted: #71717a;
+
+  --ui-danger: #dc2626;
+  --ui-success: #16a34a;
+  --ui-warn: #d97706;
+  --ui-danger-hover: color-mix(in srgb, var(--ui-danger) 88%, black);
+  --ui-success-hover: color-mix(in srgb, var(--ui-success) 90%, black);
+
+  --ui-input-bg: #fafafa;
+  --ui-canvas-bg: #e4e4e7;
+  --ui-modal-overlay: rgba(0, 0, 0, 0.4);
+
+  --ui-secondary-btn: #d4d4d8;
+  --ui-secondary-btn-hover: #a1a1aa;
+  --ui-surface-hover: rgba(0, 0, 0, 0.045);
+  --ui-surface-hover-strong: rgba(0, 0, 0, 0.08);
+  --ui-surface-selected: color-mix(in srgb, var(--ui-accent) 14%, transparent);
+  --ui-tooltip-bg: rgba(24, 24, 27, 0.9);
+
+  --ui-callout-bg: #fffbeb;
+  --ui-callout-border: var(--ui-warn);
+
+  --ui-syntax-key: #4338ca;
+  --ui-syntax-str: #15803d;
+  --ui-syntax-num: #b45309;
+  --ui-syntax-null: #be185d;
+  --ui-syntax-bool: #6d28d9;
+
+  --ui-accent: #000080;
+  --ui-accent-hover: color-mix(in srgb, var(--ui-accent) 82%, black);
+  --ui-accent-dim: color-mix(in srgb, var(--ui-accent) 88%, black);
+  --ui-accent-muted-bg: color-mix(in srgb, var(--ui-accent) 18%, transparent);
+  --ui-on-accent: #fff;
+  --ui-on-danger: #fff;
+  --ui-on-success: #fff;
+  --ui-status-ok: #15803d;
+  --ui-status-error: #b91c1c;
+  --ui-badge-done-bg: #dcfce7;
+  --ui-badge-done-text: #166534;
+  --ui-badge-todo-bg: #fef3c7;
+  --ui-badge-todo-text: #92400e;
+
+  --ui-shadow-modal: 0 8px 28px rgba(0, 0, 0, 0.12);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Legacy aliases — existing templates use --bg, --panel, --accent, etc. */
+/* -------------------------------------------------------------------------- */
+html[data-theme] {
+  /* Global radius scale: tweak this one value to resize all radii proportionally. */
+  --ui-radius-base: 0px;
+  --ui-radius-sm: calc((var(--ui-radius-base) * 2) / 3);   /* 4px when base=6 */
+  --ui-radius-md: var(--ui-radius-base);                   /* 6px */
+  --ui-radius-lg: calc((var(--ui-radius-base) * 4) / 3);   /* 8px */
+  --ui-radius-xl: calc((var(--ui-radius-base) * 5) / 3);   /* 10px */
+  --ui-radius-2xl: calc(var(--ui-radius-base) * 2);        /* 12px */
+
+  --font-sans: var(--ui-font-sans);
+  --font-mono: var(--ui-font-mono);
+
+  --bg: var(--ui-bg);
+  --panel: var(--ui-panel);
+  --panel-bg: var(--ui-panel);
+  --border: var(--ui-border);
+  --text: var(--ui-text);
+  --muted: var(--ui-muted);
+
+  --accent: var(--ui-accent);
+  --accent-hover: var(--ui-accent-hover);
+  --accent-dim: var(--ui-accent-dim);
+  --accent-h: var(--ui-accent-hover);
+
+  --danger: var(--ui-danger);
+  --success: var(--ui-success);
+  --warn: var(--ui-warn);
+  --danger-hover: var(--ui-danger-hover);
+  --success-hover: var(--ui-success-hover);
+
+  --input-bg: var(--ui-input-bg);
+  --cli-bg: var(--ui-input-bg);
+
+  --key: var(--ui-syntax-key);
+  --str: var(--ui-syntax-str);
+  --num: var(--ui-syntax-num);
+  --null: var(--ui-syntax-null);
+  --bool: var(--ui-syntax-bool);
+
+  --overlay: var(--ui-modal-overlay);
+  --canvas-bg: var(--ui-canvas-bg);
+  --accent-muted-bg: var(--ui-accent-muted-bg);
+
+  --secondary-btn: var(--ui-secondary-btn);
+  --secondary-btn-hover: var(--ui-secondary-btn-hover);
+
+  --surface-hover: var(--ui-surface-hover);
+  --surface-hover-strong: var(--ui-surface-hover-strong);
+  --surface-selected: var(--ui-surface-selected);
+  --tooltip-bg: var(--ui-tooltip-bg);
+
+  --on-accent: var(--ui-on-accent);
+  --on-danger: var(--ui-on-danger);
+  --on-success: var(--ui-on-success);
+  --status-ok: var(--ui-status-ok);
+  --status-error: var(--ui-status-error);
+  --badge-done-bg: var(--ui-badge-done-bg);
+  --badge-done-text: var(--ui-badge-done-text);
+  --badge-todo-bg: var(--ui-badge-todo-bg);
+  --badge-todo-text: var(--ui-badge-todo-text);
+
+  --radius-sm: var(--ui-radius-sm);
+  --radius-md: var(--ui-radius-md);
+  --radius-lg: var(--ui-radius-lg);
+  --radius-xl: var(--ui-radius-xl);
+  --radius-2xl: var(--ui-radius-2xl);
+  --shadow-modal: var(--ui-shadow-modal);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Floating theme controls (injected by theme.js) */
+/* -------------------------------------------------------------------------- */
+.theme-fab {
+  position: fixed;
+  bottom: 14px;
+  right: 14px;
+  z-index: 999999;
+  display: block;
+}
+
+.theme-fab-toggle {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1px solid var(--ui-border);
+  background: var(--ui-panel);
+  color: var(--ui-text);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+html[data-theme="light"] .theme-fab-toggle {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+}
+
+.theme-fab-toggle:hover {
+  border-color: var(--ui-accent);
+  color: var(--ui-accent);
+}

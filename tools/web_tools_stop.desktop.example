@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Web Tools (stop)
+Comment=Stop background web servers (PID file)
+Exec=/path/to/project/tools/stop_web_tools.sh
+Path=/path/to/project
+Icon=application-exit
+Terminal=true
+Categories=Development;

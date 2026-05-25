@@ -1,0 +1,20 @@
+---
+description: Project layout — where docs, scripts, output, and data live
+alwaysApply: true
+---
+
+# Project Structure
+
+Use these paths consistently:
+
+| Purpose | Path |
+|---------|------|
+| **Documentation** | `docs/` |
+| **Scripts** | `py/` |
+| **Output** | `output/` |
+| **Input data** | `data/` |
+
+- Put all docs in `docs/`.
+- Put all scripts in `py/`.
+- Write generated/output files to `output/`.
+- Treat `data/` as read-only input; all input data lives there.

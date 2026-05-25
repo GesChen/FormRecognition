@@ -1,0 +1,333 @@
+{
+  "image_path": "/home/ges/Documents/evms_3/data/template_homography_sidea.png",
+  "image_name": "template_homography_sidea.png",
+  "image_width": 1275,
+  "image_height": 1650,
+  "rois": [
+    {
+      "id": "bab4fccc",
+      "name": "id",
+      "x": 0,
+      "y": 0,
+      "w": 552,
+      "h": 123,
+      "ocr_prompt_override": "You are a strict OCR field extractor for one ID ROI image.\nReturn exactly ONE JSON object and nothing else.\nRequired schema: {\"id\":\"string or null\"}.\nRules:\n- Extract one student ID only.\n- Valid ID pattern is exactly 7 digits followed by uppercase A or B.\n- Ignore label text like ID:, Student ID, or punctuation around the value.\n- Apply conservative OCR fixes only inside the 7-digit portion: O/Q/D->0, I/L->1, S->5, B->8, G->6.\n- Do not invent missing characters.\n- If no confident valid ID is visible, set id to null.\n- Forbid placeholders (for example: string, N/A, ---) and explanations.\n",
+      "llm_field_data_type": "id",
+      "llm_validation_rules": "Must match ^[0-9]{7}[AB]$ or null",
+      "llm_prompt_instruction": "Normalize OCR text to exactly one valid student ID (7 digits + A/B) or null.",
+      "llm_prompt_override": "You are a strict text normalizer for one OCR ROI field named \"id\".\nYou are NOT reading an image. You only receive OCR-extracted text.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema: {\"detected_text\":\"string or null\"}.\nRules:\n- Output must be exactly 7 digits followed by uppercase A or B, or null.\n- Never invent missing digits or letters.\n- Never guess the trailing letter when it is not explicitly present.\n- If text before the first colon looks like a label, ignore it.\n- Apply conservative OCR fixes only in the 7-digit portion: O/Q/D->0, I/L->1, S->5, B->8, G->6.\n- If OCR text is placeholder/template content (for example contains detected_text, string, schema text, or generic sample ids), return null.\n- If candidate length/content is not exactly pattern ^[0-9]{7}[AB]$, return null.\n- Do not output explanations, placeholders, or multiple candidates.\n"
+    },
+    {
+      "id": "33ddcf9f",
+      "name": "date",
+      "x": 231,
+      "y": 302,
+      "w": 190,
+      "h": 64
+    },
+    {
+      "id": "9177bf26",
+      "name": "school",
+      "x": 612,
+      "y": 304,
+      "w": 204,
+      "h": 72
+    },
+    {
+      "id": "eb5d04c1",
+      "name": "teacher",
+      "x": 1016,
+      "y": 301,
+      "w": 224,
+      "h": 74
+    },
+    {
+      "id": "4f95a13b",
+      "name": "1a",
+      "x": 103,
+      "y": 483,
+      "w": 35,
+      "h": 36
+    },
+    {
+      "id": "df07b8fc",
+      "name": "1b",
+      "x": 349,
+      "y": 481,
+      "w": 36,
+      "h": 36
+    },
+    {
+      "id": "4263666b",
+      "name": "1c",
+      "x": 654,
+      "y": 483,
+      "w": 35,
+      "h": 34
+    },
+    {
+      "id": "867e1c93",
+      "name": "1d",
+      "x": 918,
+      "y": 480,
+      "w": 38,
+      "h": 37
+    },
+    {
+      "id": "5f904293",
+      "name": "2a",
+      "x": 103,
+      "y": 567,
+      "w": 36,
+      "h": 39
+    },
+    {
+      "id": "04c8b1f9",
+      "name": "2b",
+      "x": 346,
+      "y": 569,
+      "w": 33,
+      "h": 33
+    },
+    {
+      "id": "c011c6ad",
+      "name": "2c",
+      "x": 653,
+      "y": 567,
+      "w": 41,
+      "h": 42
+    },
+    {
+      "id": "34c510a9",
+      "name": "2d",
+      "x": 918,
+      "y": 569,
+      "w": 38,
+      "h": 35
+    },
+    {
+      "id": "dfe4b1a8",
+      "name": "3a",
+      "x": 101,
+      "y": 656,
+      "w": 38,
+      "h": 34
+    },
+    {
+      "id": "56debfc7",
+      "name": "3b",
+      "x": 348,
+      "y": 657,
+      "w": 34,
+      "h": 28
+    },
+    {
+      "id": "68963a78",
+      "name": "3c",
+      "x": 666,
+      "y": 655,
+      "w": 37,
+      "h": 34
+    },
+    {
+      "id": "373d070d",
+      "name": "3d",
+      "x": 914,
+      "y": 650,
+      "w": 40,
+      "h": 42
+    },
+    {
+      "id": "43fe3cad",
+      "name": "4a",
+      "x": 107,
+      "y": 746,
+      "w": 29,
+      "h": 26
+    },
+    {
+      "id": "19ef3a0a",
+      "name": "4b",
+      "x": 107,
+      "y": 775,
+      "w": 29,
+      "h": 26
+    },
+    {
+      "id": "e16dce74",
+      "name": "4c",
+      "x": 107,
+      "y": 804,
+      "w": 28,
+      "h": 28
+    },
+    {
+      "id": "7c89e91d",
+      "name": "4d",
+      "x": 107,
+      "y": 835,
+      "w": 27,
+      "h": 28
+    },
+    {
+      "id": "f45520ff",
+      "name": "5a",
+      "x": 108,
+      "y": 923,
+      "w": 26,
+      "h": 26
+    },
+    {
+      "id": "80077da5",
+      "name": "5b",
+      "x": 108,
+      "y": 951,
+      "w": 24,
+      "h": 33
+    },
+    {
+      "id": "b816385b",
+      "name": "5c",
+      "x": 108,
+      "y": 987,
+      "w": 25,
+      "h": 22
+    },
+    {
+      "id": "d233431e",
+      "name": "5d",
+      "x": 109,
+      "y": 1011,
+      "w": 26,
+      "h": 29
+    },
+    {
+      "id": "c078fb47",
+      "name": "6a",
+      "x": 107,
+      "y": 1101,
+      "w": 30,
+      "h": 27
+    },
+    {
+      "id": "705bb9ee",
+      "name": "6b",
+      "x": 357,
+      "y": 1100,
+      "w": 32,
+      "h": 28
+    },
+    {
+      "id": "618cc8d9",
+      "name": "6c",
+      "x": 638,
+      "y": 1097,
+      "w": 40,
+      "h": 34
+    },
+    {
+      "id": "f2333840",
+      "name": "6d",
+      "x": 951,
+      "y": 1099,
+      "w": 32,
+      "h": 31
+    },
+    {
+      "id": "e0721e7e",
+      "name": "7a",
+      "x": 108,
+      "y": 1185,
+      "w": 28,
+      "h": 30
+    },
+    {
+      "id": "117e8a25",
+      "name": "7b",
+      "x": 350,
+      "y": 1185,
+      "w": 37,
+      "h": 29
+    },
+    {
+      "id": "b120108c",
+      "name": "7c",
+      "x": 639,
+      "y": 1189,
+      "w": 39,
+      "h": 29
+    },
+    {
+      "id": "c3b4079c",
+      "name": "7d",
+      "x": 953,
+      "y": 1185,
+      "w": 30,
+      "h": 29
+    },
+    {
+      "id": "24ca18c2",
+      "name": "8a",
+      "x": 105,
+      "y": 1301,
+      "w": 31,
+      "h": 30
+    },
+    {
+      "id": "6ea35b92",
+      "name": "8b",
+      "x": 357,
+      "y": 1301,
+      "w": 30,
+      "h": 30
+    },
+    {
+      "id": "8dd69c45",
+      "name": "8c",
+      "x": 643,
+      "y": 1302,
+      "w": 36,
+      "h": 32
+    },
+    {
+      "id": "54f89dd9",
+      "name": "8d",
+      "x": 964,
+      "y": 1300,
+      "w": 27,
+      "h": 34
+    },
+    {
+      "id": "52fd5ba3",
+      "name": "9a",
+      "x": 107,
+      "y": 1392,
+      "w": 27,
+      "h": 25
+    },
+    {
+      "id": "492c9758",
+      "name": "9b",
+      "x": 107,
+      "y": 1419,
+      "w": 28,
+      "h": 30
+    },
+    {
+      "id": "47568f33",
+      "name": "9c",
+      "x": 107,
+      "y": 1451,
+      "w": 27,
+      "h": 27
+    },
+    {
+      "id": "7203c4bd",
+      "name": "9d",
+      "x": 108,
+      "y": 1479,
+      "w": 26,
+      "h": 31
+    }
+  ]
+}

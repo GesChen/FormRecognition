@@ -1,0 +1,494 @@
+{
+  "image_path": "/home/ges/Documents/evms_3/data/templates/7pre_a.png",
+  "image_name": "7pre_a.png",
+  "image_width": 1242,
+  "image_height": 1755,
+  "rois": [
+    {
+      "h": 55,
+      "id": "rxr1tmhkf",
+      "llm_prompt_override": "You are a strict text normalizer for one OCR ROI field named \"date\".\nYou are NOT reading an image. You only receive OCR-extracted text.\nReturn ONE valid JSON object only, no markdown and no extra text.\n\nRequired schema:\n{\"detected_text\":\"string or null\"}\n\nTarget output format:\nMM/DD/YYYY\n\nRules:\n- Preserve meaning from OCR text; do not invent unseen digits.\n- If OCR contains structured JSON (for example keys like day/month/year), parse it first.\n- If year is 2 digits (YY), interpret as 20YY.\n- Zero-pad month and day to 2 digits.\n- Output only a valid calendar date in MM/DD/YYYY, or null.\n- If missing/unclear/invalid, set detected_text to null.\n- Forbid placeholders and artifacts (N/A, ---, string, markdown fences, explanations).\n\nOCR extracted text:\n<ocr_text>",
+      "name": "date",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{\n\"day\":\"\"\n\"month\":\"\"\n\"year\":\"\"\n}\n```",
+      "w": 321,
+      "x": 82,
+      "y": 386
+    },
+    {
+      "h": 64,
+      "id": "r2fsge3f5",
+      "name": "school",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{\n  \"name\":\"\"\n}\n```",
+      "w": 421,
+      "x": 385,
+      "y": 388
+    },
+    {
+      "h": 67,
+      "id": "rcsmp4tlf",
+      "name": "teacher",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{\n  \"name\":\"\"\n}\n```",
+      "w": 428,
+      "x": 790,
+      "y": 386
+    },
+    {
+      "h": 50,
+      "id": "rr3w8qdql",
+      "name": "1",
+      "w": 1080,
+      "x": 114,
+      "y": 556
+    },
+    {
+      "h": 47,
+      "id": "rt9udraxm",
+      "name": "1a",
+      "w": 223,
+      "x": 113,
+      "y": 559
+    },
+    {
+      "h": 39,
+      "id": "r8om4fsom",
+      "name": "1b",
+      "w": 237,
+      "x": 374,
+      "y": 561
+    },
+    {
+      "h": 48,
+      "id": "rszrtg7du",
+      "name": "1c",
+      "w": 234,
+      "x": 640,
+      "y": 557
+    },
+    {
+      "h": 47,
+      "id": "regrwrmtm",
+      "name": "1d",
+      "w": 248,
+      "x": 943,
+      "y": 559
+    },
+    {
+      "h": 50,
+      "id": "rryn7it77",
+      "name": "2",
+      "w": 1080,
+      "x": 114,
+      "y": 657
+    },
+    {
+      "h": 47,
+      "id": "r20ks5hzf",
+      "name": "2a",
+      "w": 223,
+      "x": 113,
+      "y": 660
+    },
+    {
+      "h": 50,
+      "id": "r3loqt0ap",
+      "name": "2b",
+      "w": 237,
+      "x": 374,
+      "y": 656
+    },
+    {
+      "h": 48,
+      "id": "rr0jx1ja1",
+      "name": "2c",
+      "w": 234,
+      "x": 640,
+      "y": 658
+    },
+    {
+      "h": 47,
+      "id": "rym48devy",
+      "name": "2d",
+      "w": 248,
+      "x": 943,
+      "y": 660
+    },
+    {
+      "h": 50,
+      "id": "r4rfkvoby",
+      "name": "3",
+      "w": 1080,
+      "x": 116,
+      "y": 763
+    },
+    {
+      "h": 47,
+      "id": "rhj4tt7lt",
+      "name": "3a",
+      "w": 223,
+      "x": 115,
+      "y": 766
+    },
+    {
+      "h": 39,
+      "id": "rxkxjd3yu",
+      "name": "3b",
+      "w": 237,
+      "x": 376,
+      "y": 768
+    },
+    {
+      "h": 48,
+      "id": "r986ot58u",
+      "name": "3c",
+      "w": 327,
+      "x": 642,
+      "y": 763
+    },
+    {
+      "h": 47,
+      "id": "r3zl41nwd",
+      "name": "3d",
+      "w": 204,
+      "x": 989,
+      "y": 766
+    },
+    {
+      "h": 50,
+      "id": "r476m4htj",
+      "name": "4",
+      "w": 1080,
+      "x": 115,
+      "y": 836
+    },
+    {
+      "h": 47,
+      "id": "rxweqljf0",
+      "name": "4a",
+      "w": 223,
+      "x": 114,
+      "y": 839
+    },
+    {
+      "h": 39,
+      "id": "r0r04m04h",
+      "name": "4b",
+      "w": 237,
+      "x": 375,
+      "y": 841
+    },
+    {
+      "h": 48,
+      "id": "rnvmnri46",
+      "name": "4c",
+      "w": 222,
+      "x": 653,
+      "y": 837
+    },
+    {
+      "h": 47,
+      "id": "ryosi2bot",
+      "name": "4d",
+      "w": 255,
+      "x": 937,
+      "y": 839
+    },
+    {
+      "h": 50,
+      "id": "rgjqvwb5o",
+      "name": "5",
+      "w": 1080,
+      "x": 112,
+      "y": 910
+    },
+    {
+      "h": 47,
+      "id": "rxbb8vhi8",
+      "name": "5a",
+      "w": 223,
+      "x": 111,
+      "y": 914
+    },
+    {
+      "h": 50,
+      "id": "ruzdz9s4b",
+      "name": "5b",
+      "w": 237,
+      "x": 382,
+      "y": 909
+    },
+    {
+      "h": 48,
+      "id": "ryno59x6x",
+      "name": "5c",
+      "w": 234,
+      "x": 653,
+      "y": 912
+    },
+    {
+      "h": 47,
+      "id": "rrri22odv",
+      "name": "5d",
+      "w": 248,
+      "x": 941,
+      "y": 913
+    },
+    {
+      "h": 50,
+      "id": "rpbkpt41p",
+      "name": "6",
+      "w": 1080,
+      "x": 114,
+      "y": 984
+    },
+    {
+      "h": 47,
+      "id": "razk6g7em",
+      "name": "6a",
+      "w": 223,
+      "x": 113,
+      "y": 988
+    },
+    {
+      "h": 50,
+      "id": "ri2v7l5fv",
+      "name": "6b",
+      "w": 185,
+      "x": 438,
+      "y": 984
+    },
+    {
+      "h": 48,
+      "id": "ryy39pnxd",
+      "name": "6c",
+      "w": 274,
+      "x": 686,
+      "y": 986
+    },
+    {
+      "h": 47,
+      "id": "rhdzsetno",
+      "name": "6d",
+      "w": 199,
+      "x": 992,
+      "y": 987
+    },
+    {
+      "h": 70,
+      "id": "rvo7vfyky",
+      "name": "7",
+      "w": 777,
+      "x": 108,
+      "y": 1064
+    },
+    {
+      "h": 34,
+      "id": "rakbqac8p",
+      "name": "7a",
+      "w": 506,
+      "x": 110,
+      "y": 1067
+    },
+    {
+      "h": 38,
+      "id": "r6d9c0hte",
+      "name": "7b",
+      "w": 186,
+      "x": 690,
+      "y": 1063
+    },
+    {
+      "h": 36,
+      "id": "rnf1pt84x",
+      "name": "7c",
+      "w": 250,
+      "x": 109,
+      "y": 1097
+    },
+    {
+      "h": 36,
+      "id": "ryvorm1cp",
+      "name": "7d",
+      "w": 184,
+      "x": 688,
+      "y": 1098
+    },
+    {
+      "h": 44,
+      "id": "ruk4otgtg",
+      "name": "8",
+      "w": 1050,
+      "x": 106,
+      "y": 1165
+    },
+    {
+      "h": 44,
+      "id": "rfz40tpwa",
+      "name": "8a",
+      "w": 158,
+      "x": 108,
+      "y": 1165
+    },
+    {
+      "h": 42,
+      "id": "rzfh987wo",
+      "name": "8b",
+      "w": 109,
+      "x": 326,
+      "y": 1166
+    },
+    {
+      "h": 43,
+      "id": "rp6n7c95w",
+      "name": "8c",
+      "w": 281,
+      "x": 512,
+      "y": 1165
+    },
+    {
+      "h": 45,
+      "id": "r8eosrcft",
+      "name": "8d",
+      "w": 304,
+      "x": 840,
+      "y": 1166
+    },
+    {
+      "h": 139,
+      "id": "r3ou1c9ny",
+      "name": "9",
+      "w": 813,
+      "x": 110,
+      "y": 1242
+    },
+    {
+      "h": 34,
+      "id": "r3dk53tqu",
+      "name": "9a",
+      "w": 539,
+      "x": 109,
+      "y": 1245
+    },
+    {
+      "h": 32,
+      "id": "rb9255oio",
+      "name": "9b",
+      "w": 796,
+      "x": 112,
+      "y": 1275
+    },
+    {
+      "h": 35,
+      "id": "rdf0i9jcl",
+      "name": "9c",
+      "w": 584,
+      "x": 110,
+      "y": 1306
+    },
+    {
+      "h": 38,
+      "id": "rgispojrk",
+      "name": "9d",
+      "w": 546,
+      "x": 111,
+      "y": 1339
+    },
+    {
+      "h": 40,
+      "id": "r6d1997rl",
+      "name": "10",
+      "w": 1021,
+      "x": 108,
+      "y": 1409
+    },
+    {
+      "h": 42,
+      "id": "rh46c6qyf",
+      "name": "10a",
+      "w": 485,
+      "x": 110,
+      "y": 1409
+    },
+    {
+      "h": 45,
+      "id": "rwe3tes0k",
+      "name": "10b",
+      "w": 124,
+      "x": 603,
+      "y": 1406
+    },
+    {
+      "h": 44,
+      "id": "ry92sp0b2",
+      "name": "10c",
+      "w": 200,
+      "x": 751,
+      "y": 1407
+    },
+    {
+      "h": 39,
+      "id": "rlcuhkbvu",
+      "name": "10d",
+      "w": 140,
+      "x": 988,
+      "y": 1410
+    },
+    {
+      "h": 48,
+      "id": "rzmgqr9zh",
+      "name": "11",
+      "w": 333,
+      "x": 110,
+      "y": 1537
+    },
+    {
+      "h": 42,
+      "id": "rq96z3wcc",
+      "name": "11a",
+      "w": 112,
+      "x": 111,
+      "y": 1537
+    },
+    {
+      "h": 44,
+      "id": "rgkqvwm91",
+      "name": "11b",
+      "w": 111,
+      "x": 331,
+      "y": 1537
+    },
+    {
+      "h": 49,
+      "id": "r6wlxe1rf",
+      "name": "12",
+      "w": 338,
+      "x": 104,
+      "y": 1610
+    },
+    {
+      "h": 48,
+      "id": "rljlghjq5",
+      "name": "12a",
+      "w": 119,
+      "x": 104,
+      "y": 1610
+    },
+    {
+      "h": 49,
+      "id": "rf5gupbzo",
+      "name": "12b",
+      "w": 108,
+      "x": 334,
+      "y": 1610
+    },
+    {
+      "h": 219,
+      "id": "rf1aox0tl",
+      "llm_prompt_override": "You are a strict JSON mapper.\nYou are NOT reading an image. You only receive OCR-extracted text.\n\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string\"}\n\nTask:\nMap the OCR JSON field \"id\" into pipeline field \"detected_text\".\n\nRules:\n1. If OCR text contains JSON and key \"id\" exists with a non-empty value, output:\n   {\"detected_text\":\"<id value exactly as-is>\"}\n2. If key \"id\" is missing, null, or empty, output:\n   {\"detected_text\":null}\n3. Do not normalize, correct, trim, or transform the id value.\n4. Do not add any extra keys or text.\n\nOCR extracted text:",
+      "name": "id",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{\n  \"id\":\"\"\n}\n```",
+      "w": 1242,
+      "x": 0,
+      "y": 0
+    }
+  ]
+}

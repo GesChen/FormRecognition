@@ -1,0 +1,93 @@
+{
+  "form_type": "7post",
+  "sheet": "7th Grade Post-Assessment Data",
+  "start_row": 4,
+  "mappings": [
+    { "source": "id", "column": "A", "type": "direct" },
+    { "source": "date", "column": "B", "type": "direct" },
+    { "source": "teacher", "column": "K", "type": "direct" },
+
+    { "source": "1",  "column": "L", "type": "direct", "transform": "upper" },
+    { "source": "2",  "column": "M", "type": "direct", "transform": "upper" },
+    { "source": "3",  "column": "N", "type": "direct", "transform": "upper" },
+    { "source": "4",  "column": "O", "type": "direct", "transform": "upper" },
+    { "source": "5",  "column": "P", "type": "direct", "transform": "upper" },
+    { "source": "6",  "column": "Q", "type": "direct", "transform": "upper" },
+    { "source": "7",  "column": "R", "type": "direct", "transform": "upper" },
+    { "source": "8",  "column": "S", "type": "direct", "transform": "upper" },
+    { "source": "9",  "column": "T", "type": "direct", "transform": "upper" },
+    { "source": "10",  "column": "U", "type": "direct", "transform": "upper" },
+
+    { "source": "11", "column": "V", "type": "lookup",
+      "map": { "a": "TRUE", "b": "FALSE" } },
+    { "source": "12", "column": "W", "type": "lookup",
+      "map": { "a": "TRUE", "b": "FALSE" } },
+    { "source": "13", "column": "X", "type": "lookup",
+      "map": { "a": "TRUE", "b": "FALSE" } },
+    { "source": "14", "column": "Y", "type": "lookup",
+      "map": { "a": "TRUE", "b": "FALSE" } },
+    { "source": "15", "column": "Z", "type": "lookup",
+      "map": { "a": "TRUE", "b": "FALSE" } },
+    { "source": "16", "column": "AA", "type": "lookup",
+      "map": { "a": "TRUE", "b": "FALSE" } },
+    { "source": "17", "column": "AB", "type": "lookup",
+      "map": { "a": "TRUE", "b": "FALSE" } },
+    { "source": "18", "column": "AC", "type": "lookup",
+      "map": { "a": "TRUE", "b": "FALSE" } },
+    { "source": "19", "column": "AD", "type": "lookup",
+      "map": { "a": "TRUE", "b": "FALSE" } },
+    { "source": "20", "column": "AE", "type": "lookup",
+      "map": { "a": "TRUE", "b": "FALSE" } },
+
+    { "source": "21",  "column": "AF", "type": "direct", "transform": "upper" },
+    { "source": "22",  "column": "AG", "type": "direct", "transform": "upper" },
+    { "source": "23",  "column": "AH", "type": "direct", "transform": "upper" },
+    
+    { "source": "24", "column": "AI", "type": "lookup",
+      "map": { "a": "Strongly Disagree", "b": "Disagree",
+               "c": "Neither Agree nor Disagree", "d": "Agree",
+               "e": "Strongly Agree" } },
+    { "source": "25", "column": "AJ", "type": "lookup",
+      "map": { "a": "Strongly Disagree", "b": "Disagree",
+               "c": "Neither Agree nor Disagree", "d": "Agree",
+               "e": "Strongly Agree" } },
+    { "source": "26", "column": "AK", "type": "lookup",
+      "map": { "a": "Strongly Disagree", "b": "Disagree",
+               "c": "Neither Agree nor Disagree", "d": "Agree",
+               "e": "Strongly Agree" } },
+    { "source": "27", "column": "AL", "type": "lookup",
+      "map": { "a": "Strongly Disagree", "b": "Disagree",
+               "c": "Neither Agree nor Disagree", "d": "Agree",
+               "e": "Strongly Agree" } },
+    { "source": "28", "column": "AM", "type": "lookup",
+      "map": { "a": "Strongly Disagree", "b": "Disagree",
+               "c": "Neither Agree nor Disagree", "d": "Agree",
+               "e": "Strongly Agree" } },
+
+    { "source": "29", "column": "AJ", "type": "direct" },
+
+    { "source": "30", "column": "AO", "type": "lookup",
+      "map": { 
+        "a": "6th Grade", 
+        "b": "7th Grade", 
+        "c": "8th Grade", 
+        "d": "9th Grade",
+        "e": "Other Grade" },
+      "default": "7th Grade"  },
+
+    { "source": "31", "column": "AP", "type": "direct", "transform": "number" },
+
+    { "source": "32", "type": "multi_column", "mark": "Yes",
+      "no_answer": "AX",
+      "choices": {
+        "a": "AQ", "b": "AR", "c": "AS", "d": "AT",
+        "e": "AU", "f": "AV", "g": "AW", "h": "AX"
+      }
+    },
+
+    { "source": "33", "column": "AY", "type": "lookup",
+      "map": { "a": "Boy", "b": "Girl" },
+      "default": "Unknown/Not Reported" 
+    }
+  ]
+}

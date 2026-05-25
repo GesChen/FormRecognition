@@ -1,0 +1,2476 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ROI Editor</title>
+  <script src="/static/theme.js"></script>
+  <link rel="stylesheet" href="/static/theme.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--border);
+    }
+    .toolbar label { color: var(--muted); font-size: 0.9rem; }
+    .toolbar .section-collapsible {
+      margin-left: auto;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--panel-bg);
+      min-width: 280px;
+      max-width: 420px;
+    }
+    .toolbar .section-collapsible > summary {
+      padding: 8px 12px;
+      font-size: 0.86rem;
+      border-bottom: none;
+    }
+    .toolbar .section-collapsible .section-inner {
+      padding: 8px 12px 10px;
+    }
+    .toolbar .btn-select {
+      margin-right: 8px;
+      width: auto;
+      min-width: 0;
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--overlay);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      min-width: 360px;
+      max-width: 90vw;
+      max-height: 70vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-modal);
+    }
+    .modal-header .btn {
+      width: auto;
+      min-width: 0;
+      flex: 0 0 auto;
+      white-space: nowrap;
+    }
+    #prompt-creator-modal .modal,
+    #ocr-prompt-creator-modal .modal {
+      width: min(440px, 92vw);
+      min-width: 360px;
+      max-width: 92vw;
+      height: min(860px, calc(100vh - 56px));
+      max-height: calc(100vh - 56px);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      box-shadow: 0 20px 52px rgba(0, 0, 0, 0.5);
+    }
+    #prompt-creator-modal .modal-body,
+    #ocr-prompt-creator-modal .modal-body {
+      min-height: 0;
+      padding: 12px;
+    }
+    #prompt-creator-modal,
+    #ocr-prompt-creator-modal {
+      justify-content: flex-end;
+      align-items: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.12);
+    }
+    @media (max-width: 980px) {
+      #prompt-creator-modal,
+      #ocr-prompt-creator-modal {
+        justify-content: center;
+        align-items: center;
+        background: var(--overlay);
+      }
+      #prompt-creator-modal .modal,
+      #ocr-prompt-creator-modal .modal {
+        min-width: 0;
+        width: 96vw;
+        height: auto;
+        max-height: 92vh;
+        border-radius: var(--radius-lg);
+        border: 1px solid var(--border);
+        box-shadow: var(--shadow-modal);
+      }
+      #prompt-creator-modal .modal-body,
+      #ocr-prompt-creator-modal .modal-body {
+        min-height: 300px;
+      }
+    }
+    .modal-header {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-header h3 { margin: 0; font-size: 1rem; }
+    .modal-breadcrumb {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-top: 4px;
+      word-break: break-all;
+    }
+    .modal-body {
+      padding: 8px;
+      overflow-y: auto;
+      flex: 1;
+      min-height: 200px;
+    }
+    .modal-body .item {
+      padding: 8px 10px;
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .modal-body .item:hover { background: var(--surface-hover-strong); }
+    .modal-body .item.folder { color: var(--accent); }
+    .modal-body .item.file {
+      justify-content: space-between;
+    }
+    .modal-body .item .roi-count {
+      margin-left: auto;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    .modal-footer {
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+    }
+    .main {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
+    .left-panel {
+      width: 300px;
+      flex-shrink: 0;
+      background: var(--panel-bg);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 14px;
+      overflow: hidden;
+    }
+    .roi-list-shell {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .canvas-wrap {
+      flex: 1;
+      overflow: hidden;
+      background: var(--canvas-bg);
+      position: relative;
+    }
+    #canvas {
+      display: block;
+      cursor: crosshair;
+    }
+    .panel {
+      width: 420px;
+      flex-shrink: 0;
+      background: var(--panel-bg);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      padding: 14px;
+      overflow-y: auto;
+    }
+    .panel h2 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .panel-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 0;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+    }
+    .panel-section h3 {
+      margin: 0;
+      font-size: 0.82rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 700;
+    }
+    #roi-list {
+      flex: 1;
+      min-height: 0;
+      max-height: none;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+    }
+    #roi-list li {
+      padding: 8px 10px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    #roi-list li:last-child { border-bottom: none; }
+    #roi-list li:hover { background: var(--surface-hover); }
+    #roi-list li.selected { background: var(--accent-muted-bg); color: var(--accent); }
+    .actions-dock {
+      flex: 0 0 auto;
+      margin-top: auto;
+      overflow: visible;
+    }
+    .btn-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+    .btn {
+      width: 100%;
+      min-width: 0;
+      padding: 7px 10px;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 0.8rem;
+      font-weight: 600;
+      line-height: 1.2;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      cursor: pointer;
+      background: var(--accent);
+      color: var(--on-accent);
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn.danger { background: var(--danger); }
+    .btn.danger:hover { background: var(--danger-hover); }
+    .btn.save { background: var(--success); }
+    .btn.save:hover { background: var(--success-hover); }
+    .btn.span-2 { grid-column: 1 / -1; }
+    .btn.subtle {
+      background: var(--secondary-btn);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn.subtle:hover { background: var(--secondary-btn-hover); }
+    .field-group {
+      margin-top: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .field-group label {
+      font-size: 0.82rem;
+      color: var(--muted);
+    }
+    .field-group textarea {
+      width: 100%;
+      min-height: 84px;
+      resize: vertical;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      color: var(--text);
+      font: inherit;
+      line-height: 1.35;
+    }
+    .field-group select {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      color: var(--text);
+      font: inherit;
+      line-height: 1.35;
+    }
+    .field-group textarea.compact {
+      min-height: 70px;
+    }
+    .field-group textarea.prompt {
+      min-height: 110px;
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+    }
+    .field-group textarea:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .field-group .field-hint {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .field-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .inline-help {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      padding: 6px 8px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .inline-help summary {
+      cursor: pointer;
+      list-style: none;
+      font-weight: 600;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .inline-help summary::-webkit-details-marker { display: none; }
+    .inline-help summary::before {
+      content: "ⓘ ";
+      color: var(--accent);
+    }
+    .inline-help .help-body {
+      margin-top: 6px;
+      line-height: 1.35;
+    }
+    .section-collapsible {
+      margin: 0;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      padding: 0;
+      overflow: hidden;
+    }
+    .section-collapsible > summary {
+      list-style: none;
+      cursor: pointer;
+      padding: 10px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-weight: 700;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel-bg);
+    }
+    .section-collapsible > summary::-webkit-details-marker { display: none; }
+    .section-collapsible[open] > summary {
+      color: var(--text);
+    }
+    .section-collapsible .section-inner {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    @media (max-width: 1280px) {
+      .left-panel {
+        width: 250px;
+      }
+      .panel {
+        width: 360px;
+      }
+      .btn-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    .status {
+      padding: 4px 12px;
+      font-size: 0.8rem;
+      color: var(--muted);
+    }
+    .stream-status {
+      margin-top: 4px;
+      font-size: 0.78rem;
+      color: var(--muted);
+    }
+    .stream-status.generating {
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .stream-status.done {
+      color: var(--success);
+      font-weight: 600;
+    }
+    .stream-status.error {
+      color: var(--danger);
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button type="button" class="btn btn-select" id="btn-select-image">Select image…</button>
+    <span class="status" id="status">No image</span>
+    <span class="status" id="roi-summary">ROIs: 0</span>
+    <span class="status" id="schema-status">Schema: (none)</span>
+    <details class="section-collapsible">
+      <summary>Editor help & shortcuts</summary>
+      <div class="section-inner">
+        <div class="help-body">
+          Draw to add ROI. Shift/Ctrl+click for multi-select. Drag to move selected ROIs.
+          Resize from cyan handles on the primary ROI. Scroll to zoom, middle-drag to pan.
+          Use Delete to remove, E to rename, D to duplicate. Changes autosave.
+        </div>
+      </div>
+    </details>
+  </div>
+  <input type="file" id="file-image" accept=".png,image/png" style="display:none;" />
+  <input type="file" id="file-import-image" accept=".png,image/png" style="display:none;" />
+  <div class="modal-overlay" id="import-modal" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3>Import ROIs</h3>
+          <div class="modal-breadcrumb" id="import-source-label"></div>
+        </div>
+        <button type="button" class="btn" id="import-close">Close</button>
+      </div>
+      <div class="modal-body" id="import-body"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn" id="import-select-all">Select all</button>
+        <button type="button" class="btn" id="import-select-none">Select none</button>
+        <button type="button" class="btn save" id="import-confirm">Import selected</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="prompt-creator-modal" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3>Prompt Creator</h3>
+          <div class="modal-breadcrumb">Generate a custom prompt for the selected ROI.</div>
+        </div>
+        <button type="button" class="btn" id="prompt-creator-close">Close</button>
+      </div>
+      <div class="modal-body">
+        <details class="inline-help">
+          <summary>What is this?</summary>
+          <div class="help-body">
+            Use these fields to generate a custom ROI prompt modeled after the default text-LLM postprocess prompt.
+            Generation fills the top prompt override field automatically.
+          </div>
+        </details>
+        <div class="field-group" style="margin-top:10px;">
+          <label for="roi-field-data-type">Field data type</label>
+          <select id="roi-field-data-type">
+            <option value="text">Text</option>
+            <option value="id">Identifier</option>
+            <option value="date">Date</option>
+            <option value="number">Number</option>
+            <option value="boolean">Boolean</option>
+            <option value="choice">Choice</option>
+            <option value="json">JSON</option>
+          </select>
+        </div>
+        <div class="field-group" style="margin-top:0;">
+          <label for="roi-validation-rules">Validation rules</label>
+          <textarea class="compact" id="roi-validation-rules" placeholder="Example: Must be ISO date; if unclear return null."></textarea>
+          <div class="field-hint">Optional extra constraints for generated prompt.</div>
+        </div>
+        <div class="field-group" style="margin-top:0;">
+          <label for="roi-prompt-instruction">Creator instruction</label>
+          <textarea class="compact" id="roi-prompt-instruction" placeholder="Example: Extract month/day/year and return JSON {&quot;date&quot;:&quot;YYYY-MM-DD or null&quot;}"></textarea>
+          <div class="field-hint">Saved per ROI and used to generate the final prompt.</div>
+        </div>
+        <details class="inline-help" id="roi-generator-template-wrap">
+          <summary>View LLM template</summary>
+          <div class="help-body">
+            <textarea class="prompt" id="roi-generator-template" readonly placeholder="Loading template..."></textarea>
+          </div>
+        </details>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn subtle" id="btn-generate-roi-prompt">Generate Prompt</button>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="ocr-prompt-creator-modal" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3>OCR Prompt Creator</h3>
+          <div class="modal-breadcrumb">Generate a custom OCR prompt for the selected ROI image crop.</div>
+        </div>
+        <button type="button" class="btn" id="ocr-prompt-creator-close">Close</button>
+      </div>
+      <div class="modal-body">
+        <details class="inline-help">
+          <summary>What is this?</summary>
+          <div class="help-body">
+            Use these fields to generate a custom OCR prompt modeled after the ID OCR prompt style.
+            Generation fills the OCR prompt override field automatically.
+          </div>
+        </details>
+        <div class="field-group" style="margin-top:10px;">
+          <label for="ocr-roi-field-data-type">Field data type</label>
+          <select id="ocr-roi-field-data-type">
+            <option value="text">Text</option>
+            <option value="id">Identifier</option>
+            <option value="date">Date</option>
+            <option value="number">Number</option>
+            <option value="boolean">Boolean</option>
+            <option value="choice">Choice</option>
+            <option value="json">JSON</option>
+          </select>
+        </div>
+        <div class="field-group" style="margin-top:0;">
+          <label for="ocr-roi-validation-rules">Validation rules</label>
+          <textarea class="compact" id="ocr-roi-validation-rules" placeholder="Example: Must be ISO date; if unclear return null."></textarea>
+          <div class="field-hint">Optional extra constraints for generated OCR prompt.</div>
+        </div>
+        <div class="field-group" style="margin-top:0;">
+          <label for="ocr-roi-prompt-instruction">Creator instruction</label>
+          <textarea class="compact" id="ocr-roi-prompt-instruction" placeholder="Example: Extract ID in exact format ID:XXXXXXXX and return null when unclear."></textarea>
+          <div class="field-hint">Saved per ROI and used to generate the final OCR prompt.</div>
+        </div>
+        <details class="inline-help" id="ocr-roi-generator-template-wrap">
+          <summary>View OCR template</summary>
+          <div class="help-body">
+            <textarea class="prompt" id="ocr-roi-generator-template" readonly placeholder="Loading template..."></textarea>
+          </div>
+        </details>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn subtle" id="btn-generate-ocr-roi-prompt">Generate OCR Prompt</button>
+      </div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="left-panel">
+      <div class="roi-list-shell">
+        <div class="panel-head">
+          <h2>ROIs</h2>
+        </div>
+        <ul id="roi-list"></ul>
+      </div>
+      <div class="panel-section actions-dock">
+        <h3>Actions</h3>
+        <div class="btn-grid">
+          <button type="button" class="btn" id="btn-new">New ROI</button>
+          <button type="button" class="btn" id="btn-mcq">Add MCQ item</button>
+          <button type="button" class="btn subtle span-2" id="btn-import">Import ROIs…</button>
+          <button type="button" class="btn subtle span-2" id="btn-auto-detect" disabled>Auto-Detect ROIs</button>
+          <button type="button" class="btn subtle" id="btn-rename">Rename (E)</button>
+          <button type="button" class="btn subtle" id="btn-duplicate">Duplicate (D)</button>
+          <button type="button" class="btn danger" id="btn-delete">Delete (Del)</button>
+          <button type="button" class="btn save" id="btn-save">Save</button>
+        </div>
+      </div>
+    </div>
+    <div class="canvas-wrap">
+      <canvas id="canvas"></canvas>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Inspector</h2>
+      </div>
+
+      <div class="panel-section">
+        <div class="field-row">
+          <h3>Selected ROI</h3>
+        </div>
+        <div class="field-group" style="margin-top:0;">
+          <label for="roi-prompt-override">Final LLM prompt (editable)</label>
+          <textarea class="prompt" id="roi-prompt-override" placeholder="Generated prompt appears here. You can edit it."></textarea>
+          <div class="field-hint">Saved per ROI as <code>llm_prompt_override</code>.</div>
+          <div class="stream-status" id="roi-prompt-stream-status">Idle.</div>
+        </div>
+        <div class="btn-grid">
+          <button type="button" class="btn subtle span-2" id="btn-open-prompt-creator">Open LLM Prompt Creator</button>
+        </div>
+        <div class="field-group" style="margin-top:10px;">
+          <label for="roi-ocr-prompt-override">Final OCR prompt (editable)</label>
+          <textarea class="prompt" id="roi-ocr-prompt-override" placeholder="Generated OCR prompt appears here. You can edit it."></textarea>
+          <div class="field-hint">Saved per ROI as <code>ocr_prompt_override</code>.</div>
+          <div class="stream-status" id="roi-ocr-prompt-stream-status">Idle.</div>
+        </div>
+        <div class="btn-grid">
+          <button type="button" class="btn subtle span-2" id="btn-open-ocr-prompt-creator">Open OCR Prompt Creator</button>
+        </div>
+        <div class="field-group" style="margin-top:10px;">
+          <label for="roi-ocr-output-regex">Strict OCR Output Regex</label>
+          <input type="text" id="roi-ocr-output-regex" placeholder="Example: ^[0-9]{7}[AB]$" />
+          <div class="field-hint">Optional. Saved as <code>ocr_output_regex</code> and used for end-of-ROI retry flow.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+(function () {
+  "use strict";
+
+  const HANDLE_SIZE = 8;
+  const MIN_ROI_SIZE = 5;
+  const ZOOM_MIN = 0.25;
+  const ZOOM_MAX = 8;
+  const ZOOM_FACTOR = 1.15;
+
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+  function themeCssVar(name, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+  function cssAccent() {
+    return themeCssVar("--accent", "#22c55e");
+  }
+  function cssCanvasBg() {
+    return themeCssVar("--canvas-bg", "#0c0c0e");
+  }
+  window.addEventListener("theme-changed", () => draw());
+
+  const roiList = document.getElementById("roi-list");
+  const roiFieldDataTypeEl = document.getElementById("roi-field-data-type");
+  const roiValidationRulesEl = document.getElementById("roi-validation-rules");
+  const roiPromptInstructionEl = document.getElementById("roi-prompt-instruction");
+  const roiGeneratorTemplateWrapEl = document.getElementById("roi-generator-template-wrap");
+  const roiGeneratorTemplateEl = document.getElementById("roi-generator-template");
+  const roiPromptOverrideEl = document.getElementById("roi-prompt-override");
+  const roiPromptStreamStatusEl = document.getElementById("roi-prompt-stream-status");
+  const btnOpenPromptCreator = document.getElementById("btn-open-prompt-creator");
+  const btnGenerateRoiPrompt = document.getElementById("btn-generate-roi-prompt");
+  const ocrRoiFieldDataTypeEl = document.getElementById("ocr-roi-field-data-type");
+  const ocrRoiValidationRulesEl = document.getElementById("ocr-roi-validation-rules");
+  const ocrRoiPromptInstructionEl = document.getElementById("ocr-roi-prompt-instruction");
+  const ocrRoiGeneratorTemplateWrapEl = document.getElementById("ocr-roi-generator-template-wrap");
+  const ocrRoiGeneratorTemplateEl = document.getElementById("ocr-roi-generator-template");
+  const roiOcrPromptOverrideEl = document.getElementById("roi-ocr-prompt-override");
+  const roiOcrOutputRegexEl = document.getElementById("roi-ocr-output-regex");
+  const roiOcrPromptStreamStatusEl = document.getElementById("roi-ocr-prompt-stream-status");
+  const btnOpenOcrPromptCreator = document.getElementById("btn-open-ocr-prompt-creator");
+  const btnGenerateOcrRoiPrompt = document.getElementById("btn-generate-ocr-roi-prompt");
+  const btnAutoDetect = document.getElementById("btn-auto-detect");
+  const statusEl = document.getElementById("status");
+  const roiSummaryEl = document.getElementById("roi-summary");
+  const schemaStatusEl = document.getElementById("schema-status");
+
+  let imagePath = "";
+  let image = null;
+  let imageWidth = 0;
+  let imageHeight = 0;
+  let rois = [];
+  let selectedIds = new Set(); // multi-select
+  let primarySelectedId = null; // one of selectedIds; shows handles, used for resize
+  let roiCounter = 0;
+  const AUTOSAVE_DELAY_MS = 1500;
+  let autosaveTimer = null;
+  let roiGeneratorTemplateLoaded = false;
+  let ocrRoiGeneratorTemplateLoaded = false;
+  let promptGenAbortController = null;
+  let ocrPromptGenAbortController = null;
+  const UNDO_LIMIT = 100;
+  const undoStack = [];
+  const redoStack = [];
+
+  let baseScale = 1;
+  let scale = 1;
+  let offsetX = 0;
+  let offsetY = 0;
+  let zoomFactor = 1;
+  let panX = 0;
+  let panY = 0;
+  let canvasLogicalWidth = 0;
+  let canvasLogicalHeight = 0;
+
+
+  let dragMode = null;
+  let dragStart = null;
+  let createStart = null;
+  let resizeHandle = null;
+  let panStart = null;
+  let hoverState = null; // "handle" | "roi" | "empty"
+  let dragListIndex = null; // for ROI list drag-reorder
+  let lastMouseImageX = 0;
+  let lastMouseImageY = 0;
+  let mcqSequence = null; // { names: string[], index: number } for sequential MCQ ROI creation
+  const TAB_ID = "roi_editor_" + Math.random().toString(36).slice(2, 10);
+  const SINGLETON_KEY = "roi_editor.singleton.lock";
+  const SINGLETON_HEARTBEAT_MS = 2000;
+  const SINGLETON_STALE_MS = 8000;
+  let singletonHeartbeatTimer = null;
+  let isPrimaryEditorTab = true;
+
+  function _nowMs() { return Date.now(); }
+
+  function _readLock() {
+    try {
+      const raw = localStorage.getItem(SINGLETON_KEY);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (!obj || typeof obj !== "object") return null;
+      return obj;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function _writeLock(ownerId) {
+    const lock = { owner: ownerId, ts: _nowMs() };
+    localStorage.setItem(SINGLETON_KEY, JSON.stringify(lock));
+  }
+
+  function _acquireSingletonLock() {
+    const lock = _readLock();
+    const now = _nowMs();
+    const stale = !lock || !lock.ts || (now - Number(lock.ts) > SINGLETON_STALE_MS);
+    if (stale || lock.owner === TAB_ID) {
+      _writeLock(TAB_ID);
+      isPrimaryEditorTab = true;
+      return true;
+    }
+    isPrimaryEditorTab = false;
+    return false;
+  }
+
+  function _startSingletonHeartbeat() {
+    if (singletonHeartbeatTimer) clearInterval(singletonHeartbeatTimer);
+    singletonHeartbeatTimer = setInterval(() => {
+      if (!isPrimaryEditorTab) return;
+      try { _writeLock(TAB_ID); } catch (e) {}
+    }, SINGLETON_HEARTBEAT_MS);
+  }
+
+  function _releaseSingletonLock() {
+    try {
+      const lock = _readLock();
+      if (lock && lock.owner === TAB_ID) {
+        localStorage.removeItem(SINGLETON_KEY);
+      }
+    } catch (e) {}
+  }
+
+  function _closeDuplicateTab() {
+    document.title = "Closing duplicate ROI editor tab...";
+    const canCloseByScript = !!window.opener || window.history.length <= 1;
+    setStatus("Duplicate ROI editor tab detected. Closing this tab...");
+    if (canCloseByScript) {
+      window.close();
+    }
+    // Fallback when browser blocks close() for user-opened tabs.
+    setTimeout(() => {
+      if (document.body) {
+        document.body.innerHTML = "<main style=\"font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; max-width: 720px; margin: 64px auto; padding: 0 20px; color: #111;\"><h2 style=\"margin-bottom: 8px;\">Duplicate ROI editor tab</h2><p style=\"margin-top: 0; line-height: 1.5;\">This tab was opened while another ROI editor tab is active. To avoid accidental overwrite, this tab is disabled. You can close it now.</p></main>";
+      }
+      try { window.close(); } catch (e) {}
+    }, 50);
+  }
+
+  function imageToCanvas(ix, iy) {
+    return {
+      x: ix * scale + offsetX,
+      y: iy * scale + offsetY
+    };
+  }
+
+  function canvasToImage(cx, cy) {
+    if (scale <= 0) return { x: 0, y: 0 };
+    return {
+      x: Math.round((cx - offsetX) / scale),
+      y: Math.round((cy - offsetY) / scale)
+    };
+  }
+
+  function containsPoint(roi, px, py) {
+    return roi.x <= px && px <= roi.x + roi.w && roi.y <= py && py <= roi.y + roi.h;
+  }
+
+  function hitHandle(roi, px, py) {
+    const hs = HANDLE_SIZE;
+    const L = roi.x, R = roi.x + roi.w, T = roi.y, B = roi.y + roi.h;
+    if (Math.abs(px - L) <= hs && Math.abs(py - T) <= hs) return "nw";
+    if (Math.abs(px - R) <= hs && Math.abs(py - T) <= hs) return "ne";
+    if (Math.abs(px - L) <= hs && Math.abs(py - B) <= hs) return "sw";
+    if (Math.abs(px - R) <= hs && Math.abs(py - B) <= hs) return "se";
+    if (Math.abs(py - T) <= hs && L <= px && px <= R) return "n";
+    if (Math.abs(py - B) <= hs && L <= px && px <= R) return "s";
+    if (Math.abs(px - L) <= hs && T <= py && py <= B) return "w";
+    if (Math.abs(px - R) <= hs && T <= py && py <= B) return "e";
+    return null;
+  }
+
+  function handlePositions(roi) {
+    const cx = roi.x + roi.w / 2, cy = roi.y + roi.h / 2;
+    const L = roi.x, R = roi.x + roi.w, T = roi.y, B = roi.y + roi.h;
+    const pts = [
+      [L, T], [R, T], [R, B], [L, B],
+      [cx, T], [R, cy], [cx, B], [L, cy]
+    ];
+    return pts.map(([px, py]) => imageToCanvas(px, py));
+  }
+
+  function applyResize(roi, handle, px, py) {
+    if (handle.includes("e")) roi.w = Math.max(MIN_ROI_SIZE, px - roi.x);
+    if (handle.includes("w")) {
+      const newW = roi.x + roi.w - px;
+      if (newW >= MIN_ROI_SIZE) { roi.x = px; roi.w = newW; }
+    }
+    if (handle.includes("s")) roi.h = Math.max(MIN_ROI_SIZE, py - roi.y);
+    if (handle.includes("n")) {
+      const newH = roi.y + roi.h - py;
+      if (newH >= MIN_ROI_SIZE) { roi.y = py; roi.h = newH; }
+    }
+    const iw = imageWidth, ih = imageHeight;
+    roi.x = Math.max(0, Math.min(roi.x, iw - MIN_ROI_SIZE));
+    roi.y = Math.max(0, Math.min(roi.y, ih - MIN_ROI_SIZE));
+    roi.w = Math.max(MIN_ROI_SIZE, Math.min(roi.w, iw - roi.x));
+    roi.h = Math.max(MIN_ROI_SIZE, Math.min(roi.h, ih - roi.y));
+  }
+
+  function updateScaleAndOffset() {
+    const cw = canvasLogicalWidth || canvas.width / (window.devicePixelRatio || 1);
+    const ch = canvasLogicalHeight || canvas.height / (window.devicePixelRatio || 1);
+    if (cw <= 0 || ch <= 0 || imageWidth <= 0 || imageHeight <= 0) return;
+    baseScale = Math.min(cw / imageWidth, ch / imageHeight);
+    scale = baseScale * zoomFactor;
+    offsetX = (cw - imageWidth * scale) / 2 + panX;
+    offsetY = (ch - imageHeight * scale) / 2 + panY;
+  }
+
+  function draw() {
+    const cw = canvasLogicalWidth || canvas.width / (window.devicePixelRatio || 1);
+    const ch = canvasLogicalHeight || canvas.height / (window.devicePixelRatio || 1);
+    ctx.fillStyle = cssCanvasBg();
+    ctx.fillRect(0, 0, cw, ch);
+    if (!image) return;
+
+    updateScaleAndOffset();
+    const sx = offsetX, sy = offsetY;
+    ctx.drawImage(image, 0, 0, imageWidth, imageHeight, sx, sy, imageWidth * scale, imageHeight * scale);
+
+    for (const roi of rois) {
+      const p0 = imageToCanvas(roi.x, roi.y);
+      const p1 = imageToCanvas(roi.x + roi.w, roi.y + roi.h);
+      const isSel = selectedIds.has(roi.id);
+      const isPrimary = roi.id === primarySelectedId;
+      ctx.strokeStyle = isSel ? cssAccent() : "#eab308";
+      ctx.lineWidth = isSel ? 3 : 2;
+      ctx.strokeRect(p0.x, p0.y, p1.x - p0.x, p1.y - p0.y);
+      if (isPrimary) {
+        ctx.fillStyle = cssAccent();
+        ctx.strokeStyle = "#fff";
+        ctx.lineWidth = 1;
+        for (const { x, y } of handlePositions(roi)) {
+          ctx.fillRect(x - HANDLE_SIZE, y - HANDLE_SIZE, HANDLE_SIZE * 2, HANDLE_SIZE * 2);
+          ctx.strokeRect(x - HANDLE_SIZE, y - HANDLE_SIZE, HANDLE_SIZE * 2, HANDLE_SIZE * 2);
+        }
+      }
+    }
+
+    if (dragMode === "create" && createStart) {
+      const p0 = imageToCanvas(createStart.x, createStart.y);
+      const p1 = imageToCanvas(dragStart.x, dragStart.y);
+      ctx.strokeStyle = cssAccent();
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 2]);
+      ctx.strokeRect(
+        Math.min(p0.x, p1.x), Math.min(p0.y, p1.y),
+        Math.abs(p1.x - p0.x), Math.abs(p1.y - p0.y)
+      );
+      ctx.setLineDash([]);
+    }
+
+    syncRoiList();
+  }
+
+  function syncRoiList() {
+    roiList.innerHTML = "";
+    rois.forEach((roi, idx) => {
+      const li = document.createElement("li");
+      li.textContent = roi.name;
+      li.dataset.id = roi.id;
+      li.dataset.index = String(idx);
+      li.draggable = true;
+      if (selectedIds.has(roi.id)) li.classList.add("selected");
+
+      li.addEventListener("click", (e) => {
+        if (e.shiftKey || e.ctrlKey || e.metaKey) {
+          if (selectedIds.has(roi.id)) {
+            if (e.ctrlKey || e.metaKey) {
+              selectedIds.delete(roi.id);
+              if (primarySelectedId === roi.id) {
+                primarySelectedId = selectedIds.size ? Array.from(selectedIds)[0] : null;
+              }
+            }
+          } else {
+            selectedIds.add(roi.id);
+            primarySelectedId = roi.id;
+          }
+        } else {
+          selectedIds = new Set([roi.id]);
+          primarySelectedId = roi.id;
+        }
+        draw();
+      });
+      li.addEventListener("dblclick", () => renameSelected());
+
+      li.addEventListener("dragstart", (e) => {
+        dragListIndex = idx;
+        e.dataTransfer.effectAllowed = "move";
+        li.classList.add("dragging");
+      });
+      li.addEventListener("dragend", () => {
+        dragListIndex = null;
+        li.classList.remove("dragging");
+      });
+      li.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+      });
+      li.addEventListener("drop", (e) => {
+        e.preventDefault();
+        const from = dragListIndex;
+        const to = parseInt(li.dataset.index || "-1", 10);
+        dragListIndex = null;
+        if (from == null || isNaN(to) || from === to) return;
+        const item = rois.splice(from, 1)[0];
+        rois.splice(to, 0, item);
+        // Preserve current selection (multi-select) when reordering.
+        // Ensure the dragged item stays selected if it was selected.
+        if (selectedIds.has(item.id)) {
+          selectedIds.add(item.id);
+        }
+        draw();
+        scheduleAutosave();
+      });
+
+      roiList.appendChild(li);
+    });
+    if (primarySelectedId) {
+      const li = roiList.querySelector(`li[data-id="${primarySelectedId}"]`);
+      if (li) li.scrollIntoView({ block: "nearest", behavior: "auto" });
+    }
+    syncRoiEditorFields();
+  }
+
+  function getPrimaryRoi() {
+    if (!primarySelectedId) return null;
+    return rois.find(r => r.id === primarySelectedId) || null;
+  }
+
+  function syncRoiEditorFields() {
+    const roi = getPrimaryRoi();
+    if (!roi) {
+      roiFieldDataTypeEl.value = "text";
+      roiFieldDataTypeEl.disabled = true;
+      roiValidationRulesEl.value = "";
+      roiValidationRulesEl.disabled = true;
+      roiPromptInstructionEl.value = "";
+      roiPromptInstructionEl.disabled = true;
+      roiPromptOverrideEl.value = "";
+      roiPromptOverrideEl.disabled = true;
+      ocrRoiFieldDataTypeEl.value = "text";
+      ocrRoiFieldDataTypeEl.disabled = true;
+      ocrRoiValidationRulesEl.value = "";
+      ocrRoiValidationRulesEl.disabled = true;
+      ocrRoiPromptInstructionEl.value = "";
+      ocrRoiPromptInstructionEl.disabled = true;
+      roiOcrPromptOverrideEl.value = "";
+      roiOcrPromptOverrideEl.disabled = true;
+      roiOcrOutputRegexEl.value = "";
+      roiOcrOutputRegexEl.disabled = true;
+      setPromptStreamStatus("Idle.", null);
+      setOcrPromptStreamStatus("Idle.", null);
+      btnOpenPromptCreator.disabled = true;
+      btnGenerateRoiPrompt.disabled = true;
+      btnOpenOcrPromptCreator.disabled = true;
+      btnGenerateOcrRoiPrompt.disabled = true;
+      return;
+    }
+    roiFieldDataTypeEl.disabled = false;
+    roiFieldDataTypeEl.value = (typeof roi.llm_field_data_type === "string" && roi.llm_field_data_type.trim())
+      ? roi.llm_field_data_type
+      : "text";
+    roiValidationRulesEl.disabled = false;
+    roiValidationRulesEl.value = (typeof roi.llm_validation_rules === "string")
+      ? roi.llm_validation_rules
+      : "";
+    roiPromptInstructionEl.disabled = false;
+    roiPromptInstructionEl.value = (typeof roi.llm_prompt_instruction === "string")
+      ? roi.llm_prompt_instruction
+      : "";
+    roiPromptOverrideEl.disabled = false;
+    roiPromptOverrideEl.value = (typeof roi.llm_prompt_override === "string")
+      ? roi.llm_prompt_override
+      : "";
+    ocrRoiFieldDataTypeEl.disabled = false;
+    ocrRoiFieldDataTypeEl.value = (typeof roi.ocr_field_data_type === "string" && roi.ocr_field_data_type.trim())
+      ? roi.ocr_field_data_type
+      : "text";
+    ocrRoiValidationRulesEl.disabled = false;
+    ocrRoiValidationRulesEl.value = (typeof roi.ocr_validation_rules === "string")
+      ? roi.ocr_validation_rules
+      : "";
+    ocrRoiPromptInstructionEl.disabled = false;
+    ocrRoiPromptInstructionEl.value = (typeof roi.ocr_prompt_instruction === "string")
+      ? roi.ocr_prompt_instruction
+      : "";
+    roiOcrPromptOverrideEl.disabled = false;
+    roiOcrPromptOverrideEl.value = (typeof roi.ocr_prompt_override === "string")
+      ? roi.ocr_prompt_override
+      : "";
+    roiOcrOutputRegexEl.disabled = false;
+    roiOcrOutputRegexEl.value = (typeof roi.ocr_output_regex === "string")
+      ? roi.ocr_output_regex
+      : "";
+    setPromptStreamStatus("Idle.", null);
+    setOcrPromptStreamStatus("Idle.", null);
+    btnOpenPromptCreator.disabled = false;
+    btnGenerateRoiPrompt.disabled = false;
+    btnOpenOcrPromptCreator.disabled = false;
+    btnGenerateOcrRoiPrompt.disabled = false;
+  }
+
+  function setStatus(msg) {
+    statusEl.textContent = msg;
+    updateSchemaStatus();
+    if (roiSummaryEl) {
+      const count = rois.length;
+      roiSummaryEl.textContent = imagePath ? `ROIs: ${count}` : "ROIs: 0";
+    }
+  }
+
+  function updateSchemaStatus() {
+    if (!schemaStatusEl) return;
+    if (!imagePath) {
+      schemaStatusEl.textContent = "Schema: (none)";
+      return;
+    }
+    const filename = imagePath.split("/").pop() || imagePath;
+    const stem = filename.replace(/\.[^/.]+$/, "");
+    schemaStatusEl.textContent = `Schema: data/roi_schemas/${stem}.json`;
+  }
+
+  function snapshotState() {
+    return {
+      rois: rois.map(r => ({ ...r })),
+      selectedIds: Array.from(selectedIds),
+      primarySelectedId,
+      roiCounter
+    };
+  }
+
+  function applyState(state) {
+    rois = state.rois.map(r => ({ ...r }));
+    selectedIds = new Set(state.selectedIds || []);
+    primarySelectedId = state.primarySelectedId || null;
+    roiCounter = state.roiCounter || rois.length;
+    draw();
+  }
+
+  function pushUndo() {
+    undoStack.push(snapshotState());
+    if (undoStack.length > UNDO_LIMIT) undoStack.shift();
+    redoStack.length = 0;
+  }
+
+  function scheduleAutosave() {
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer = setTimeout(() => {
+      autosaveTimer = null;
+      saveSchema();
+    }, AUTOSAVE_DELAY_MS);
+  }
+
+  function setPromptStreamStatus(text, kind) {
+    if (!roiPromptStreamStatusEl) return;
+    roiPromptStreamStatusEl.textContent = text || "";
+    roiPromptStreamStatusEl.classList.remove("generating", "done", "error");
+    if (kind) roiPromptStreamStatusEl.classList.add(kind);
+  }
+
+  function setOcrPromptStreamStatus(text, kind) {
+    if (!roiOcrPromptStreamStatusEl) return;
+    roiOcrPromptStreamStatusEl.textContent = text || "";
+    roiOcrPromptStreamStatusEl.classList.remove("generating", "done", "error");
+    if (kind) roiOcrPromptStreamStatusEl.classList.add(kind);
+  }
+
+  async function loadGeneratorTemplatePreview() {
+    if (roiGeneratorTemplateLoaded) return;
+    if (!roiGeneratorTemplateEl) return;
+    roiGeneratorTemplateEl.value = "Loading template...";
+    try {
+      const r = await fetch("/api/roi-prompt-template?ts=" + Date.now());
+      const contentType = String(r.headers.get("content-type") || "").toLowerCase();
+      let data = null;
+      if (contentType.includes("application/json")) {
+        data = await r.json();
+      } else {
+        const raw = await r.text();
+        throw new Error(raw ? raw.slice(0, 240) : "Non-JSON response from server.");
+      }
+      if (!r.ok || !data || !data.ok) {
+        throw new Error((data && data.error) ? data.error : "Failed to load template.");
+      }
+      roiGeneratorTemplateEl.value = String(data.template || "").trim();
+      roiGeneratorTemplateLoaded = true;
+    } catch (err) {
+      roiGeneratorTemplateEl.value = `Template unavailable: ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
+
+  async function loadOcrGeneratorTemplatePreview() {
+    if (ocrRoiGeneratorTemplateLoaded) return;
+    if (!ocrRoiGeneratorTemplateEl) return;
+    ocrRoiGeneratorTemplateEl.value = "Loading template...";
+    try {
+      const r = await fetch("/api/roi-ocr-prompt-template?ts=" + Date.now());
+      const contentType = String(r.headers.get("content-type") || "").toLowerCase();
+      let data = null;
+      if (contentType.includes("application/json")) {
+        data = await r.json();
+      } else {
+        const raw = await r.text();
+        throw new Error(raw ? raw.slice(0, 240) : "Non-JSON response from server.");
+      }
+      if (!r.ok || !data || !data.ok) {
+        throw new Error((data && data.error) ? data.error : "Failed to load template.");
+      }
+      ocrRoiGeneratorTemplateEl.value = String(data.template || "").trim();
+      ocrRoiGeneratorTemplateLoaded = true;
+    } catch (err) {
+      ocrRoiGeneratorTemplateEl.value = `Template unavailable: ${err instanceof Error ? err.message : String(err)}`;
+    }
+  }
+
+  const fileImage = document.getElementById("file-image");
+  const fileImportImage = document.getElementById("file-import-image");
+  const importModal = document.getElementById("import-modal");
+  const importBody = document.getElementById("import-body");
+  const importSourceLabel = document.getElementById("import-source-label");
+  const promptCreatorModal = document.getElementById("prompt-creator-modal");
+  const ocrPromptCreatorModal = document.getElementById("ocr-prompt-creator-modal");
+  const importSelectAllBtn = document.getElementById("import-select-all");
+  const importSelectNoneBtn = document.getElementById("import-select-none");
+  const importConfirmBtn = document.getElementById("import-confirm");
+  const importCloseBtn = document.getElementById("import-close");
+  let currentImportSource = null;
+  let currentImportRois = null;
+
+  async function uploadImage(file) {
+    setStatus("Uploading " + file.name + "…");
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res = await fetch("/api/upload-image", { method: "POST", body: fd });
+      const info = await res.json().catch(() => ({}));
+      if (!res.ok || !info.ok) {
+        setStatus(info.error || ("Upload failed (" + res.status + ")"));
+        return null;
+      }
+      return info.path;
+    } catch (err) {
+      setStatus("Upload failed: " + String(err));
+      return null;
+    }
+  }
+
+  fileImage.addEventListener("change", async () => {
+    const f = fileImage.files && fileImage.files[0];
+    if (!f) return;
+    try { fileImage.value = ""; } catch (e) {}
+    const path = await uploadImage(f);
+    if (path) loadImage(path);
+  });
+
+  fileImportImage.addEventListener("change", async () => {
+    const f = fileImportImage.files && fileImportImage.files[0];
+    if (!f) return;
+    try { fileImportImage.value = ""; } catch (e) {}
+    const path = await uploadImage(f);
+    if (path) importRoisFromSchema(path);
+  });
+
+  document.getElementById("btn-select-image").addEventListener("click", () => fileImage.click());
+
+  importSelectAllBtn.addEventListener("click", () => {
+    importBody.querySelectorAll("input[type=checkbox]").forEach(cb => { cb.checked = true; });
+  });
+  importSelectNoneBtn.addEventListener("click", () => {
+    importBody.querySelectorAll("input[type=checkbox]").forEach(cb => { cb.checked = false; });
+  });
+  importConfirmBtn.addEventListener("click", () => {
+    doImportSelectedRois();
+  });
+  importCloseBtn.addEventListener("click", () => {
+    importModal.classList.remove("open");
+    importModal.setAttribute("aria-hidden", "true");
+  });
+
+  function normalizeIncomingRois(inputRois) {
+    if (!Array.isArray(inputRois)) return [];
+    return inputRois.map(r => ({
+      ...r,
+      id: r.id || ("r" + Math.random().toString(36).slice(2, 10)),
+      name: r.name || "ROI",
+      x: Math.max(0, parseInt(r.x, 10) || 0),
+      y: Math.max(0, parseInt(r.y, 10) || 0),
+      w: Math.max(MIN_ROI_SIZE, parseInt(r.w, 10) || MIN_ROI_SIZE),
+      h: Math.max(MIN_ROI_SIZE, parseInt(r.h, 10) || MIN_ROI_SIZE)
+    }));
+  }
+
+  async function loadImage(path) {
+    if (!path) {
+      image = null;
+      imagePath = "";
+      imageWidth = imageHeight = 0;
+      rois = [];
+      selectedIds.clear();
+      primarySelectedId = null;
+      if (btnAutoDetect) btnAutoDetect.disabled = true;
+      draw();
+      return;
+    }
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      await new Promise((resolve, reject) => {
+        img.onload = resolve;
+        img.onerror = reject;
+        img.src = "/api/image?path=" + encodeURIComponent(path);
+      });
+      image = img;
+      imagePath = path;
+      imageWidth = img.naturalWidth;
+      imageHeight = img.naturalHeight;
+      rois = [];
+      selectedIds.clear();
+      primarySelectedId = null;
+      roiCounter = 0;
+      zoomFactor = 1;
+      panX = panY = 0;
+
+      const s = await fetch("/api/schema?path=" + encodeURIComponent(path));
+      const schema = await s.json();
+      if (schema.rois && Array.isArray(schema.rois)) {
+        rois = normalizeIncomingRois(schema.rois);
+        roiCounter = rois.length;
+      }
+      if (schema.image_width && schema.image_height) {
+        imageWidth = schema.image_width;
+        imageHeight = schema.image_height;
+      }
+      setStatus(path + " — " + rois.length + " ROI(s)");
+      selectedIds.clear();
+      primarySelectedId = null;
+      if (autosaveTimer) { clearTimeout(autosaveTimer); autosaveTimer = null; }
+      undoStack.length = 0;
+      redoStack.length = 0;
+      if (rois.length) pushUndo();
+      if (btnAutoDetect) btnAutoDetect.disabled = false;
+      resizeCanvas();
+      draw();
+    } catch (e) {
+      if (btnAutoDetect) btnAutoDetect.disabled = true;
+      setStatus("Failed to load image");
+    }
+  }
+
+  async function autoDetectRois() {
+    if (!imagePath) {
+      alert("Load an image first.");
+      return;
+    }
+    if (!isPrimaryEditorTab) {
+      setStatus("Read-only tab: another ROI editor tab is active.");
+      return;
+    }
+    if (btnAutoDetect) btnAutoDetect.disabled = true;
+    setStatus("Auto-detecting ROIs with PaddleOCR + OpenAI...");
+    try {
+      const r = await fetch("/api/roi-auto-detect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: imagePath, model_profile: "balanced" })
+      });
+      const contentType = String(r.headers.get("content-type") || "").toLowerCase();
+      let data = null;
+      if (contentType.includes("application/json")) {
+        data = await r.json();
+      } else {
+        const raw = await r.text();
+        throw new Error(raw || "Non-JSON response from server.");
+      }
+      if (!r.ok || !data || !data.ok) {
+        throw new Error((data && data.error) ? data.error : "ROI auto-detect failed.");
+      }
+      const newRois = normalizeIncomingRois(data.rois || []);
+      if (!newRois.length) {
+        throw new Error("Detector returned no ROIs.");
+      }
+      pushUndo();
+      rois = newRois;
+      roiCounter = rois.length;
+      selectedIds.clear();
+      primarySelectedId = null;
+      if (data.image_width && data.image_height) {
+        imageWidth = parseInt(data.image_width, 10) || imageWidth;
+        imageHeight = parseInt(data.image_height, 10) || imageHeight;
+      }
+      const model = data.model ? ` model=${data.model}` : "";
+      const ref = data.reference_schema_path ? ` ref=${data.reference_schema_path}` : "";
+      setStatus(`Auto-detected ${rois.length} ROI(s).${model}${ref}`);
+      draw();
+    } catch (err) {
+      setStatus("ROI auto-detect failed.");
+      alert(err instanceof Error ? err.message : String(err));
+    } finally {
+      if (btnAutoDetect) btnAutoDetect.disabled = !imagePath;
+    }
+  }
+
+  async function saveSchema() {
+    if (!isPrimaryEditorTab) {
+      setStatus("Read-only tab: another ROI editor tab is active.");
+      return;
+    }
+    if (!imagePath || !imageWidth || !imageHeight) return;
+    try {
+      const r = await fetch("/api/schema", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          path: imagePath,
+          rois: rois.map(roi => {
+            const out = {
+              ...roi,
+              id: roi.id,
+              name: roi.name,
+              x: roi.x,
+              y: roi.y,
+              w: roi.w,
+              h: roi.h,
+            };
+            const dt = typeof out.llm_field_data_type === "string"
+              ? out.llm_field_data_type.trim()
+              : "";
+            if (dt) out.llm_field_data_type = dt;
+            else delete out.llm_field_data_type;
+            const ocrDt = typeof out.ocr_field_data_type === "string"
+              ? out.ocr_field_data_type.trim()
+              : "";
+            if (ocrDt) out.ocr_field_data_type = ocrDt;
+            else delete out.ocr_field_data_type;
+            // Deprecated field: keep removing it from saved schema.
+            delete out.ocr_output_format;
+            const vr = typeof out.llm_validation_rules === "string"
+              ? out.llm_validation_rules.trim()
+              : "";
+            if (vr) out.llm_validation_rules = vr;
+            else delete out.llm_validation_rules;
+            const ocrVr = typeof out.ocr_validation_rules === "string"
+              ? out.ocr_validation_rules.trim()
+              : "";
+            if (ocrVr) out.ocr_validation_rules = ocrVr;
+            else delete out.ocr_validation_rules;
+            const ins = typeof out.llm_prompt_instruction === "string"
+              ? out.llm_prompt_instruction.trim()
+              : "";
+            if (ins) out.llm_prompt_instruction = ins;
+            else delete out.llm_prompt_instruction;
+            const ocrIns = typeof out.ocr_prompt_instruction === "string"
+              ? out.ocr_prompt_instruction.trim()
+              : "";
+            if (ocrIns) out.ocr_prompt_instruction = ocrIns;
+            else delete out.ocr_prompt_instruction;
+            const pov = typeof out.llm_prompt_override === "string"
+              ? out.llm_prompt_override.trim()
+              : "";
+            if (pov) out.llm_prompt_override = pov;
+            else delete out.llm_prompt_override;
+            const ocrPov = typeof out.ocr_prompt_override === "string"
+              ? out.ocr_prompt_override.trim()
+              : "";
+            if (ocrPov) out.ocr_prompt_override = ocrPov;
+            else delete out.ocr_prompt_override;
+            const ocrRx = typeof out.ocr_output_regex === "string"
+              ? out.ocr_output_regex.trim()
+              : "";
+            if (ocrRx) out.ocr_output_regex = ocrRx;
+            else delete out.ocr_output_regex;
+            return out;
+          }),
+          image_width: imageWidth,
+          image_height: imageHeight
+        })
+      });
+      if (r.ok) setStatus("Saved.");
+      else setStatus("Save failed.");
+    } catch (e) {
+      setStatus("Save failed.");
+    }
+  }
+
+  function resizeCanvas() {
+    const wrap = canvas.parentElement;
+    const dpr = window.devicePixelRatio || 1;
+    const w = wrap.clientWidth;
+    const h = wrap.clientHeight;
+    canvasLogicalWidth = w;
+    canvasLogicalHeight = h;
+    canvas.width = w * dpr;
+    canvas.height = h * dpr;
+    canvas.style.width = w + "px";
+    canvas.style.height = h + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    updateScaleAndOffset();
+    draw();
+  }
+
+  function getImageCoords(e) {
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    const im = canvasToImage(cx, cy);
+    lastMouseImageX = im.x;
+    lastMouseImageY = im.y;
+    return im;
+  }
+
+  function startCreateMode() {
+    selectedIds.clear();
+    primarySelectedId = null;
+    dragMode = null;
+    hoverState = null;
+    mcqSequence = null;
+    draw();
+  }
+
+  const MCQ_LETTERS = "abcdefgh";
+  function startMcqSequence() {
+    if (!image) { alert("Load an image first."); return; }
+    const qStr = prompt("Question number (e.g. 1, 2, 10):", "1");
+    if (qStr == null || qStr.trim() === "") return;
+    const qNum = parseInt(qStr.trim(), 10);
+    if (isNaN(qNum) || qNum < 1) { alert("Enter a positive question number."); return; }
+    const optStr = prompt("Number of options (2–8, letters a–h):", "4");
+    if (optStr == null || optStr.trim() === "") return;
+    const numOpts = parseInt(optStr.trim(), 10);
+    if (isNaN(numOpts) || numOpts < 2 || numOpts > 8) { alert("Enter 2 to 8 options."); return; }
+    const names = [String(qNum)];
+    for (let i = 0; i < numOpts; i++) names.push(qNum + MCQ_LETTERS[i]);
+    mcqSequence = { names, index: 0 };
+    selectedIds.clear();
+    primarySelectedId = null;
+    dragMode = null;
+    setStatus("Draw main ROI: " + names[0]);
+    canvas.style.cursor = "crosshair";
+    draw();
+  }
+
+  async function importRoisFromSchema(srcPath) {
+    if (!image) {
+      alert("Load a target image first.");
+      return;
+    }
+    if (!srcPath) return;
+    let schema;
+    try {
+      const r = await fetch("/api/schema?path=" + encodeURIComponent(srcPath.trim()));
+      if (!r.ok) {
+        alert("No schema found for that path.");
+        return;
+      }
+      schema = await r.json();
+    } catch (e) {
+      alert("Failed to load schema.");
+      return;
+    }
+    if (!schema || !Array.isArray(schema.rois) || !schema.rois.length) {
+      alert("Schema has no ROIs.");
+      return;
+    }
+    showImportModal(srcPath.trim(), schema.rois);
+  }
+
+  function showImportModal(srcPath, roisFromSchema) {
+    currentImportSource = srcPath;
+    currentImportRois = roisFromSchema.slice();
+    importBody.innerHTML = "";
+    importSourceLabel.textContent = srcPath;
+    currentImportRois.forEach((r, idx) => {
+      const name = r.name || `ROI ${idx + 1}`;
+      const row = document.createElement("div");
+      row.className = "item";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.value = name;
+      cb.id = `import-roi-${idx}`;
+      const label = document.createElement("label");
+      label.htmlFor = cb.id;
+      label.textContent = name;
+      row.appendChild(cb);
+      row.appendChild(label);
+      importBody.appendChild(row);
+    });
+    importModal.classList.add("open");
+    importModal.setAttribute("aria-hidden", "false");
+  }
+
+  function doImportSelectedRois() {
+    if (!image || !currentImportRois || !currentImportRois.length) return;
+    const checked = Array.from(importBody.querySelectorAll("input[type=checkbox]:checked")).map(cb => cb.value);
+    if (!checked.length) {
+      alert("No ROIs selected to import.");
+      return;
+    }
+    const wanted = new Set(checked);
+    const toImport = currentImportRois.filter(r => wanted.has(r.name));
+    if (!toImport.length) {
+      alert("No matching ROIs to import.");
+      return;
+    }
+    pushUndo();
+    const usedNames = new Set(rois.map(r => r.name));
+    const newIds = new Set();
+    toImport.forEach((r, idx) => {
+      const baseName = r.name || `ROI ${idx + 1}`;
+      let name = baseName;
+      let k = 2;
+      while (usedNames.has(name)) {
+        name = `${baseName}_${k}`;
+        k += 1;
+      }
+      usedNames.add(name);
+      const dup = {
+        ...r,
+        id: "r" + Math.random().toString(36).slice(2, 10),
+        name,
+        x: Math.max(0, parseInt(r.x, 10) || 0),
+        y: Math.max(0, parseInt(r.y, 10) || 0),
+        w: Math.max(MIN_ROI_SIZE, parseInt(r.w, 10) || MIN_ROI_SIZE),
+        h: Math.max(MIN_ROI_SIZE, parseInt(r.h, 10) || MIN_ROI_SIZE)
+      };
+      rois.push(dup);
+      newIds.add(dup.id);
+    });
+    selectedIds = newIds;
+    primarySelectedId = newIds.size ? Array.from(newIds)[0] : null;
+    setStatus(`Imported ${toImport.length} ROI${toImport.length === 1 ? "" : "s"} from ${currentImportSource}`);
+    draw();
+    scheduleAutosave();
+    importModal.classList.remove("open");
+    importModal.setAttribute("aria-hidden", "true");
+  }
+
+  function renameSelected() {
+    const id = primarySelectedId || (selectedIds.size ? Array.from(selectedIds)[0] : null);
+    if (!id) { alert("Select an ROI first (click on list or canvas)."); return; }
+    const roi = rois.find(r => r.id === id);
+    if (!roi) return;
+    pushUndo();
+    const name = prompt("Rename ROI:", roi.name);
+    if (name != null && name.trim()) { roi.name = name.trim(); draw(); scheduleAutosave(); }
+  }
+
+  function duplicateSelected() {
+    if (!selectedIds.size) { alert("Select one or more ROIs first."); return; }
+    pushUndo();
+    const toDup = rois.filter(r => selectedIds.has(r.id));
+    if (!toDup.length || !image) return;
+    // Compute bounding box of selection
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    toDup.forEach(r => {
+      minX = Math.min(minX, r.x);
+      minY = Math.min(minY, r.y);
+      maxX = Math.max(maxX, r.x + r.w);
+      maxY = Math.max(maxY, r.y + r.h);
+    });
+    const boxCx = (minX + maxX) / 2;
+    const boxCy = (minY + maxY) / 2;
+    const dx = lastMouseImageX - boxCx;
+    const dy = lastMouseImageY - boxCy;
+    const clampX = (v, w) => Math.max(0, Math.min(v, imageWidth - w));
+    const clampY = (v, h) => Math.max(0, Math.min(v, imageHeight - h));
+
+    const newIds = new Set();
+    let leadId = null;
+    const usedNames = new Set(rois.map(r => r.name.trim()));
+    toDup.forEach((roi, i) => {
+      const base = roi.name.trim();
+      let copyName;
+      const m = base.match(/^(\d+)([a-zA-Z]?)$/);
+      if (m) {
+        const startN = parseInt(m[1], 10) + 1;
+        const letter = m[2] || "";
+        let n = startN;
+        while (true) {
+          const candidate = String(n) + letter;
+          if (!usedNames.has(candidate)) {
+            copyName = candidate;
+            usedNames.add(candidate);
+            break;
+          }
+          n += 1;
+        }
+      } else {
+        let baseName = base.replace(/ \(copy\)$/, "") || base;
+        let candidate = baseName + " (copy)";
+        let k = 2;
+        while (usedNames.has(candidate)) {
+          candidate = `${baseName} (copy ${k})`;
+          k += 1;
+        }
+        copyName = candidate;
+        usedNames.add(copyName);
+      }
+      const nx = clampX(roi.x + dx, roi.w);
+      const ny = clampY(roi.y + dy, roi.h);
+      const dup = {
+        ...roi,
+        id: "r" + Math.random().toString(36).slice(2, 10),
+        name: copyName,
+        x: nx,
+        y: ny,
+        w: roi.w,
+        h: roi.h
+      };
+      rois.push(dup);
+      newIds.add(dup.id);
+      if (!leadId) leadId = dup.id;
+    });
+    selectedIds = newIds;
+    primarySelectedId = leadId;
+    // Start moving the duplicated group under the mouse; will finish on mouseup.
+    if (leadId != null) {
+      const lead = rois.find(r => r.id === leadId);
+      if (lead) {
+        const startPositions = {};
+        rois.forEach(r => {
+          if (selectedIds.has(r.id)) startPositions[r.id] = { x: r.x, y: r.y };
+        });
+        dragMode = "move";
+        dragStart = {
+          offsetX: lastMouseImageX - lead.x,
+          offsetY: lastMouseImageY - lead.y,
+          leadId,
+          startPositions,
+          sourceCx: boxCx,
+          sourceCy: boxCy,
+          initialDx: dx,
+          initialDy: dy
+        };
+        canvas.style.cursor = "grabbing";
+      }
+    }
+    draw();
+  }
+
+  function deleteSelected() {
+    if (!selectedIds.size) { alert("Select one or more ROIs first."); return; }
+    pushUndo();
+    rois = rois.filter(r => !selectedIds.has(r.id));
+    selectedIds.clear();
+    primarySelectedId = null;
+    draw();
+    scheduleAutosave();
+  }
+
+  canvas.addEventListener("mousedown", (e) => {
+    if (!image) return;
+    const pt = getImageCoords(e);
+    const px = pt.x, py = pt.y;
+    const iw = imageWidth, ih = imageHeight;
+    if (px < 0 || py < 0 || px >= iw || py >= ih) return;
+
+    if (e.button === 1 || e.button === 2) {
+      if (e.button === 2) e.preventDefault();
+      panStart = { x: e.clientX, y: e.clientY, panX, panY };
+      canvas.style.cursor = "grabbing";
+      return;
+    }
+    if (e.button !== 0) return;
+
+    // Ctrl+click always starts a new ROI, even if hovering an existing one.
+    if (e.ctrlKey && !e.shiftKey) {
+      pushUndo();
+      selectedIds.clear();
+      primarySelectedId = null;
+      dragMode = "create";
+      createStart = { x: px, y: py };
+      dragStart = { x: px, y: py };
+      canvas.style.cursor = "crosshair";
+      draw();
+      return;
+    }
+
+    if (primarySelectedId) {
+      const sel = rois.find(r => r.id === primarySelectedId);
+      const h = sel ? hitHandle(sel, px, py) : null;
+      if (h) {
+        pushUndo();
+        dragMode = "resize";
+        resizeHandle = h;
+        dragStart = { x: px, y: py };
+        canvas.style.cursor = "nwse-resize";
+        return;
+      }
+    }
+
+    for (let i = rois.length - 1; i >= 0; i--) {
+      if (containsPoint(rois[i], px, py)) {
+        const id = rois[i].id;
+        if (e.shiftKey || e.ctrlKey || e.metaKey) {
+          if (selectedIds.has(id)) {
+            if (e.ctrlKey || e.metaKey) {
+              selectedIds.delete(id);
+              primarySelectedId = selectedIds.size ? Array.from(selectedIds)[0] : null;
+            } else {
+              primarySelectedId = id;
+            }
+          } else {
+            selectedIds.add(id);
+            primarySelectedId = id;
+          }
+        } else {
+          // No modifiers: if clicking inside an already multi-selected group,
+          // keep the whole selection and just update the primary to the clicked ROI.
+          if (selectedIds.size > 1 && selectedIds.has(id)) {
+            primarySelectedId = id;
+          } else {
+            selectedIds = new Set([id]);
+            primarySelectedId = id;
+          }
+        }
+        pushUndo();
+        dragMode = "move";
+        const startPositions = {};
+        rois.forEach(r => {
+          if (selectedIds.has(r.id)) startPositions[r.id] = { x: r.x, y: r.y };
+        });
+        dragStart = { offsetX: px - rois[i].x, offsetY: py - rois[i].y, leadId: rois[i].id, startPositions };
+        canvas.style.cursor = "grabbing";
+        draw();
+        return;
+      }
+    }
+
+    selectedIds.clear();
+    primarySelectedId = null;
+    dragMode = "create";
+    createStart = { x: px, y: py };
+    dragStart = { x: px, y: py };
+    canvas.style.cursor = "crosshair";
+    draw();
+  });
+
+  canvas.addEventListener("mousemove", (e) => {
+    if (!image) return;
+    const pt = getImageCoords(e);
+    const px = pt.x, py = pt.y;
+
+    if (panStart) {
+      panX = panStart.panX + (e.clientX - panStart.x);
+      panY = panStart.panY + (e.clientY - panStart.y);
+      canvas.style.cursor = "grabbing";
+      draw();
+      return;
+    }
+
+    if (dragMode === "create" && createStart) {
+      dragStart = { x: px, y: py };
+      canvas.style.cursor = "crosshair";
+      draw();
+      return;
+    }
+    if (dragMode === "move" && dragStart && dragStart.leadId && dragStart.startPositions) {
+      const { offsetX, offsetY, leadId, startPositions, sourceCx, sourceCy, initialDx, initialDy } = dragStart;
+      const leadStart = startPositions[leadId];
+      if (leadStart) {
+        let dx, dy;
+        if (e.shiftKey && sourceCx != null && sourceCy != null && initialDx != null && initialDy != null) {
+          // Movement relative to original source center
+          let offX = px - sourceCx;
+          let offY = py - sourceCy;
+          // Lock to axis from source: horizontal or vertical based on change from initial offset
+          const deltaOffX = offX - initialDx;
+          const deltaOffY = offY - initialDy;
+          if (Math.abs(deltaOffX) >= Math.abs(deltaOffY)) {
+            offY = initialDy;
+          } else {
+            offX = initialDx;
+          }
+          dx = offX - initialDx;
+          dy = offY - initialDy;
+        } else {
+          const newLeadX = px - offsetX;
+          const newLeadY = py - offsetY;
+          dx = newLeadX - leadStart.x;
+          dy = newLeadY - leadStart.y;
+          // If Shift is held but we have no source info, fall back to dominant axis from lead
+          if (e.shiftKey) {
+            if (Math.abs(dx) >= Math.abs(dy)) {
+              dy = 0;
+            } else {
+              dx = 0;
+            }
+          }
+        }
+        // One dx,dy for the whole group so all stay in bounds and move rigidly
+        let minDx = -Infinity, maxDx = Infinity, minDy = -Infinity, maxDy = Infinity;
+        rois.forEach(roi => {
+          if (!selectedIds.has(roi.id)) return;
+          const s = startPositions[roi.id];
+          if (!s) return;
+          minDx = Math.max(minDx, -s.x);
+          maxDx = Math.min(maxDx, imageWidth - roi.w - s.x);
+          minDy = Math.max(minDy, -s.y);
+          maxDy = Math.min(maxDy, imageHeight - roi.h - s.y);
+        });
+        dx = Math.max(minDx, Math.min(maxDx, dx));
+        dy = Math.max(minDy, Math.min(maxDy, dy));
+        rois.forEach(roi => {
+          if (!selectedIds.has(roi.id)) return;
+          const s = startPositions[roi.id];
+          if (s) {
+            roi.x = s.x + dx;
+            roi.y = s.y + dy;
+          }
+        });
+      }
+      canvas.style.cursor = "grabbing";
+      draw();
+      return;
+    }
+    if (dragMode === "resize" && primarySelectedId && resizeHandle) {
+      const roi = rois.find(r => r.id === primarySelectedId);
+      if (roi) {
+        applyResize(roi, resizeHandle, px, py);
+        canvas.style.cursor = "nwse-resize";
+        draw();
+      }
+      return;
+    }
+
+    // Hover feedback (no active drag): handles, ROI body, or empty.
+    if (primarySelectedId) {
+      const sel = rois.find(r => r.id === primarySelectedId);
+      if (sel) {
+        const h = hitHandle(sel, px, py);
+        if (h) {
+          hoverState = "handle";
+          canvas.style.cursor = "nwse-resize";
+          return;
+        }
+      }
+    }
+    let onRoi = false;
+    for (let i = rois.length - 1; i >= 0; i--) {
+      if (containsPoint(rois[i], px, py)) {
+        onRoi = true;
+        break;
+      }
+    }
+    hoverState = onRoi ? "roi" : "empty";
+    if (onRoi) {
+      canvas.style.cursor = e.ctrlKey ? "crosshair" : "move";
+    } else {
+      canvas.style.cursor = "crosshair";
+    }
+  });
+
+  canvas.addEventListener("mouseup", (e) => {
+    if (e.button === 1 || e.button === 2) {
+      panStart = null;
+      canvas.style.cursor = "crosshair";
+      return;
+    }
+    if (e.button !== 0) return;
+
+    const pt = getImageCoords(e);
+    const px = pt.x, py = pt.y;
+
+    if (dragMode === "create" && createStart) {
+      const w = Math.abs(px - createStart.x);
+      const h = Math.abs(py - createStart.y);
+      if (w >= MIN_ROI_SIZE && h >= MIN_ROI_SIZE) {
+        pushUndo();
+        roiCounter++;
+        const name = mcqSequence
+          ? mcqSequence.names[mcqSequence.index]
+          : "ROI " + roiCounter;
+        const newRoi = {
+          id: "r" + Math.random().toString(36).slice(2, 10),
+          name: name,
+          x: Math.max(0, Math.min(createStart.x, px)),
+          y: Math.max(0, Math.min(createStart.y, py)),
+          w: w,
+          h: h
+        };
+        rois.push(newRoi);
+        if (mcqSequence) {
+          mcqSequence.index++;
+          if (mcqSequence.index >= mcqSequence.names.length) {
+            setStatus("MCQ item complete.");
+            mcqSequence = null;
+            scheduleAutosave();
+            selectedIds = new Set([newRoi.id]);
+            primarySelectedId = newRoi.id;
+          } else {
+            setStatus("Draw " + mcqSequence.names[mcqSequence.index]);
+            selectedIds.clear();
+            primarySelectedId = null;
+          }
+        } else {
+          selectedIds = new Set([newRoi.id]);
+          primarySelectedId = newRoi.id;
+          scheduleAutosave();
+        }
+      }
+      createStart = null;
+    }
+    if (dragMode === "move" && dragStart) scheduleAutosave();
+    if (dragMode === "resize") scheduleAutosave();
+
+    dragMode = null;
+    dragStart = null;
+    resizeHandle = null;
+    canvas.style.cursor = "crosshair";
+    draw();
+  });
+
+  canvas.addEventListener("mouseleave", () => {
+    if (dragMode === "create" && createStart) {
+      createStart = null;
+      dragMode = null;
+      draw();
+    }
+    panStart = null;
+    hoverState = null;
+    canvas.style.cursor = "crosshair";
+  });
+
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    if (!image) return;
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top;
+    const cw = canvasLogicalWidth || rect.width;
+    const ch = canvasLogicalHeight || rect.height;
+    const ix = (cx - offsetX) / scale;
+    const iy = (cy - offsetY) / scale;
+    const delta = e.deltaY > 0 ? 1 / ZOOM_FACTOR : ZOOM_FACTOR;
+    zoomFactor = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoomFactor * delta));
+    const newScale = baseScale * zoomFactor;
+    panX = cx - ix * newScale - (cw - imageWidth * newScale) / 2;
+    panY = cy - iy * newScale - (ch - imageHeight * newScale) / 2;
+    updateScaleAndOffset();
+    draw();
+  }, { passive: false });
+  canvas.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+  });
+
+  document.getElementById("btn-new").addEventListener("click", startCreateMode);
+  document.getElementById("btn-mcq").addEventListener("click", startMcqSequence);
+  document.getElementById("btn-import").addEventListener("click", () => {
+    fileImportImage.click();
+  });
+  document.getElementById("btn-auto-detect").addEventListener("click", autoDetectRois);
+  document.getElementById("btn-rename").addEventListener("click", renameSelected);
+  document.getElementById("btn-duplicate").addEventListener("click", duplicateSelected);
+  document.getElementById("btn-delete").addEventListener("click", deleteSelected);
+  document.getElementById("btn-save").addEventListener("click", () => saveSchema());
+  btnOpenPromptCreator.addEventListener("click", () => {
+    if (!getPrimaryRoi()) {
+      alert("Select an ROI first.");
+      return;
+    }
+    promptCreatorModal.classList.add("open");
+    promptCreatorModal.setAttribute("aria-hidden", "false");
+    if (roiGeneratorTemplateWrapEl && roiGeneratorTemplateWrapEl.open) {
+      loadGeneratorTemplatePreview();
+    }
+  });
+  if (roiGeneratorTemplateWrapEl) {
+    roiGeneratorTemplateWrapEl.addEventListener("toggle", () => {
+      if (roiGeneratorTemplateWrapEl.open) {
+        loadGeneratorTemplatePreview();
+      }
+    });
+  }
+  btnOpenOcrPromptCreator.addEventListener("click", () => {
+    if (!getPrimaryRoi()) {
+      alert("Select an ROI first.");
+      return;
+    }
+    ocrPromptCreatorModal.classList.add("open");
+    ocrPromptCreatorModal.setAttribute("aria-hidden", "false");
+    if (ocrRoiGeneratorTemplateWrapEl && ocrRoiGeneratorTemplateWrapEl.open) {
+      loadOcrGeneratorTemplatePreview();
+    }
+  });
+  if (ocrRoiGeneratorTemplateWrapEl) {
+    ocrRoiGeneratorTemplateWrapEl.addEventListener("toggle", () => {
+      if (ocrRoiGeneratorTemplateWrapEl.open) {
+        loadOcrGeneratorTemplatePreview();
+      }
+    });
+  }
+  roiFieldDataTypeEl.addEventListener("change", () => {
+    const roi = getPrimaryRoi();
+    if (!roi) return;
+    const value = (roiFieldDataTypeEl.value || "text").trim();
+    if (value) roi.llm_field_data_type = value;
+    else delete roi.llm_field_data_type;
+    scheduleAutosave();
+  });
+  roiValidationRulesEl.addEventListener("input", () => {
+    const roi = getPrimaryRoi();
+    if (!roi) return;
+    const value = roiValidationRulesEl.value || "";
+    if (value.trim()) roi.llm_validation_rules = value;
+    else delete roi.llm_validation_rules;
+    scheduleAutosave();
+  });
+  roiPromptInstructionEl.addEventListener("input", () => {
+    const roi = getPrimaryRoi();
+    if (!roi) return;
+    const value = roiPromptInstructionEl.value || "";
+    if (value.trim()) roi.llm_prompt_instruction = value;
+    else delete roi.llm_prompt_instruction;
+    scheduleAutosave();
+  });
+  roiPromptOverrideEl.addEventListener("input", () => {
+    const roi = getPrimaryRoi();
+    if (!roi) return;
+    const value = roiPromptOverrideEl.value || "";
+    if (value.trim()) roi.llm_prompt_override = value;
+    else delete roi.llm_prompt_override;
+    scheduleAutosave();
+  });
+  ocrRoiFieldDataTypeEl.addEventListener("change", () => {
+    const roi = getPrimaryRoi();
+    if (!roi) return;
+    const value = (ocrRoiFieldDataTypeEl.value || "text").trim();
+    if (value) roi.ocr_field_data_type = value;
+    else delete roi.ocr_field_data_type;
+    scheduleAutosave();
+  });
+  ocrRoiValidationRulesEl.addEventListener("input", () => {
+    const roi = getPrimaryRoi();
+    if (!roi) return;
+    const value = ocrRoiValidationRulesEl.value || "";
+    if (value.trim()) roi.ocr_validation_rules = value;
+    else delete roi.ocr_validation_rules;
+    scheduleAutosave();
+  });
+  ocrRoiPromptInstructionEl.addEventListener("input", () => {
+    const roi = getPrimaryRoi();
+    if (!roi) return;
+    const value = ocrRoiPromptInstructionEl.value || "";
+    if (value.trim()) roi.ocr_prompt_instruction = value;
+    else delete roi.ocr_prompt_instruction;
+    scheduleAutosave();
+  });
+  roiOcrPromptOverrideEl.addEventListener("input", () => {
+    const roi = getPrimaryRoi();
+    if (!roi) return;
+    const value = roiOcrPromptOverrideEl.value || "";
+    if (value.trim()) roi.ocr_prompt_override = value;
+    else delete roi.ocr_prompt_override;
+    scheduleAutosave();
+  });
+  roiOcrOutputRegexEl.addEventListener("input", () => {
+    const roi = getPrimaryRoi();
+    if (!roi) return;
+    const value = roiOcrOutputRegexEl.value || "";
+    if (value.trim()) roi.ocr_output_regex = value;
+    else delete roi.ocr_output_regex;
+    scheduleAutosave();
+  });
+  btnGenerateRoiPrompt.addEventListener("click", async () => {
+    const roi = getPrimaryRoi();
+    if (!roi) {
+      alert("Select an ROI first.");
+      return;
+    }
+    const instruction = (roiPromptInstructionEl.value || "").trim();
+    if (!instruction) {
+      alert("Add a creator instruction first.");
+      return;
+    }
+    if (promptGenAbortController) {
+      try { promptGenAbortController.abort(); } catch (e) {}
+      promptGenAbortController = null;
+    }
+    btnGenerateRoiPrompt.disabled = true;
+    promptCreatorModal.classList.remove("open");
+    promptCreatorModal.setAttribute("aria-hidden", "true");
+    setStatus("Generating ROI prompt...");
+    setPromptStreamStatus("Generating prompt...", "generating");
+    const existingPromptBeforeGen = roiPromptOverrideEl.value || "";
+    promptGenAbortController = new AbortController();
+    const reqPayload = {
+      instruction,
+      roi_name: roi.name || "",
+      field_data_type: roiFieldDataTypeEl.value || "text",
+      validation_rules: roiValidationRulesEl.value || "",
+      existing_prompt: existingPromptBeforeGen,
+    };
+    try {
+      const r = await fetch("/api/roi-prompt-generate-stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: promptGenAbortController.signal,
+        body: JSON.stringify(reqPayload),
+      });
+      if (!r.ok || !r.body) {
+        const txt = await r.text();
+        throw new Error(txt || "Prompt generation failed.");
+      }
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let modelName = "";
+      let fullPrompt = "";
+      let doneSeen = false;
+      const handleStreamEvent = (evt) => {
+        const t = String(evt.type || "");
+        if (t === "start") {
+          modelName = String(evt.model || "");
+          return;
+        }
+        if (t === "chunk") {
+          const delta = String(evt.delta || "");
+          if (!delta) return;
+          fullPrompt += delta;
+          roiPromptOverrideEl.value = fullPrompt;
+          roi.llm_prompt_override = fullPrompt;
+          return;
+        }
+        if (t === "done") {
+          const finalPrompt = String(evt.prompt || fullPrompt || "").trim();
+          fullPrompt = finalPrompt;
+          roiPromptOverrideEl.value = finalPrompt;
+          if (finalPrompt) roi.llm_prompt_override = finalPrompt;
+          else delete roi.llm_prompt_override;
+          scheduleAutosave();
+          doneSeen = true;
+          const modelTxt = modelName ? ` (${modelName})` : "";
+          setStatus("Prompt generated" + modelTxt + ".");
+          setPromptStreamStatus("Generation finished.", "done");
+          return;
+        }
+        if (t === "error") {
+          throw new Error(String(evt.error || "Prompt generation failed."));
+        }
+      };
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() || "";
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (!line) continue;
+          let evt;
+          try {
+            evt = JSON.parse(line);
+          } catch (e) {
+            continue;
+          }
+          handleStreamEvent(evt);
+        }
+      }
+      const tail = buf.trim();
+      if (tail) {
+        try {
+          const evt = JSON.parse(tail);
+          handleStreamEvent(evt);
+        } catch (e) {
+          // Ignore non-JSON trailing buffer.
+        }
+      }
+      if (!doneSeen) {
+        const finalPrompt = String(fullPrompt || "").trim();
+        roiPromptOverrideEl.value = finalPrompt;
+        if (finalPrompt) roi.llm_prompt_override = finalPrompt;
+        else delete roi.llm_prompt_override;
+        scheduleAutosave();
+        setStatus("Prompt generated.");
+        setPromptStreamStatus("Generation finished.", "done");
+      }
+    } catch (err) {
+      setStatus("Prompt generation failed.");
+      setPromptStreamStatus("Generation failed.", "error");
+      alert(String(err));
+    } finally {
+      promptGenAbortController = null;
+      const selected = !!getPrimaryRoi();
+      btnGenerateRoiPrompt.disabled = !selected;
+    }
+  });
+  btnGenerateOcrRoiPrompt.addEventListener("click", async () => {
+    const roi = getPrimaryRoi();
+    if (!roi) {
+      alert("Select an ROI first.");
+      return;
+    }
+    const instruction = (ocrRoiPromptInstructionEl.value || "").trim();
+    if (!instruction) {
+      alert("Add an OCR creator instruction first.");
+      return;
+    }
+    if (ocrPromptGenAbortController) {
+      try { ocrPromptGenAbortController.abort(); } catch (e) {}
+      ocrPromptGenAbortController = null;
+    }
+    btnGenerateOcrRoiPrompt.disabled = true;
+    ocrPromptCreatorModal.classList.remove("open");
+    ocrPromptCreatorModal.setAttribute("aria-hidden", "true");
+    setStatus("Generating OCR ROI prompt...");
+    setOcrPromptStreamStatus("Generating OCR prompt...", "generating");
+    const existingPromptBeforeGen = roiOcrPromptOverrideEl.value || "";
+    ocrPromptGenAbortController = new AbortController();
+    const reqPayload = {
+      instruction,
+      roi_name: roi.name || "",
+      field_data_type: ocrRoiFieldDataTypeEl.value || "text",
+      validation_rules: ocrRoiValidationRulesEl.value || "",
+      existing_prompt: existingPromptBeforeGen,
+    };
+    try {
+      const r = await fetch("/api/roi-ocr-prompt-generate-stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        signal: ocrPromptGenAbortController.signal,
+        body: JSON.stringify(reqPayload),
+      });
+      if (!r.ok || !r.body) {
+        const txt = await r.text();
+        throw new Error(txt || "OCR prompt generation failed.");
+      }
+      const reader = r.body.getReader();
+      const decoder = new TextDecoder();
+      let buf = "";
+      let modelName = "";
+      let fullPrompt = "";
+      let doneSeen = false;
+      const handleStreamEvent = (evt) => {
+        const t = String(evt.type || "");
+        if (t === "start") {
+          modelName = String(evt.model || "");
+          return;
+        }
+        if (t === "chunk") {
+          const delta = String(evt.delta || "");
+          if (!delta) return;
+          fullPrompt += delta;
+          roiOcrPromptOverrideEl.value = fullPrompt;
+          roi.ocr_prompt_override = fullPrompt;
+          return;
+        }
+        if (t === "done") {
+          const finalPrompt = String(evt.prompt || fullPrompt || "").trim();
+          fullPrompt = finalPrompt;
+          roiOcrPromptOverrideEl.value = finalPrompt;
+          if (finalPrompt) roi.ocr_prompt_override = finalPrompt;
+          else delete roi.ocr_prompt_override;
+          scheduleAutosave();
+          doneSeen = true;
+          const modelTxt = modelName ? ` (${modelName})` : "";
+          setStatus("OCR prompt generated" + modelTxt + ".");
+          setOcrPromptStreamStatus("Generation finished.", "done");
+          return;
+        }
+        if (t === "error") {
+          throw new Error(String(evt.error || "OCR prompt generation failed."));
+        }
+      };
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+        const lines = buf.split("\n");
+        buf = lines.pop() || "";
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (!line) continue;
+          let evt;
+          try {
+            evt = JSON.parse(line);
+          } catch (e) {
+            continue;
+          }
+          handleStreamEvent(evt);
+        }
+      }
+      const tail = buf.trim();
+      if (tail) {
+        try {
+          const evt = JSON.parse(tail);
+          handleStreamEvent(evt);
+        } catch (e) {
+        }
+      }
+      if (!doneSeen) {
+        const finalPrompt = String(fullPrompt || "").trim();
+        roiOcrPromptOverrideEl.value = finalPrompt;
+        if (finalPrompt) roi.ocr_prompt_override = finalPrompt;
+        else delete roi.ocr_prompt_override;
+        scheduleAutosave();
+        setStatus("OCR prompt generated.");
+        setOcrPromptStreamStatus("Generation finished.", "done");
+      }
+    } catch (err) {
+      setStatus("OCR prompt generation failed.");
+      setOcrPromptStreamStatus("Generation failed.", "error");
+      alert(String(err));
+    } finally {
+      ocrPromptGenAbortController = null;
+      const selected = !!getPrimaryRoi();
+      btnGenerateOcrRoiPrompt.disabled = !selected;
+    }
+  });
+  document.getElementById("prompt-creator-close").addEventListener("click", () => {
+    promptCreatorModal.classList.remove("open");
+    promptCreatorModal.setAttribute("aria-hidden", "true");
+  });
+  promptCreatorModal.addEventListener("click", (e) => {
+    if (e.target === promptCreatorModal) {
+      promptCreatorModal.classList.remove("open");
+      promptCreatorModal.setAttribute("aria-hidden", "true");
+    }
+  });
+  document.getElementById("ocr-prompt-creator-close").addEventListener("click", () => {
+    ocrPromptCreatorModal.classList.remove("open");
+    ocrPromptCreatorModal.setAttribute("aria-hidden", "true");
+  });
+  ocrPromptCreatorModal.addEventListener("click", (e) => {
+    if (e.target === ocrPromptCreatorModal) {
+      ocrPromptCreatorModal.classList.remove("open");
+      ocrPromptCreatorModal.setAttribute("aria-hidden", "true");
+    }
+  });
+
+  window.addEventListener("keydown", (e) => {
+    if (
+      browseModal.classList.contains("open") ||
+      importModal.classList.contains("open") ||
+      promptCreatorModal.classList.contains("open") ||
+      ocrPromptCreatorModal.classList.contains("open")
+    ) return;
+    const t = e.target;
+    if (
+      t instanceof HTMLElement &&
+      (
+        t.isContentEditable ||
+        t.tagName === "INPUT" ||
+        t.tagName === "TEXTAREA" ||
+        t.tagName === "SELECT"
+      )
+    ) {
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z") {
+      e.preventDefault();
+      if (undoStack.length) {
+        const current = snapshotState();
+        const prev = undoStack.pop();
+        redoStack.push(current);
+        applyState(prev);
+      }
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "z") {
+      e.preventDefault();
+      if (redoStack.length) {
+        const current = snapshotState();
+        const next = redoStack.pop();
+        undoStack.push(current);
+        applyState(next);
+      }
+      return;
+    }
+    if (e.key === "Delete") {
+      e.preventDefault();
+      deleteSelected();
+    } else if (e.key === "e" || e.key === "E") {
+      e.preventDefault();
+      renameSelected();
+    } else if (e.key === "d" || e.key === "D") {
+      e.preventDefault();
+      duplicateSelected();
+    }
+  });
+
+  window.addEventListener("resize", resizeCanvas);
+  window.addEventListener("beforeunload", (e) => {
+    if (isPrimaryEditorTab && rois.length && imagePath) saveSchema();
+    _releaseSingletonLock();
+  });
+
+  window.addEventListener("storage", (e) => {
+    if (e.key !== SINGLETON_KEY) return;
+    const lock = _readLock();
+    if (lock && lock.owner && lock.owner !== TAB_ID) {
+      isPrimaryEditorTab = false;
+      setStatus("Read-only tab: another ROI editor tab is active.");
+    } else if (!lock || lock.owner === TAB_ID) {
+      isPrimaryEditorTab = true;
+    }
+  });
+
+  if (!_acquireSingletonLock()) {
+    _closeDuplicateTab();
+    return;
+  }
+  _startSingletonHeartbeat();
+
+  resizeCanvas();
+  const params = new URLSearchParams(window.location.search);
+  const path = params.get("path");
+  if (path) loadImage(path);
+})();
+  </script>
+</body>
+</html>

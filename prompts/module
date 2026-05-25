@@ -1,0 +1,1 @@
+make a standalone "module" that can have its functions performed with a single call from another script after importing.

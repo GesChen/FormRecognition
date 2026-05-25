@@ -1,0 +1,12 @@
+---
+description: Where test scripts write their output
+alwaysApply: true
+---
+
+# Testing output
+
+**All testing output goes under `testing/`.**
+
+- Test scripts must write any generated files (previews, saved images, result files) to a subdir of `testing/`, e.g. `testing/output/`.
+- Do not write test outputs to `output/`; keep `output/` for application/runtime output and shared cache.
+- When adding or changing test scripts, place their output under `testing/` (e.g. `testing/output/`).

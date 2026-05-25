@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ROI Previewer</title>
+  <script src="/static/theme.js"></script>
+  <link rel="stylesheet" href="/static/theme.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--border);
+    }
+    .toolbar label { color: var(--muted); font-size: 0.9rem; }
+    .btn {
+      padding: 6px 12px;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      cursor: pointer;
+      background: var(--accent);
+      color: var(--on-accent);
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .status { font-size: 0.8rem; color: var(--muted); }
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+    }
+    .toggle-row label { cursor: pointer; user-select: none; }
+    .toggle-row input[type=checkbox] { accent-color: var(--accent); }
+
+    .main {
+      flex: 1;
+      display: flex;
+      min-height: 0;
+    }
+    .canvas-wrap {
+      flex: 1;
+      overflow: hidden;
+      background: var(--canvas-bg);
+      position: relative;
+    }
+    #canvas { display: block; }
+    #tooltip {
+      position: fixed;
+      pointer-events: none;
+      background: var(--tooltip-bg);
+      color: var(--text);
+      font-size: 0.82rem;
+      padding: 3px 8px;
+      border-radius: var(--radius-sm);
+      white-space: nowrap;
+      z-index: 500;
+      display: none;
+    }
+
+    .panel {
+      width: 280px;
+      flex-shrink: 0;
+      background: var(--panel-bg);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 12px;
+    }
+    .panel h2 { margin: 0 0 8px; font-size: 1rem; font-weight: 600; }
+    #roi-list {
+      flex: 1;
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      overflow-y: auto;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+    }
+    #roi-list li {
+      padding: 8px 10px;
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+      display: flex;
+      justify-content: space-between;
+    }
+    #roi-list li:last-child { border-bottom: none; }
+    #roi-list li:hover { background: var(--surface-hover); }
+    #roi-list li.selected { background: var(--accent-muted-bg); color: var(--accent); }
+    #roi-list li .coords {
+      font-size: 0.75rem;
+      color: var(--muted);
+    }
+    .prompt-viewer {
+      margin-top: 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 180px;
+    }
+    .prompt-viewer .label {
+      font-size: 0.75rem;
+      color: var(--muted);
+      margin-bottom: 4px;
+      display: block;
+    }
+    .prompt-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .prompt-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .copy-btn {
+      border: 1px solid var(--border);
+      background: var(--panel-bg);
+      color: var(--text);
+      border-radius: var(--radius-sm);
+      padding: 2px 8px;
+      font-size: 0.72rem;
+      line-height: 1.4;
+      cursor: pointer;
+    }
+    .copy-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+    .copy-status {
+      font-size: 0.7rem;
+      color: var(--muted);
+      min-width: 40px;
+      text-align: right;
+    }
+    .prompt-viewer textarea {
+      width: 100%;
+      min-height: 70px;
+      resize: vertical;
+      background: var(--panel-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 6px 8px;
+      font-size: 0.8rem;
+      line-height: 1.35;
+      font-family: var(--font-mono);
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button type="button" class="btn" id="btn-select-image">Select image...</button>
+    <span class="status" id="status">No image</span>
+    <div class="toggle-row">
+      <input type="checkbox" id="chk-names" checked />
+      <label for="chk-names">Names</label>
+      <input type="checkbox" id="chk-boxes" checked />
+      <label for="chk-boxes">Boxes</label>
+      <input type="checkbox" id="chk-fill" checked />
+      <label for="chk-fill">Fill</label>
+    </div>
+  </div>
+
+  <input type="file" id="file-image" accept=".png,image/png" style="display:none;" />
+
+  <div class="main">
+    <div class="canvas-wrap">
+      <canvas id="canvas"></canvas>
+    </div>
+    <div class="panel">
+      <h2 id="panel-title">ROIs</h2>
+      <ul id="roi-list"></ul>
+      <div class="prompt-viewer">
+        <div>
+          <div class="prompt-header">
+            <span class="label">LLM Prompt</span>
+            <span class="prompt-actions">
+              <button type="button" class="copy-btn" id="btn-copy-llm">Copy</button>
+              <span class="copy-status" id="copy-llm-status"></span>
+            </span>
+          </div>
+          <textarea id="llm-prompt" readonly placeholder="Select an ROI to view its LLM prompt."></textarea>
+        </div>
+        <div>
+          <div class="prompt-header">
+            <span class="label">OCR Prompt</span>
+            <span class="prompt-actions">
+              <button type="button" class="copy-btn" id="btn-copy-ocr">Copy</button>
+              <span class="copy-status" id="copy-ocr-status"></span>
+            </span>
+          </div>
+          <textarea id="ocr-prompt" readonly placeholder="Select an ROI to view its OCR prompt."></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="tooltip"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  const ZOOM_MIN = 0.25, ZOOM_MAX = 8, ZOOM_FACTOR = 1.15;
+
+  const canvas = document.getElementById("canvas");
+  const ctx = canvas.getContext("2d");
+  function themeCssVar(name, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+  function cssAccent() {
+    return themeCssVar("--accent", "#22c55e");
+  }
+  function cssCanvasBg() {
+    return themeCssVar("--canvas-bg", "#0c0c0e");
+  }
+  window.addEventListener("theme-changed", () => draw());
+
+  const roiList = document.getElementById("roi-list");
+  const statusEl = document.getElementById("status");
+  const panelTitle = document.getElementById("panel-title");
+  const chkNames = document.getElementById("chk-names");
+  const chkBoxes = document.getElementById("chk-boxes");
+  const chkFill  = document.getElementById("chk-fill");
+  const tooltip  = document.getElementById("tooltip");
+  const llmPromptEl = document.getElementById("llm-prompt");
+  const ocrPromptEl = document.getElementById("ocr-prompt");
+  const btnCopyLlm = document.getElementById("btn-copy-llm");
+  const btnCopyOcr = document.getElementById("btn-copy-ocr");
+  const copyLlmStatusEl = document.getElementById("copy-llm-status");
+  const copyOcrStatusEl = document.getElementById("copy-ocr-status");
+
+  let imagePath = "";
+  let image = null;
+  let imageWidth = 0, imageHeight = 0;
+  let rois = [];
+  let highlightId = null;
+  let selectedId = null;
+
+  let baseScale = 1, scale = 1;
+  let offsetX = 0, offsetY = 0;
+  let zoomFactor = 1, panX = 0, panY = 0;
+  let canvasW = 0, canvasH = 0;
+  let panStart = null;
+
+  const COLORS_BASE = [
+    "#f59e0b", "#10b981", "#f43f5e",
+    "#8b5cf6", "#ec4899", "#14b8a6", "#ef4444",
+    "#6366f1", "#84cc16"
+  ];
+  function roiColor(i) {
+    if (i % (COLORS_BASE.length + 1) === 0) return cssAccent();
+    return COLORS_BASE[(i - 1) % COLORS_BASE.length];
+  }
+
+  function imageToCanvas(ix, iy) {
+    return { x: ix * scale + offsetX, y: iy * scale + offsetY };
+  }
+  function canvasToImage(cx, cy) {
+    return { x: (cx - offsetX) / scale, y: (cy - offsetY) / scale };
+  }
+
+  function updateScaleAndOffset() {
+    if (canvasW <= 0 || canvasH <= 0 || imageWidth <= 0 || imageHeight <= 0) return;
+    baseScale = Math.min(canvasW / imageWidth, canvasH / imageHeight);
+    scale = baseScale * zoomFactor;
+    offsetX = (canvasW - imageWidth * scale) / 2 + panX;
+    offsetY = (canvasH - imageHeight * scale) / 2 + panY;
+  }
+
+  /** Canvas fill alpha; accent may be hex or computed rgb() from CSS variables. */
+  function rgbaFromCssColor(cssVal, a) {
+    const s = (cssVal || "").trim();
+    if (s.startsWith("#") && s.length >= 7) {
+      const r = parseInt(s.slice(1, 3), 16);
+      const g = parseInt(s.slice(3, 5), 16);
+      const b = parseInt(s.slice(5, 7), 16);
+      return `rgba(${r},${g},${b},${a})`;
+    }
+    const m = s.match(/rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/);
+    if (m) return `rgba(${m[1]},${m[2]},${m[3]},${a})`;
+    return `rgba(34,197,94,${a})`;
+  }
+
+  function draw() {
+    ctx.fillStyle = "#2b2b2b";
+    ctx.fillRect(0, 0, canvasW, canvasH);
+    if (!image) return;
+    updateScaleAndOffset();
+    ctx.drawImage(image, 0, 0, imageWidth, imageHeight,
+                  offsetX, offsetY, imageWidth * scale, imageHeight * scale);
+
+    const showNames = chkNames.checked;
+    const showBoxes = chkBoxes.checked;
+    const showFill  = chkFill.checked;
+
+    rois.forEach((roi, i) => {
+      const p0 = imageToCanvas(roi.x, roi.y);
+      const p1 = imageToCanvas(roi.x + roi.w, roi.y + roi.h);
+      const rw = p1.x - p0.x, rh = p1.y - p0.y;
+      const isHl = roi.id === highlightId;
+      const color = roiColor(i);
+
+      if (showFill) {
+        ctx.fillStyle = isHl ? rgbaFromCssColor(cssAccent(), 0.25) : hexToRgba(color, 0.12);
+        ctx.fillRect(p0.x, p0.y, rw, rh);
+      }
+      if (showBoxes) {
+        ctx.strokeStyle = isHl ? "#fff" : color;
+        ctx.lineWidth = isHl ? 3 : 2;
+        ctx.strokeRect(p0.x, p0.y, rw, rh);
+      }
+      if (showNames) {
+        const label = roi.name || "";
+        const fontSize = Math.max(10, Math.min(14, rh * 0.35));
+        ctx.font = `bold ${fontSize}px sans-serif`;
+        const tw = ctx.measureText(label).width;
+        const pad = 3;
+        const lx = p0.x + 2;
+        const ly = p0.y - 4;
+        if (ly - fontSize - pad > 0) {
+          ctx.fillStyle = "rgba(0,0,0,0.7)";
+          ctx.fillRect(lx - pad, ly - fontSize - pad, tw + pad * 2, fontSize + pad * 2);
+          ctx.fillStyle = isHl ? "#fff" : color;
+          ctx.fillText(label, lx, ly);
+        } else {
+          ctx.fillStyle = "rgba(0,0,0,0.7)";
+          ctx.fillRect(lx - pad, p0.y + 2, tw + pad * 2, fontSize + pad * 2);
+          ctx.fillStyle = isHl ? "#fff" : color;
+          ctx.fillText(label, lx, p0.y + 2 + fontSize + pad - 2);
+        }
+      }
+    });
+  }
+
+  function hexToRgba(hex, a) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return `rgba(${r},${g},${b},${a})`;
+  }
+
+  function syncList() {
+    roiList.innerHTML = "";
+    rois.forEach((roi, i) => {
+      const li = document.createElement("li");
+      const nameSpan = document.createElement("span");
+      nameSpan.textContent = roi.name;
+      nameSpan.style.color = roiColor(i);
+      const coordSpan = document.createElement("span");
+      coordSpan.className = "coords";
+      coordSpan.textContent = `${roi.w}x${roi.h}`;
+      li.appendChild(nameSpan);
+      li.appendChild(coordSpan);
+      if (roi.id === selectedId || roi.id === highlightId) li.classList.add("selected");
+      li.addEventListener("click", () => {
+        selectedId = roi.id;
+        highlightId = roi.id;
+        syncPromptViewer();
+        draw();
+        syncList();
+      });
+      li.addEventListener("mouseenter", () => { highlightId = roi.id; draw(); syncList(); });
+      li.addEventListener("mouseleave", () => { highlightId = null; draw(); syncList(); });
+      roiList.appendChild(li);
+    });
+    panelTitle.textContent = `ROIs (${rois.length})`;
+  }
+
+  function syncPromptViewer() {
+    const roi = rois.find(r => r.id === selectedId) || null;
+    if (!roi) {
+      llmPromptEl.value = "";
+      ocrPromptEl.value = "";
+      return;
+    }
+    llmPromptEl.value = typeof roi.llm_prompt_override === "string" ? roi.llm_prompt_override : "";
+    ocrPromptEl.value = typeof roi.ocr_prompt_override === "string" ? roi.ocr_prompt_override : "";
+  }
+
+  function setCopyStatus(el, msg) {
+    el.textContent = msg;
+    setTimeout(() => {
+      if (el.textContent === msg) el.textContent = "";
+    }, 1200);
+  }
+
+  async function copyTextFrom(el, statusEl) {
+    const text = (el.value || "").trim();
+    if (!text) {
+      setCopyStatus(statusEl, "Empty");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyStatus(statusEl, "Copied");
+    } catch (_) {
+      setCopyStatus(statusEl, "Blocked");
+    }
+  }
+
+  async function loadImage(path) {
+    if (!path) return;
+    try {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      await new Promise((ok, fail) => {
+        img.onload = ok; img.onerror = fail;
+        img.src = "/api/image?path=" + encodeURIComponent(path);
+      });
+      image = img;
+      imagePath = path;
+      imageWidth = img.naturalWidth;
+      imageHeight = img.naturalHeight;
+      rois = [];
+      highlightId = null;
+      selectedId = null;
+      zoomFactor = 1; panX = panY = 0;
+
+      const s = await fetch("/api/schema?path=" + encodeURIComponent(path));
+      const schema = await s.json();
+      if (schema.rois && Array.isArray(schema.rois)) {
+        rois = schema.rois.map(r => ({
+          ...r,
+          id: r.id || ("r" + Math.random().toString(36).slice(2, 10)),
+          name: r.name || "?",
+          x: parseInt(r.x, 10) || 0,
+          y: parseInt(r.y, 10) || 0,
+          w: parseInt(r.w, 10) || 0,
+          h: parseInt(r.h, 10) || 0,
+        }));
+      }
+      if (schema.image_width && schema.image_height) {
+        imageWidth = schema.image_width;
+        imageHeight = schema.image_height;
+      }
+      statusEl.textContent = path + " \u2014 " + rois.length + " ROI(s)";
+      resizeCanvas();
+      draw();
+      syncList();
+      syncPromptViewer();
+    } catch (e) {
+      statusEl.textContent = "Failed to load image";
+    }
+  }
+
+  function resizeCanvas() {
+    const wrap = canvas.parentElement;
+    const dpr = window.devicePixelRatio || 1;
+    canvasW = wrap.clientWidth;
+    canvasH = wrap.clientHeight;
+    canvas.width = canvasW * dpr;
+    canvas.height = canvasH * dpr;
+    canvas.style.width = canvasW + "px";
+    canvas.style.height = canvasH + "px";
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    updateScaleAndOffset();
+    draw();
+  }
+
+  function setStatus(text) { statusEl.textContent = text; }
+
+  const fileImage = document.getElementById("file-image");
+
+  async function uploadImage(file) {
+    setStatus("Uploading " + file.name + "\u2026");
+    const fd = new FormData();
+    fd.append("file", file);
+    try {
+      const res = await fetch("/api/upload-image", { method: "POST", body: fd });
+      const info = await res.json().catch(() => ({}));
+      if (!res.ok || !info.ok) {
+        setStatus(info.error || ("Upload failed (" + res.status + ")"));
+        return null;
+      }
+      return info.path;
+    } catch (err) {
+      setStatus("Upload failed: " + String(err));
+      return null;
+    }
+  }
+
+  fileImage.addEventListener("change", async () => {
+    const f = fileImage.files && fileImage.files[0];
+    if (!f) return;
+    try { fileImage.value = ""; } catch (e) {}
+    const path = await uploadImage(f);
+    if (path) loadImage(path);
+  });
+
+  document.getElementById("btn-select-image").addEventListener("click", () => fileImage.click());
+
+  chkNames.addEventListener("change", draw);
+  chkBoxes.addEventListener("change", draw);
+  chkFill.addEventListener("change",  draw);
+  btnCopyLlm.addEventListener("click", () => copyTextFrom(llmPromptEl, copyLlmStatusEl));
+  btnCopyOcr.addEventListener("click", () => copyTextFrom(ocrPromptEl, copyOcrStatusEl));
+
+  /* --- Pan & zoom (middle/right-drag + scroll wheel) --- */
+  canvas.addEventListener("mousedown", (e) => {
+    if (e.button === 1 || e.button === 2 || (e.button === 0 && e.altKey)) {
+      if (e.button === 2) e.preventDefault();
+      panStart = { x: e.clientX, y: e.clientY, panX, panY };
+      canvas.style.cursor = "grabbing";
+    }
+  });
+  canvas.addEventListener("mousemove", (e) => {
+    if (!panStart) {
+      if (!image) { tooltip.style.display = "none"; return; }
+      const rect = canvas.getBoundingClientRect();
+      const im = canvasToImage(e.clientX - rect.left, e.clientY - rect.top);
+      let found = null;
+      let foundName = "";
+      for (let i = rois.length - 1; i >= 0; i--) {
+        const r = rois[i];
+        if (im.x >= r.x && im.x <= r.x + r.w && im.y >= r.y && im.y <= r.y + r.h) {
+          found = r.id; foundName = r.name; break;
+        }
+      }
+      if (found) {
+        tooltip.textContent = foundName;
+        tooltip.style.display = "block";
+        tooltip.style.left = (e.clientX + 14) + "px";
+        tooltip.style.top  = (e.clientY + 14) + "px";
+      } else {
+        tooltip.style.display = "none";
+      }
+      if (found !== highlightId) { highlightId = found; draw(); syncList(); }
+      return;
+    }
+    tooltip.style.display = "none";
+    panX = panStart.panX + (e.clientX - panStart.x);
+    panY = panStart.panY + (e.clientY - panStart.y);
+    draw();
+  });
+  canvas.addEventListener("click", (e) => {
+    if (!image || panStart) return;
+    const rect = canvas.getBoundingClientRect();
+    const im = canvasToImage(e.clientX - rect.left, e.clientY - rect.top);
+    let found = null;
+    for (let i = rois.length - 1; i >= 0; i--) {
+      const r = rois[i];
+      if (im.x >= r.x && im.x <= r.x + r.w && im.y >= r.y && im.y <= r.y + r.h) {
+        found = r;
+        break;
+      }
+    }
+    selectedId = found ? found.id : null;
+    highlightId = selectedId;
+    syncPromptViewer();
+    draw();
+    syncList();
+  });
+  canvas.addEventListener("mouseup", () => {
+    if (panStart) { panStart = null; canvas.style.cursor = "default"; }
+  });
+  canvas.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+  });
+  canvas.addEventListener("mouseleave", () => {
+    panStart = null;
+    tooltip.style.display = "none";
+    if (highlightId) { highlightId = null; draw(); syncList(); }
+  });
+  canvas.addEventListener("wheel", (e) => {
+    e.preventDefault();
+    if (!image) return;
+    const rect = canvas.getBoundingClientRect();
+    const cx = e.clientX - rect.left, cy = e.clientY - rect.top;
+    const ix = (cx - offsetX) / scale, iy = (cy - offsetY) / scale;
+    const delta = e.deltaY > 0 ? 1 / ZOOM_FACTOR : ZOOM_FACTOR;
+    zoomFactor = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, zoomFactor * delta));
+    const ns = baseScale * zoomFactor;
+    panX = cx - ix * ns - (canvasW - imageWidth * ns) / 2;
+    panY = cy - iy * ns - (canvasH - imageHeight * ns) / 2;
+    updateScaleAndOffset();
+    draw();
+  }, { passive: false });
+
+  window.addEventListener("resize", resizeCanvas);
+  resizeCanvas();
+
+  const params = new URLSearchParams(window.location.search);
+  const initPath = params.get("path");
+  if (initPath) loadImage(initPath);
+})();
+</script>
+</body>
+</html>

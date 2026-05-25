@@ -1,0 +1,11 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Web Tools (start)
+Comment=Start all Flask web servers
+# Use absolute paths. Terminal=true is required to see output and "Press Enter".
+Exec=/path/to/project/tools/start_web_tools.sh
+Path=/path/to/project
+Icon=applications-internet
+Terminal=true
+Categories=Development;
