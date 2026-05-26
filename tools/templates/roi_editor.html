@@ -458,8 +458,21 @@
       </div>
     </details>
   </div>
-  <input type="file" id="file-image" accept=".png,image/png" style="display:none;" />
-  <input type="file" id="file-import-image" accept=".png,image/png" style="display:none;" />
+  <div class="modal-overlay" id="browse-modal" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3 id="browse-title">Select image</h3>
+          <div class="modal-breadcrumb" id="browse-breadcrumb">data/templates</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn subtle" id="browse-up">Up</button>
+          <button type="button" class="btn" id="browse-close">Close</button>
+        </div>
+      </div>
+      <div class="modal-body" id="browse-body"></div>
+    </div>
+  </div>
   <div class="modal-overlay" id="import-modal" aria-hidden="true">
     <div class="modal">
       <div class="modal-header">
@@ -690,6 +703,7 @@
   const schemaStatusEl = document.getElementById("schema-status");
 
   let imagePath = "";
+  let currentSchemaPath = "";
   let image = null;
   let imageWidth = 0;
   let imageHeight = 0;
@@ -1080,9 +1094,11 @@
       schemaStatusEl.textContent = "Schema: (none)";
       return;
     }
-    const filename = imagePath.split("/").pop() || imagePath;
-    const stem = filename.replace(/\.[^/.]+$/, "");
-    schemaStatusEl.textContent = `Schema: data/roi_schemas/${stem}.json`;
+    if (currentSchemaPath) {
+      schemaStatusEl.textContent = `Schema: ${currentSchemaPath}`;
+      return;
+    }
+    schemaStatusEl.textContent = "Schema: (unknown)";
   }
 
   function snapshotState() {
@@ -1178,8 +1194,12 @@
     }
   }
 
-  const fileImage = document.getElementById("file-image");
-  const fileImportImage = document.getElementById("file-import-image");
+  const browseModal = document.getElementById("browse-modal");
+  const browseBody = document.getElementById("browse-body");
+  const browseTitle = document.getElementById("browse-title");
+  const browseBreadcrumb = document.getElementById("browse-breadcrumb");
+  const browseUpBtn = document.getElementById("browse-up");
+  const browseCloseBtn = document.getElementById("browse-close");
   const importModal = document.getElementById("import-modal");
   const importBody = document.getElementById("import-body");
   const importSourceLabel = document.getElementById("import-source-label");
@@ -1189,44 +1209,100 @@
   const importSelectNoneBtn = document.getElementById("import-select-none");
   const importConfirmBtn = document.getElementById("import-confirm");
   const importCloseBtn = document.getElementById("import-close");
+  let TEMPLATES_ROOT = "data/templates";
+  let browseMode = "load"; // "load" | "import"
+  let browseDir = TEMPLATES_ROOT;
   let currentImportSource = null;
   let currentImportRois = null;
+  function isUnderTemplates(path) {
+    const p = String(path || "").trim().replace(/\/+$/, "");
+    return p === TEMPLATES_ROOT || p.startsWith(TEMPLATES_ROOT + "/");
+  }
 
-  async function uploadImage(file) {
-    setStatus("Uploading " + file.name + "…");
-    const fd = new FormData();
-    fd.append("file", file);
+  function parentDir(path) {
+    const p = String(path || "").replace(/\/+$/, "");
+    const i = p.lastIndexOf("/");
+    if (i <= 0) return TEMPLATES_ROOT;
+    return p.slice(0, i);
+  }
+
+  function closeBrowseModal() {
+    browseModal.classList.remove("open");
+    browseModal.setAttribute("aria-hidden", "true");
+  }
+
+  async function refreshBrowse() {
+    browseBreadcrumb.textContent = browseDir;
+    browseBody.innerHTML = "";
+    const upDisabled = browseDir === TEMPLATES_ROOT;
+    browseUpBtn.disabled = upDisabled;
     try {
-      const res = await fetch("/api/upload-image", { method: "POST", body: fd });
-      const info = await res.json().catch(() => ({}));
-      if (!res.ok || !info.ok) {
-        setStatus(info.error || ("Upload failed (" + res.status + ")"));
-        return null;
+      const r = await fetch("/api/browse?dir=" + encodeURIComponent(browseDir));
+      const data = await r.json();
+      if (!r.ok) throw new Error((data && data.error) ? data.error : "Browse failed.");
+      const dirs = Array.isArray(data.dirs) ? data.dirs : [];
+      const files = Array.isArray(data.files) ? data.files : [];
+
+      if (!dirs.length && !files.length) {
+        const empty = document.createElement("div");
+        empty.className = "item";
+        empty.textContent = "(empty)";
+        browseBody.appendChild(empty);
+        return;
       }
-      return info.path;
+
+      dirs.forEach((d) => {
+        if (!isUnderTemplates(d)) return;
+        const row = document.createElement("div");
+        row.className = "item folder";
+        row.textContent = "[DIR] " + d.split("/").pop();
+        row.addEventListener("click", () => {
+          browseDir = d;
+          refreshBrowse();
+        });
+        browseBody.appendChild(row);
+      });
+
+      files.forEach((f) => {
+        if (!isUnderTemplates(f)) return;
+        if (!String(f).toLowerCase().endsWith(".png")) return;
+        const row = document.createElement("div");
+        row.className = "item file";
+        row.textContent = f.split("/").pop();
+        row.addEventListener("click", async () => {
+          closeBrowseModal();
+          if (browseMode === "import") await importRoisFromSchema(f);
+          else await loadImage(f);
+        });
+        browseBody.appendChild(row);
+      });
     } catch (err) {
-      setStatus("Upload failed: " + String(err));
-      return null;
+      const row = document.createElement("div");
+      row.className = "item";
+      row.textContent = "Failed to load directory: " + String(err);
+      browseBody.appendChild(row);
     }
   }
 
-  fileImage.addEventListener("change", async () => {
-    const f = fileImage.files && fileImage.files[0];
-    if (!f) return;
-    try { fileImage.value = ""; } catch (e) {}
-    const path = await uploadImage(f);
-    if (path) loadImage(path);
-  });
+  function openBrowseModal(mode) {
+    browseMode = mode === "import" ? "import" : "load";
+    browseTitle.textContent = browseMode === "import" ? "Import ROIs From Template Image" : "Select Template Image";
+    browseDir = TEMPLATES_ROOT;
+    browseModal.classList.add("open");
+    browseModal.setAttribute("aria-hidden", "false");
+    refreshBrowse();
+  }
 
-  fileImportImage.addEventListener("change", async () => {
-    const f = fileImportImage.files && fileImportImage.files[0];
-    if (!f) return;
-    try { fileImportImage.value = ""; } catch (e) {}
-    const path = await uploadImage(f);
-    if (path) importRoisFromSchema(path);
+  document.getElementById("btn-select-image").addEventListener("click", () => openBrowseModal("load"));
+  browseUpBtn.addEventListener("click", () => {
+    browseDir = parentDir(browseDir);
+    if (!isUnderTemplates(browseDir)) browseDir = TEMPLATES_ROOT;
+    refreshBrowse();
   });
-
-  document.getElementById("btn-select-image").addEventListener("click", () => fileImage.click());
+  browseCloseBtn.addEventListener("click", closeBrowseModal);
+  browseModal.addEventListener("click", (e) => {
+    if (e.target === browseModal) closeBrowseModal();
+  });
 
   importSelectAllBtn.addEventListener("click", () => {
     importBody.querySelectorAll("input[type=checkbox]").forEach(cb => { cb.checked = true; });
@@ -1259,6 +1335,7 @@
     if (!path) {
       image = null;
       imagePath = "";
+      currentSchemaPath = "";
       imageWidth = imageHeight = 0;
       rois = [];
       selectedIds.clear();
@@ -1288,6 +1365,7 @@
 
       const s = await fetch("/api/schema?path=" + encodeURIComponent(path));
       const schema = await s.json();
+      currentSchemaPath = (schema && typeof schema.schema_path === "string") ? schema.schema_path : "";
       if (schema.rois && Array.isArray(schema.rois)) {
         rois = normalizeIncomingRois(schema.rois);
         roiCounter = rois.length;
@@ -1307,6 +1385,7 @@
       resizeCanvas();
       draw();
     } catch (e) {
+      currentSchemaPath = "";
       if (btnAutoDetect) btnAutoDetect.disabled = true;
       setStatus("Failed to load image");
     }
@@ -1340,6 +1419,7 @@
       if (!r.ok || !data || !data.ok) {
         throw new Error((data && data.error) ? data.error : "ROI auto-detect failed.");
       }
+      currentSchemaPath = (typeof data.schema_path === "string") ? data.schema_path : currentSchemaPath;
       const newRois = normalizeIncomingRois(data.rois || []);
       if (!newRois.length) {
         throw new Error("Detector returned no ROIs.");
@@ -2010,9 +2090,7 @@
 
   document.getElementById("btn-new").addEventListener("click", startCreateMode);
   document.getElementById("btn-mcq").addEventListener("click", startMcqSequence);
-  document.getElementById("btn-import").addEventListener("click", () => {
-    fileImportImage.click();
-  });
+  document.getElementById("btn-import").addEventListener("click", () => openBrowseModal("import"));
   document.getElementById("btn-auto-detect").addEventListener("click", autoDetectRois);
   document.getElementById("btn-rename").addEventListener("click", renameSelected);
   document.getElementById("btn-duplicate").addEventListener("click", duplicateSelected);
@@ -2467,6 +2545,7 @@
   _startSingletonHeartbeat();
 
   resizeCanvas();
+  loadBrowseRoot();
   const params = new URLSearchParams(window.location.search);
   const path = params.get("path");
   if (path) loadImage(path);

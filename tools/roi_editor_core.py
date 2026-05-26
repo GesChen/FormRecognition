@@ -20,22 +20,43 @@ except Exception:
     PROJECT_ROOT = ROOT
     PATHS = {
         "cache_normalized": ROOT / "output" / "cache" / "normalized",
+        "templates_root": ROOT / "data" / "templates",
+        "roi_schemas_root": ROOT / "data" / "roi_schemas",
     }
 
+TEMPLATES_ROOT = Path(PATHS.get("templates_root", ROOT / "data" / "templates")).resolve()
+SCHEMA_DIR = Path(PATHS.get("roi_schemas_root", ROOT / "data" / "roi_schemas")).resolve()
+
 # Default browse root inside the project (relative to PROJECT_ROOT).
-# Change this string to point the web file picker somewhere else.
-DEFAULT_BROWSE_ROOT = "data/templates"
+try:
+    DEFAULT_BROWSE_ROOT = str(TEMPLATES_ROOT.relative_to(PROJECT_ROOT.resolve())).replace("\\", "/")
+except Exception:
+    DEFAULT_BROWSE_ROOT = "data/templates"
 
 DEFAULT_IMAGE = PATHS["cache_normalized"] / "maury_1" / "page_0001_bin.png"
-SCHEMA_DIR = ROOT / "data" / "roi_schemas"
 
 HANDLE_SIZE = 8
 MIN_ROI_SIZE = 5
 
 
 def schema_path_for_image(image_path: Path) -> Path:
-    """Path to the ROI schema JSON for this image (one file per image)."""
-    return SCHEMA_DIR / f"{image_path.stem}.json"
+    """Path to the ROI schema JSON for this image, mirrored by template-relative path."""
+    img = image_path.resolve()
+    try:
+        rel = img.relative_to(TEMPLATES_ROOT)
+    except ValueError:
+        # Fallback for non-template images: legacy stem-only path.
+        return SCHEMA_DIR / f"{img.stem}.json"
+    return SCHEMA_DIR / rel.with_suffix(".json")
+
+
+def schema_relpath_for_image(image_path: Path) -> str:
+    """Return schema path relative to project root, for UI display."""
+    path = schema_path_for_image(image_path)
+    try:
+        return str(path.resolve().relative_to(PROJECT_ROOT.resolve())).replace("\\", "/")
+    except Exception:
+        return str(path)
 
 
 class ROI:
@@ -113,11 +134,18 @@ def load_schema(image_path: Path) -> tuple[list[dict], tuple[int, int] | None]:
     try:
         data = json.loads(path.read_text())
         stored_path = data.get("image_path") or ""
-        path_ok = (
-            stored_path == str(image_path)
-            or data.get("image_name") == image_path.name
-            or (stored_path and Path(stored_path).stem == image_path.stem)
-        )
+        path_ok = False
+        if stored_path:
+            try:
+                stored_abs = Path(stored_path)
+                if not stored_abs.is_absolute():
+                    stored_abs = (PROJECT_ROOT / stored_abs).resolve()
+                path_ok = stored_abs == image_path.resolve()
+            except Exception:
+                path_ok = (stored_path == str(image_path))
+        if not path_ok and data.get("image_name") == image_path.name:
+            # Backward compatibility for older schema files lacking path details.
+            path_ok = True
         if path_ok:
             rois = [r for r in data.get("rois", [])]
             size = (data.get("image_width"), data.get("image_height"))

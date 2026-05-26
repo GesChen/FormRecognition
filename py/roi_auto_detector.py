@@ -28,7 +28,11 @@ ROI_MIN_SIZE = 5
 
 
 def _schema_dir() -> Path:
-    return Path(PATHS["data"]).resolve() / "roi_schemas"
+    return Path(PATHS.get("roi_schemas_root", Path(PATHS["data"]) / "roi_schemas")).resolve()
+
+
+def _templates_dir() -> Path:
+    return Path(PATHS.get("templates_root", Path(PATHS["data"]) / "templates")).resolve()
 
 
 def _safe_float(v: Any, default: float = 0.0) -> float:
@@ -162,9 +166,15 @@ def _load_nonempty_schema(path: Path) -> dict[str, Any] | None:
 
 def _pick_reference_schema(image_path: Path) -> tuple[Path, dict[str, Any]]:
     schema_dir = _schema_dir()
+    templates_dir = _templates_dir()
     stem = image_path.stem.lower()
 
-    exact = schema_dir / f"{image_path.stem}.json"
+    exact: Path | None = None
+    try:
+        rel = image_path.resolve().relative_to(templates_dir)
+        exact = schema_dir / rel.with_suffix(".json")
+    except ValueError:
+        exact = schema_dir / f"{image_path.stem}.json"
     exact_data = _load_nonempty_schema(exact)
     if exact_data is not None:
         return exact, exact_data
@@ -180,13 +190,13 @@ def _pick_reference_schema(image_path: Path) -> tuple[Path, dict[str, Any]]:
             return p, data
 
     if inferred_side:
-        side_candidates = sorted(schema_dir.glob(f"*_{inferred_side}.json"))
+        side_candidates = sorted(schema_dir.rglob(f"*_{inferred_side}.json"))
         for p in side_candidates:
             data = _load_nonempty_schema(p)
             if data is not None:
                 return p, data
 
-    for p in sorted(schema_dir.glob("*.json")):
+    for p in sorted(schema_dir.rglob("*.json")):
         data = _load_nonempty_schema(p)
         if data is not None:
             return p, data
@@ -325,4 +335,3 @@ def detect_rois_with_openai(
         "ocr_line_count": int(doc_structure.get("line_count", 0)),
         "model": resolve_model(model_profile=model_profile),
     }
-

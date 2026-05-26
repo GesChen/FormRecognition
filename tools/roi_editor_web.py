@@ -8,8 +8,6 @@ import json
 import uuid
 from pathlib import Path
 
-from werkzeug.utils import secure_filename
-
 # Ensure we can import from tools and py
 TOOLS_DIR = Path(__file__).resolve().parent
 ROOT = TOOLS_DIR.parent
@@ -68,23 +66,9 @@ def create_app() -> Flask:
         dirs, files = core.browse_normalized(rel_dir)
         return jsonify({"dirs": dirs, "files": files})
 
-    @app.route("/api/upload-image", methods=["POST"])
-    def api_upload_image():
-        up = request.files.get("file")
-        if not up or not up.filename:
-            return jsonify({"error": "Missing file"}), 400
-        name = secure_filename(up.filename)
-        if not name.lower().endswith(".png"):
-            return jsonify({"error": "Only PNG images are supported"}), 400
-        upload_dir = core.PROJECT_ROOT / "data" / "templates" / "uploads"
-        upload_dir.mkdir(parents=True, exist_ok=True)
-        save_path = upload_dir / name
-        up.save(str(save_path))
-        try:
-            rel = save_path.relative_to(core.PROJECT_ROOT).as_posix()
-        except ValueError:
-            rel = str(save_path)
-        return jsonify({"ok": True, "path": rel, "filename": name})
+    @app.route("/api/browse-root")
+    def api_browse_root():
+        return jsonify({"root": core.DEFAULT_BROWSE_ROOT})
 
     @app.route("/api/image")
     def api_get_image():
@@ -101,7 +85,14 @@ def create_app() -> Flask:
         if not path:
             return jsonify({"error": "Invalid or missing path"}), 400
         rois, size = core.load_schema(path)
-        return jsonify({"rois": rois, "image_width": size[0] if size else None, "image_height": size[1] if size else None})
+        return jsonify(
+            {
+                "rois": rois,
+                "image_width": size[0] if size else None,
+                "image_height": size[1] if size else None,
+                "schema_path": core.schema_relpath_for_image(path),
+            }
+        )
 
     @app.route("/api/schema", methods=["POST"])
     def api_save_schema():
@@ -290,6 +281,7 @@ def create_app() -> Flask:
                 "rois": rois,
                 "image_width": w,
                 "image_height": h,
+                "schema_path": core.schema_relpath_for_image(path),
                 "reference_schema_path": result.get("reference_schema_path"),
                 "ocr_line_count": result.get("ocr_line_count"),
                 "model": result.get("model"),

@@ -32,9 +32,10 @@ Environment:
 from __future__ import annotations
 
 import os
-from typing import Any, Dict, Iterable, List, Optional
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional
 
-from openai import OpenAI
+if TYPE_CHECKING:
+    from openai import OpenAI
 
 DEFAULT_MODEL = "gpt-5.4-mini"
 MODEL_PROFILES: Dict[str, str] = {
@@ -72,8 +73,14 @@ def resolve_model(
     return _default_model(None)
 
 
-def get_client(*, api_key: Optional[str] = None) -> OpenAI:
+def get_client(*, api_key: Optional[str] = None) -> "OpenAI":
     """Build an OpenAI client using explicit key or OPENAI_API_KEY env var."""
+    try:
+        from openai import OpenAI
+    except Exception as exc:
+        raise RuntimeError(
+            "OpenAI SDK is not installed. Install with: pip install openai"
+        ) from exc
     key = api_key or os.getenv("OPENAI_API_KEY")
     if not key:
         raise RuntimeError(

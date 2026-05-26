@@ -4,10 +4,18 @@ from pathlib import Path
 
 # Root directory containing data/, output/, py/, docs/.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
+DATA_RELEASE = "2025"
+DATA_DIR = PROJECT_ROOT / "data"
+DATA_TEMPLATES_ROOT = DATA_DIR / "templates" / DATA_RELEASE
+DATA_ROI_SCHEMAS_ROOT = DATA_DIR / "roi_schemas" / DATA_RELEASE
+DATA_XLSX_MAPPINGS_ROOT = DATA_DIR / "xlsx_mappings" / DATA_RELEASE
 
 # Canonical project paths (absolute).
 PATHS = {
-    "data": PROJECT_ROOT / "data",  # Input assets (schemas, templates, mappings).
+    "data": DATA_DIR,  # Input assets root.
+    "templates_root": DATA_TEMPLATES_ROOT,  # Active template root for current data release.
+    "roi_schemas_root": DATA_ROI_SCHEMAS_ROOT,  # Active ROI schema root for current data release.
+    "xlsx_mappings_root": DATA_XLSX_MAPPINGS_ROOT,  # Active XLSX mapping root for current data release.
     "output": PROJECT_ROOT / "output",  # Pipeline outputs (json/xlsx/debug).
     "docs": PROJECT_ROOT / "docs",  # Documentation.
     "cache": PROJECT_ROOT / "output" / "cache",  # Intermediate cache root.
@@ -122,7 +130,7 @@ PDF_RECOGNITION = {
     "output_dir": PATHS["output"] / "recognition",  # Final recognition JSON output directory.
     "schema_key_sidea": "schema_sidea",  # key name for side-a schema in schema map.
     "schema_key_sideb": "schema_sideb",  # key name for side-b schema in schema map.
-    "schema_dir": PATHS["data"] / "roi_schemas",  # ROI schema directory.
+    "schema_dir": PATHS["roi_schemas_root"],  # ROI schema directory (release-scoped).
     "mc_roi_names": [],  # Empty => infer from schema (all names matching \d+[a-h]).
     "debug_output": True,  # Write pipeline debug JSON snapshots.
     "sort_data_by_roi_name": True,  # Sort ROI rows numerically by name.
@@ -157,7 +165,7 @@ IMAGE_NORMALIZE = {
     "binarize": True,  # Output binary images by default.
     "template_registration": True,  # Align pages to template using ORB + RANSAC.
     "template_registration_templates": {},  # Optional explicit key -> template path overrides.
-    "template_registration_templates_dir": PATHS["data"] / "templates",  # Directory containing <form_type>_<side>.png templates.
+    "template_registration_templates_dir": PATHS["templates_root"],  # Directory containing <form_type>_<side>.png templates.
     "template_registration_default_key": None,  # Fallback template key when form/side is unknown.
     "template_registration_orb_nfeatures": 5000,  # ORB feature cap used during template registration.
     "template_registration_ratio_test": 0.75,  # Lowe ratio threshold for knn match filtering.
@@ -223,7 +231,7 @@ ROI_PAGE_RECOGNITION = {
 _XLSX_MASTER = PATHS["data"] / "2025 EVMS NPS Data Entry tool (Blank Template, Do not write on) .xlsx"
 
 XLSX_DATA_ENTRY = {
-    "mapping_dir": PATHS["data"] / "xlsx_mappings",  # Directory with <form_type>.json mapping files.
+    "mapping_dir": PATHS["xlsx_mappings_root"],  # Directory with <form_type>.json mapping files.
     "master_template_workbook": _XLSX_MASTER,  # Multi-sheet template workbook.
     "output_dir": PATHS["output"] / "xlsx",  # Final XLSX output directory.
     "form_type_sheet_map": {

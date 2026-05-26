@@ -37,7 +37,63 @@
       color: var(--on-accent);
     }
     .btn:hover { background: var(--accent-hover); }
+    .btn.secondary {
+      background: var(--secondary-btn);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn.secondary:hover { background: var(--secondary-btn-hover); }
     .status { font-size: 0.8rem; color: var(--muted); }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--overlay);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      min-width: 360px;
+      max-width: 90vw;
+      max-height: 75vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-modal);
+    }
+    .modal-header {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .modal-header h3 { margin: 0; font-size: 1rem; }
+    .modal-breadcrumb {
+      margin-top: 4px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      word-break: break-all;
+    }
+    .modal-body {
+      padding: 8px;
+      overflow-y: auto;
+      min-height: 220px;
+      max-height: 58vh;
+    }
+    .modal-body .item {
+      padding: 8px 10px;
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+    }
+    .modal-body .item:hover { background: var(--surface-hover-strong); }
+    .modal-body .item.folder { color: var(--accent); }
     .toggle-row {
       display: flex;
       align-items: center;
@@ -185,7 +241,21 @@
     </div>
   </div>
 
-  <input type="file" id="file-image" accept=".png,image/png" style="display:none;" />
+  <div class="modal-overlay" id="browse-modal" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3>Select Template Image</h3>
+          <div class="modal-breadcrumb" id="browse-breadcrumb">data/templates</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn secondary" id="browse-up">Up</button>
+          <button type="button" class="btn" id="browse-close">Close</button>
+        </div>
+      </div>
+      <div class="modal-body" id="browse-body"></div>
+    </div>
+  </div>
 
   <div class="main">
     <div class="canvas-wrap">
@@ -484,35 +554,98 @@
 
   function setStatus(text) { statusEl.textContent = text; }
 
-  const fileImage = document.getElementById("file-image");
+  const browseModal = document.getElementById("browse-modal");
+  const browseBody = document.getElementById("browse-body");
+  const browseBreadcrumb = document.getElementById("browse-breadcrumb");
+  const browseUpBtn = document.getElementById("browse-up");
+  const browseCloseBtn = document.getElementById("browse-close");
+  let TEMPLATES_ROOT = "data/templates";
+  let browseDir = TEMPLATES_ROOT;
 
-  async function uploadImage(file) {
-    setStatus("Uploading " + file.name + "\u2026");
-    const fd = new FormData();
-    fd.append("file", file);
+  function isUnderTemplates(path) {
+    const p = String(path || "").trim().replace(/\/+$/, "");
+    return p === TEMPLATES_ROOT || p.startsWith(TEMPLATES_ROOT + "/");
+  }
+
+  function parentDir(path) {
+    const p = String(path || "").replace(/\/+$/, "");
+    const i = p.lastIndexOf("/");
+    if (i <= 0) return TEMPLATES_ROOT;
+    return p.slice(0, i);
+  }
+
+  function closeBrowseModal() {
+    browseModal.classList.remove("open");
+    browseModal.setAttribute("aria-hidden", "true");
+  }
+
+  async function refreshBrowse() {
+    browseBreadcrumb.textContent = browseDir;
+    browseUpBtn.disabled = browseDir === TEMPLATES_ROOT;
+    browseBody.innerHTML = "";
     try {
-      const res = await fetch("/api/upload-image", { method: "POST", body: fd });
-      const info = await res.json().catch(() => ({}));
-      if (!res.ok || !info.ok) {
-        setStatus(info.error || ("Upload failed (" + res.status + ")"));
-        return null;
+      const r = await fetch("/api/browse?dir=" + encodeURIComponent(browseDir));
+      const data = await r.json();
+      if (!r.ok) throw new Error((data && data.error) ? data.error : "Browse failed.");
+      const dirs = Array.isArray(data.dirs) ? data.dirs : [];
+      const files = Array.isArray(data.files) ? data.files : [];
+
+      if (!dirs.length && !files.length) {
+        const row = document.createElement("div");
+        row.className = "item";
+        row.textContent = "(empty)";
+        browseBody.appendChild(row);
+        return;
       }
-      return info.path;
+
+      dirs.forEach((d) => {
+        if (!isUnderTemplates(d)) return;
+        const row = document.createElement("div");
+        row.className = "item folder";
+        row.textContent = "[DIR] " + d.split("/").pop();
+        row.addEventListener("click", () => {
+          browseDir = d;
+          refreshBrowse();
+        });
+        browseBody.appendChild(row);
+      });
+      files.forEach((f) => {
+        if (!isUnderTemplates(f)) return;
+        if (!String(f).toLowerCase().endsWith(".png")) return;
+        const row = document.createElement("div");
+        row.className = "item file";
+        row.textContent = f.split("/").pop();
+        row.addEventListener("click", async () => {
+          closeBrowseModal();
+          await loadImage(f);
+        });
+        browseBody.appendChild(row);
+      });
     } catch (err) {
-      setStatus("Upload failed: " + String(err));
-      return null;
+      const row = document.createElement("div");
+      row.className = "item";
+      row.textContent = "Failed to load directory: " + String(err);
+      browseBody.appendChild(row);
     }
   }
 
-  fileImage.addEventListener("change", async () => {
-    const f = fileImage.files && fileImage.files[0];
-    if (!f) return;
-    try { fileImage.value = ""; } catch (e) {}
-    const path = await uploadImage(f);
-    if (path) loadImage(path);
-  });
+  function openBrowseModal() {
+    browseDir = TEMPLATES_ROOT;
+    browseModal.classList.add("open");
+    browseModal.setAttribute("aria-hidden", "false");
+    refreshBrowse();
+  }
 
-  document.getElementById("btn-select-image").addEventListener("click", () => fileImage.click());
+  document.getElementById("btn-select-image").addEventListener("click", openBrowseModal);
+  browseUpBtn.addEventListener("click", () => {
+    browseDir = parentDir(browseDir);
+    if (!isUnderTemplates(browseDir)) browseDir = TEMPLATES_ROOT;
+    refreshBrowse();
+  });
+  browseCloseBtn.addEventListener("click", closeBrowseModal);
+  browseModal.addEventListener("click", (e) => {
+    if (e.target === browseModal) closeBrowseModal();
+  });
 
   chkNames.addEventListener("change", draw);
   chkBoxes.addEventListener("change", draw);
@@ -603,6 +736,7 @@
 
   window.addEventListener("resize", resizeCanvas);
   resizeCanvas();
+  loadBrowseRoot();
 
   const params = new URLSearchParams(window.location.search);
   const initPath = params.get("path");
@@ -611,3 +745,13 @@
 </script>
 </body>
 </html>
+  async function loadBrowseRoot() {
+    try {
+      const r = await fetch("/api/browse-root");
+      const data = await r.json();
+      if (r.ok && data && typeof data.root === "string" && data.root.trim()) {
+        TEMPLATES_ROOT = data.root.trim().replace(/\/+$/, "");
+      }
+    } catch (e) {
+    }
+  }
