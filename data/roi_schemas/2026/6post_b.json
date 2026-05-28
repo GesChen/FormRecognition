@@ -1,0 +1,486 @@
+{
+  "image_path": "/home/ges/Documents/evms_3/data/templates/2026/6post_b.png",
+  "image_name": "6post_b.png",
+  "image_width": 1275,
+  "image_height": 1650,
+  "rois": [
+    {
+      "h": 33,
+      "id": "r57868e52c",
+      "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
+      "name": "15",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\" }\n```",
+      "w": 790,
+      "x": 105,
+      "y": 96
+    },
+    {
+      "h": 34,
+      "id": "rf70ddf55a",
+      "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
+      "name": "16",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\" }\n```",
+      "w": 635,
+      "x": 106,
+      "y": 146
+    },
+    {
+      "h": 35,
+      "id": "r7a9bf73cd",
+      "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
+      "name": "17",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\" }\n```",
+      "w": 417,
+      "x": 104,
+      "y": 195
+    },
+    {
+      "h": 31,
+      "id": "rc7440140e",
+      "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
+      "name": "18",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\" }\n```",
+      "w": 475,
+      "x": 104,
+      "y": 245
+    },
+    {
+      "h": 30,
+      "id": "r3b0449bb8",
+      "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
+      "name": "19",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\" }\n```",
+      "w": 632,
+      "x": 105,
+      "y": 296
+    },
+    {
+      "h": 91,
+      "id": "rb7bd59bb0",
+      "name": "20",
+      "w": 708,
+      "x": 96,
+      "y": 425
+    },
+    {
+      "h": 31,
+      "id": "r120d9b9b1",
+      "name": "20a",
+      "w": 168,
+      "x": 100,
+      "y": 425
+    },
+    {
+      "h": 33,
+      "id": "r124121803",
+      "name": "20b",
+      "w": 99,
+      "x": 677,
+      "y": 424
+    },
+    {
+      "h": 30,
+      "id": "r61b86d40d",
+      "name": "20c",
+      "w": 269,
+      "x": 101,
+      "y": 453
+    },
+    {
+      "h": 34,
+      "id": "r0016d77c6",
+      "name": "20d",
+      "w": 124,
+      "x": 676,
+      "y": 452
+    },
+    {
+      "h": 29,
+      "id": "r401f57bf2",
+      "name": "20e",
+      "w": 190,
+      "x": 102,
+      "y": 484
+    },
+    {
+      "h": 90,
+      "id": "rc45868144",
+      "name": "21",
+      "w": 709,
+      "x": 95,
+      "y": 560
+    },
+    {
+      "h": 31,
+      "id": "r09e940911",
+      "name": "21a",
+      "w": 168,
+      "x": 100,
+      "y": 561
+    },
+    {
+      "h": 34,
+      "id": "rfa775fe78",
+      "name": "21b",
+      "w": 100,
+      "x": 676,
+      "y": 559
+    },
+    {
+      "h": 31,
+      "id": "rc0bca8db9",
+      "name": "21c",
+      "w": 269,
+      "x": 100,
+      "y": 589
+    },
+    {
+      "h": 34,
+      "id": "rfb066116b",
+      "name": "21d",
+      "w": 123,
+      "x": 677,
+      "y": 589
+    },
+    {
+      "h": 29,
+      "id": "ra62ee17bc",
+      "name": "21e",
+      "w": 189,
+      "x": 103,
+      "y": 619
+    },
+    {
+      "h": 89,
+      "id": "r0daf5f460",
+      "name": "22",
+      "w": 709,
+      "x": 95,
+      "y": 696
+    },
+    {
+      "h": 31,
+      "id": "r02923c96d",
+      "name": "22a",
+      "w": 168,
+      "x": 100,
+      "y": 697
+    },
+    {
+      "h": 31,
+      "id": "rffd29c6ef",
+      "name": "22b",
+      "w": 99,
+      "x": 677,
+      "y": 697
+    },
+    {
+      "h": 28,
+      "id": "re182bdc25",
+      "name": "22c",
+      "w": 267,
+      "x": 102,
+      "y": 725
+    },
+    {
+      "h": 35,
+      "id": "re53d56f43",
+      "name": "22d",
+      "w": 124,
+      "x": 676,
+      "y": 723
+    },
+    {
+      "h": 29,
+      "id": "r475afab28",
+      "name": "22e",
+      "w": 191,
+      "x": 101,
+      "y": 754
+    },
+    {
+      "h": 87,
+      "id": "ra555880b4",
+      "name": "23",
+      "w": 707,
+      "x": 97,
+      "y": 834
+    },
+    {
+      "h": 28,
+      "id": "rb798d1feb",
+      "name": "23a",
+      "w": 166,
+      "x": 102,
+      "y": 834
+    },
+    {
+      "h": 31,
+      "id": "r7f2caee5f",
+      "name": "23b",
+      "w": 99,
+      "x": 677,
+      "y": 832
+    },
+    {
+      "h": 27,
+      "id": "r7ee8911ac",
+      "name": "23c",
+      "w": 268,
+      "x": 101,
+      "y": 862
+    },
+    {
+      "h": 35,
+      "id": "re8f8592b7",
+      "name": "23d",
+      "w": 124,
+      "x": 676,
+      "y": 858
+    },
+    {
+      "h": 29,
+      "id": "r08e7fecb5",
+      "name": "23e",
+      "w": 190,
+      "x": 102,
+      "y": 890
+    },
+    {
+      "h": 86,
+      "id": "rb190ed97d",
+      "name": "24",
+      "w": 710,
+      "x": 94,
+      "y": 968
+    },
+    {
+      "h": 33,
+      "id": "rdd498c96b",
+      "name": "24a",
+      "w": 170,
+      "x": 99,
+      "y": 968
+    },
+    {
+      "h": 32,
+      "id": "rdc77dc71f",
+      "name": "24b",
+      "w": 99,
+      "x": 677,
+      "y": 969
+    },
+    {
+      "h": 30,
+      "id": "r5162361f3",
+      "name": "24c",
+      "w": 270,
+      "x": 101,
+      "y": 997
+    },
+    {
+      "h": 29,
+      "id": "r6f282123e",
+      "name": "24d",
+      "w": 122,
+      "x": 678,
+      "y": 996
+    },
+    {
+      "h": 29,
+      "id": "r1b09af2fc",
+      "name": "24e",
+      "w": 190,
+      "x": 102,
+      "y": 1026
+    },
+    {
+      "h": 68,
+      "id": "r689183490",
+      "llm_prompt_override": "You are a strict text normalizer for ROI '25'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the written response text for what could have made the experience better.\n- Preserve wording conservatively.\n- Do not invent, infer, summarize, or explain.\n- If OCR text is empty, crossed out, or unreadable, return detected_text as null.\nTask:\n- Normalize the optional written response only.",
+      "name": "25",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"experience_better_response\":\"\" }\n```",
+      "w": 798,
+      "x": 54,
+      "y": 1076
+    },
+    {
+      "h": 32,
+      "id": "r7f2f6cdc5",
+      "llm_prompt_override": "You are a strict text normalizer for ROI age extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be digits only (0-9), or null.\n- Remove surrounding words/symbols if a clear numeric age exists.\n- Do not output units, explanations, or placeholders.\n- If unreadable/unclear, return detected_text as null.\nTask:\n- Normalize OCR text into age digits.",
+      "name": "27",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"age\":\"\" }\n```",
+      "w": 381,
+      "x": 54,
+      "y": 1208
+    },
+    {
+      "h": 114,
+      "id": "re75da72e0",
+      "name": "28",
+      "w": 803,
+      "x": 94,
+      "y": 1269
+    },
+    {
+      "h": 27,
+      "id": "rd1ed6f333",
+      "name": "28a",
+      "w": 317,
+      "x": 103,
+      "y": 1269
+    },
+    {
+      "h": 27,
+      "id": "r0d3657837",
+      "name": "28b",
+      "w": 93,
+      "x": 678,
+      "y": 1268
+    },
+    {
+      "h": 28,
+      "id": "re77af62ab",
+      "name": "28c",
+      "w": 258,
+      "x": 100,
+      "y": 1296
+    },
+    {
+      "h": 28,
+      "id": "rae5688e77",
+      "name": "28d",
+      "w": 196,
+      "x": 679,
+      "y": 1296
+    },
+    {
+      "h": 29,
+      "id": "rbcbdf12e3",
+      "name": "28e",
+      "w": 335,
+      "x": 100,
+      "y": 1322
+    },
+    {
+      "h": 30,
+      "id": "rb577be178",
+      "name": "28f",
+      "w": 205,
+      "x": 676,
+      "y": 1321
+    },
+    {
+      "h": 28,
+      "id": "rf45df6f3e",
+      "name": "28g",
+      "w": 210,
+      "x": 101,
+      "y": 1350
+    },
+    {
+      "h": 29,
+      "id": "re368e401b",
+      "name": "28h",
+      "w": 220,
+      "x": 677,
+      "y": 1348
+    },
+    {
+      "h": 92,
+      "id": "rd6a9941db",
+      "name": "29",
+      "w": 821,
+      "x": 93,
+      "y": 1433
+    },
+    {
+      "h": 33,
+      "id": "ref1501c65",
+      "name": "29a",
+      "w": 127,
+      "x": 99,
+      "y": 1433
+    },
+    {
+      "h": 30,
+      "id": "r15d5c68b2",
+      "name": "29b",
+      "w": 140,
+      "x": 678,
+      "y": 1433
+    },
+    {
+      "h": 32,
+      "id": "r269fec037",
+      "name": "29c",
+      "w": 96,
+      "x": 98,
+      "y": 1459
+    },
+    {
+      "h": 28,
+      "id": "r5b0ed8066",
+      "name": "29d",
+      "w": 234,
+      "x": 678,
+      "y": 1459
+    },
+    {
+      "h": 24,
+      "id": "r860ee4682",
+      "name": "29e",
+      "w": 215,
+      "x": 102,
+      "y": 1489
+    },
+    {
+      "id": "rx2u0wp9z",
+      "name": "26",
+      "x": 52,
+      "y": 1181,
+      "w": 826,
+      "h": 32
+    },
+    {
+      "id": "rvefbwvqm",
+      "name": "26a",
+      "x": 612,
+      "y": 1182,
+      "w": 32,
+      "h": 31
+    },
+    {
+      "id": "rsedskz9p",
+      "name": "26b",
+      "x": 656,
+      "y": 1182,
+      "w": 35,
+      "h": 31
+    },
+    {
+      "id": "rq3pfejzz",
+      "name": "26c",
+      "x": 706,
+      "y": 1183,
+      "w": 31,
+      "h": 31
+    },
+    {
+      "id": "r3pjo51si",
+      "name": "26d",
+      "x": 752,
+      "y": 1180,
+      "w": 34,
+      "h": 35
+    },
+    {
+      "id": "reiw0hpxm",
+      "name": "26e",
+      "x": 796,
+      "y": 1181,
+      "w": 68,
+      "h": 34
+    }
+  ]
+}

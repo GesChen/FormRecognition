@@ -43,6 +43,15 @@
       border: 1px solid var(--border);
     }
     .btn.secondary:hover { background: var(--secondary-btn-hover); }
+    .btn.schema-nav {
+      min-width: 34px;
+      padding: 5px 9px;
+      flex: 0 0 auto;
+    }
+    .btn.schema-nav:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
     .status { font-size: 0.8rem; color: var(--muted); }
     .modal-overlay {
       display: none;
@@ -231,6 +240,9 @@
   <div class="toolbar">
     <button type="button" class="btn" id="btn-select-image">Select image...</button>
     <span class="status" id="status">No image</span>
+    <span class="status" id="schema-status">Form: (none)</span>
+    <button type="button" class="btn secondary schema-nav" id="btn-prev-template" title="Previous template" aria-label="Previous template" disabled>&larr;</button>
+    <button type="button" class="btn secondary schema-nav" id="btn-next-template" title="Next template" aria-label="Next template" disabled>&rarr;</button>
     <div class="toggle-row">
       <input type="checkbox" id="chk-names" checked />
       <label for="chk-names">Names</label>
@@ -312,6 +324,9 @@
 
   const roiList = document.getElementById("roi-list");
   const statusEl = document.getElementById("status");
+  const schemaStatusEl = document.getElementById("schema-status");
+  const btnPrevTemplate = document.getElementById("btn-prev-template");
+  const btnNextTemplate = document.getElementById("btn-next-template");
   const panelTitle = document.getElementById("panel-title");
   const chkNames = document.getElementById("chk-names");
   const chkBoxes = document.getElementById("chk-boxes");
@@ -325,6 +340,7 @@
   const copyOcrStatusEl = document.getElementById("copy-ocr-status");
 
   let imagePath = "";
+  let currentSchemaPath = "";
   let image = null;
   let imageWidth = 0, imageHeight = 0;
   let rois = [];
@@ -493,6 +509,32 @@
     }
   }
 
+  function updateSchemaStatus() {
+    if (btnPrevTemplate) btnPrevTemplate.disabled = !imagePath;
+    if (btnNextTemplate) btnNextTemplate.disabled = !imagePath;
+    if (!schemaStatusEl) return;
+    if (!imagePath) {
+      schemaStatusEl.textContent = "Form: (none)";
+      return;
+    }
+    const count = rois.length;
+    schemaStatusEl.textContent = `${formLabelFromPath(imagePath)} · ${count} ROI${count === 1 ? "" : "s"}`;
+  }
+
+  function setStatus(text) {
+    statusEl.textContent = text;
+    updateSchemaStatus();
+  }
+
+  function formLabelFromPath(path) {
+    const parts = String(path || "").split("/").filter(Boolean);
+    const file = parts.length ? parts[parts.length - 1] : "";
+    const stem = file.replace(/\.[^.]+$/, "");
+    const parent = parts.length >= 2 ? parts[parts.length - 2] : "";
+    if (parent && stem) return `${parent}/${stem}`;
+    return stem || path || "(unknown)";
+  }
+
   async function loadImage(path) {
     if (!path) return;
     try {
@@ -513,6 +555,7 @@
 
       const s = await fetch("/api/schema?path=" + encodeURIComponent(path));
       const schema = await s.json();
+      currentSchemaPath = (schema && typeof schema.schema_path === "string") ? schema.schema_path : "";
       if (schema.rois && Array.isArray(schema.rois)) {
         rois = schema.rois.map(r => ({
           ...r,
@@ -528,13 +571,14 @@
         imageWidth = schema.image_width;
         imageHeight = schema.image_height;
       }
-      statusEl.textContent = path + " \u2014 " + rois.length + " ROI(s)";
+      setStatus("Loaded.");
       resizeCanvas();
       draw();
       syncList();
       syncPromptViewer();
     } catch (e) {
-      statusEl.textContent = "Failed to load image";
+      currentSchemaPath = "";
+      setStatus("Failed to load image");
     }
   }
 
@@ -551,8 +595,6 @@
     updateScaleAndOffset();
     draw();
   }
-
-  function setStatus(text) { statusEl.textContent = text; }
 
   const browseModal = document.getElementById("browse-modal");
   const browseBody = document.getElementById("browse-body");
@@ -577,6 +619,54 @@
   function closeBrowseModal() {
     browseModal.classList.remove("open");
     browseModal.setAttribute("aria-hidden", "true");
+  }
+
+  async function loadBrowseRoot() {
+    try {
+      const r = await fetch("/api/browse-root");
+      const data = await r.json();
+      if (r.ok && data && typeof data.root === "string" && data.root.trim()) {
+        TEMPLATES_ROOT = data.root.trim().replace(/\/+$/, "");
+      }
+    } catch (e) {
+    }
+  }
+
+  async function navigateTemplate(direction) {
+    if (!imagePath) return;
+    const currentPath = imagePath;
+    try {
+      const dir = parentDir(currentPath);
+      const r = await fetch("/api/browse?dir=" + encodeURIComponent(dir));
+      const raw = await r.text();
+      let data = null;
+      try {
+        data = JSON.parse(raw);
+      } catch (parseErr) {
+        throw new Error(raw ? raw.slice(0, 180) : "Browse endpoint returned non-JSON.");
+      }
+      if (!r.ok || !data) {
+        throw new Error((data && data.error) ? data.error : "Template navigation failed.");
+      }
+      const files = (Array.isArray(data.files) ? data.files : [])
+        .filter((p) => String(p).toLowerCase().endsWith(".png"))
+        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+      if (!files.length) {
+        throw new Error("No templates found in this directory.");
+      }
+      const index = files.indexOf(currentPath);
+      const safeIndex = index >= 0 ? index : 0;
+      const step = direction === "prev" ? -1 : 1;
+      const targetPath = files[(safeIndex + step + files.length) % files.length];
+      if (targetPath === currentPath) {
+        setStatus("Only one template in this directory.");
+        return;
+      }
+      await loadImage(targetPath);
+    } catch (err) {
+      setStatus("Template navigation failed.");
+      alert(err instanceof Error ? err.message : String(err));
+    }
   }
 
   async function refreshBrowse() {
@@ -637,6 +727,8 @@
   }
 
   document.getElementById("btn-select-image").addEventListener("click", openBrowseModal);
+  if (btnPrevTemplate) btnPrevTemplate.addEventListener("click", () => navigateTemplate("prev"));
+  if (btnNextTemplate) btnNextTemplate.addEventListener("click", () => navigateTemplate("next"));
   browseUpBtn.addEventListener("click", () => {
     browseDir = parentDir(browseDir);
     if (!isUnderTemplates(browseDir)) browseDir = TEMPLATES_ROOT;
@@ -745,13 +837,3 @@
 </script>
 </body>
 </html>
-  async function loadBrowseRoot() {
-    try {
-      const r = await fetch("/api/browse-root");
-      const data = await r.json();
-      if (r.ok && data && typeof data.root === "string" && data.root.trim()) {
-        TEMPLATES_ROOT = data.root.trim().replace(/\/+$/, "");
-      }
-    } catch (e) {
-    }
-  }

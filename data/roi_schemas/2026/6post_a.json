@@ -1,0 +1,452 @@
+{
+  "image_path": "/home/ges/Documents/evms_3/data/templates/2026/6post_a.png",
+  "image_name": "6post_a.png",
+  "image_width": 1275,
+  "image_height": 1650,
+  "rois": [
+    {
+      "h": 34,
+      "id": "r436ae571e",
+      "llm_prompt_override": "You are a strict JSON mapper.\nYou are NOT reading an image. You only receive OCR-extracted text.\n\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string\"}\n\nTask:\nMap the OCR JSON field \"id\" into pipeline field \"detected_text\".\n\nRules:\n1. If OCR text contains JSON and key \"id\" exists with a non-empty value, output:\n   {\"detected_text\":\"<id value exactly as-is>\"}\n2. If key \"id\" is missing, null, or empty, output:\n   {\"detected_text\":null}\n3. Do not normalize, correct, trim, or transform the id value.\n4. Do not add any extra keys or text.\n\nOCR extracted text:",
+      "name": "id",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"id\":\"\" }\n```",
+      "w": 245,
+      "x": 55,
+      "y": 16
+    },
+    {
+      "h": 38,
+      "id": "rab62d9245",
+      "llm_prompt_override": "You are a strict text normalizer for one OCR ROI field named \"date\".\nYou are NOT reading an image. You only receive OCR-extracted text.\nReturn ONE valid JSON object only, no markdown and no extra text.\n\nRequired schema:\n{\"detected_text\":\"string or null\"}\n\nTarget output format:\nMM/DD/YYYY\n\nRules:\n- Preserve meaning from OCR text; do not invent unseen digits.\n- If OCR contains structured JSON (for example keys like day/month/year), parse it first.\n- If year is 2 digits (YY), interpret as 20YY.\n- Zero-pad month and day to 2 digits.\n- Output only a valid calendar date in MM/DD/YYYY, or null.\n- If missing/unclear/invalid, set detected_text to null.\n- Forbid placeholders and artifacts (N/A, ---, string, markdown fences, explanations).\n\nOCR extracted text:\n<ocr_text>",
+      "name": "date",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"month\":\"\", \"day\":\"\", \"year\":\"\" }\n```",
+      "w": 310,
+      "x": 54,
+      "y": 184
+    },
+    {
+      "h": 32,
+      "id": "r66d484627",
+      "llm_prompt_override": "You are a strict text normalizer for ROI 'school'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the school name text from OCR input.\n- Do not invent, infer, or explain.\n- If OCR text is empty/unreadable, return detected_text as null.\nTask:\n- Normalize school name text conservatively.",
+      "name": "school",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"school_name\":\"\" }\n```",
+      "w": 418,
+      "x": 63,
+      "y": 213
+    },
+    {
+      "h": 37,
+      "id": "rb82092764",
+      "llm_prompt_override": "You are a strict text normalizer for ROI 'teacher'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the teacher name text from OCR input.\n- Remove titles (Mr., Mrs., Ms., Dr.) when present.\n- Do not invent, infer, or explain.\n- If OCR text is empty/unreadable, return detected_text as null.\nTask:\n- Normalize teacher name text conservatively.",
+      "name": "teacher",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"teacher_name\":\"\" }\n```",
+      "w": 428,
+      "x": 462,
+      "y": 183
+    },
+    {
+      "h": 112,
+      "id": "ree4df4e8f",
+      "name": "1",
+      "w": 898,
+      "x": 53,
+      "y": 292
+    },
+    {
+      "h": 32,
+      "id": "rf84b1266f",
+      "name": "1a",
+      "w": 205,
+      "x": 101,
+      "y": 345
+    },
+    {
+      "h": 32,
+      "id": "r73fff7c16",
+      "name": "1b",
+      "w": 280,
+      "x": 677,
+      "y": 344
+    },
+    {
+      "h": 31,
+      "id": "r93b3267ae",
+      "name": "1c",
+      "w": 204,
+      "x": 101,
+      "y": 373
+    },
+    {
+      "h": 31,
+      "id": "r601a68acc",
+      "name": "1d",
+      "w": 193,
+      "x": 677,
+      "y": 372
+    },
+    {
+      "h": 90,
+      "id": "rf5ccc1b77",
+      "name": "2",
+      "w": 899,
+      "x": 53,
+      "y": 422
+    },
+    {
+      "h": 31,
+      "id": "r65abf694b",
+      "name": "2a",
+      "w": 252,
+      "x": 101,
+      "y": 451
+    },
+    {
+      "h": 31,
+      "id": "r38c5f86c2",
+      "name": "2b",
+      "w": 278,
+      "x": 677,
+      "y": 450
+    },
+    {
+      "h": 31,
+      "id": "r439c1ebcd",
+      "name": "2c",
+      "w": 204,
+      "x": 100,
+      "y": 477
+    },
+    {
+      "h": 35,
+      "id": "r4b3d2cd49",
+      "name": "2d",
+      "w": 105,
+      "x": 676,
+      "y": 475
+    },
+    {
+      "h": 111,
+      "id": "r8d051ac54",
+      "name": "3",
+      "w": 1093,
+      "x": 53,
+      "y": 529
+    },
+    {
+      "h": 55,
+      "id": "r6e918f1cb",
+      "name": "3a",
+      "w": 550,
+      "x": 101,
+      "y": 557
+    },
+    {
+      "h": 31,
+      "id": "r8200d0f6e",
+      "name": "3b",
+      "w": 469,
+      "x": 677,
+      "y": 556
+    },
+    {
+      "h": 31,
+      "id": "rba65fee34",
+      "name": "3c",
+      "w": 255,
+      "x": 100,
+      "y": 606
+    },
+    {
+      "h": 31,
+      "id": "rda0ce3603",
+      "name": "3d",
+      "w": 358,
+      "x": 678,
+      "y": 608
+    },
+    {
+      "h": 60,
+      "id": "r27ed14a56",
+      "name": "4",
+      "w": 1081,
+      "x": 53,
+      "y": 658
+    },
+    {
+      "h": 30,
+      "id": "r5cf6be253",
+      "name": "4a",
+      "w": 90,
+      "x": 100,
+      "y": 685
+    },
+    {
+      "h": 30,
+      "id": "r87fd6fcdc",
+      "name": "4b",
+      "w": 82,
+      "x": 388,
+      "y": 684
+    },
+    {
+      "h": 30,
+      "id": "r6dff9991d",
+      "name": "4c",
+      "w": 82,
+      "x": 676,
+      "y": 685
+    },
+    {
+      "h": 30,
+      "id": "r75d881ea9",
+      "name": "4d",
+      "w": 163,
+      "x": 967,
+      "y": 686
+    },
+    {
+      "h": 114,
+      "id": "rf25dc4b2e",
+      "name": "5",
+      "w": 1132,
+      "x": 54,
+      "y": 738
+    },
+    {
+      "h": 32,
+      "id": "r0b5264e78",
+      "name": "5a",
+      "w": 144,
+      "x": 99,
+      "y": 788
+    },
+    {
+      "h": 31,
+      "id": "r9c94e4a10",
+      "name": "5b",
+      "w": 217,
+      "x": 678,
+      "y": 788
+    },
+    {
+      "h": 31,
+      "id": "r66a701372",
+      "name": "5c",
+      "w": 346,
+      "x": 99,
+      "y": 816
+    },
+    {
+      "h": 34,
+      "id": "re78bb1128",
+      "name": "5d",
+      "w": 507,
+      "x": 678,
+      "y": 817
+    },
+    {
+      "h": 60,
+      "id": "r037bfce9b",
+      "name": "6",
+      "w": 1163,
+      "x": 54,
+      "y": 891
+    },
+    {
+      "h": 32,
+      "id": "r808ef2607",
+      "name": "6a",
+      "w": 178,
+      "x": 99,
+      "y": 917
+    },
+    {
+      "h": 33,
+      "id": "r574925120",
+      "name": "6b",
+      "w": 176,
+      "x": 387,
+      "y": 916
+    },
+    {
+      "h": 32,
+      "id": "rf0ed53a4e",
+      "name": "6c",
+      "w": 188,
+      "x": 677,
+      "y": 917
+    },
+    {
+      "h": 32,
+      "id": "rf7fe6170b",
+      "name": "6d",
+      "w": 220,
+      "x": 967,
+      "y": 919
+    },
+    {
+      "h": 41,
+      "id": "r44663f619",
+      "name": "7",
+      "w": 234,
+      "x": 53,
+      "y": 995
+    },
+    {
+      "h": 31,
+      "id": "r9b65d8daf",
+      "name": "7a",
+      "w": 79,
+      "x": 106,
+      "y": 1019
+    },
+    {
+      "h": 28,
+      "id": "rf4a311655",
+      "name": "7b",
+      "w": 83,
+      "x": 202,
+      "y": 1021
+    },
+    {
+      "h": 41,
+      "id": "rb401afca8",
+      "name": "8",
+      "w": 237,
+      "x": 53,
+      "y": 1044
+    },
+    {
+      "h": 29,
+      "id": "r9ff2c7648",
+      "name": "8a",
+      "w": 76,
+      "x": 108,
+      "y": 1069
+    },
+    {
+      "h": 29,
+      "id": "rc4805aa1f",
+      "name": "8b",
+      "w": 85,
+      "x": 201,
+      "y": 1068
+    },
+    {
+      "h": 40,
+      "id": "rdae20bf89",
+      "name": "9",
+      "w": 237,
+      "x": 54,
+      "y": 1095
+    },
+    {
+      "h": 29,
+      "id": "r3870e5d0a",
+      "name": "9a",
+      "w": 75,
+      "x": 109,
+      "y": 1118
+    },
+    {
+      "h": 29,
+      "id": "r915282192",
+      "name": "9b",
+      "w": 85,
+      "x": 201,
+      "y": 1116
+    },
+    {
+      "h": 42,
+      "id": "rbcee778d8",
+      "name": "10",
+      "w": 238,
+      "x": 54,
+      "y": 1142
+    },
+    {
+      "h": 29,
+      "id": "r594be78b3",
+      "name": "10a",
+      "w": 76,
+      "x": 108,
+      "y": 1167
+    },
+    {
+      "h": 29,
+      "id": "rebfe9ae53",
+      "name": "10b",
+      "w": 84,
+      "x": 201,
+      "y": 1167
+    },
+    {
+      "h": 40,
+      "id": "r2b8d1509f",
+      "name": "11",
+      "w": 238,
+      "x": 55,
+      "y": 1192
+    },
+    {
+      "h": 29,
+      "id": "r46b2ce620",
+      "name": "11a",
+      "w": 75,
+      "x": 108,
+      "y": 1215
+    },
+    {
+      "h": 29,
+      "id": "rddc51729d",
+      "name": "11b",
+      "w": 84,
+      "x": 201,
+      "y": 1214
+    },
+    {
+      "h": 41,
+      "id": "r8d507f411",
+      "name": "12",
+      "w": 239,
+      "x": 54,
+      "y": 1239
+    },
+    {
+      "h": 29,
+      "id": "r4f46fc9c0",
+      "name": "12a",
+      "w": 75,
+      "x": 108,
+      "y": 1264
+    },
+    {
+      "h": 29,
+      "id": "r0a013943c",
+      "name": "12b",
+      "w": 84,
+      "x": 201,
+      "y": 1264
+    },
+    {
+      "h": 36,
+      "id": "raa609cb80",
+      "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
+      "name": "13",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\" }\n```",
+      "w": 420,
+      "x": 109,
+      "y": 1498
+    },
+    {
+      "h": 34,
+      "id": "r77bece819",
+      "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
+      "name": "14",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\" }\n```",
+      "w": 620,
+      "x": 113,
+      "y": 1550
+    }
+  ]
+}

@@ -1,0 +1,431 @@
+{
+  "line_count": 53,
+  "min_score": 0.807505,
+  "mean_score": 0.962621,
+  "lines": [
+    {
+      "text": "10:61014A",
+      "score": 0.807505,
+      "x": 880,
+      "y": 118,
+      "w": 308,
+      "h": 48
+    },
+    {
+      "text": "Virginia Department of Health - Get Real Program 6th Grade Pre-Assessment",
+      "score": 0.964741,
+      "x": 83,
+      "y": 172,
+      "w": 948,
+      "h": 35
+    },
+    {
+      "text": "Thank you for being a part of the Get Real program.The following assessment is designed to test your",
+      "score": 0.966533,
+      "x": 83,
+      "y": 218,
+      "w": 1122,
+      "h": 33
+    },
+    {
+      "text": "knowledge of the material included in the program. Assessments are anonymous and will be kept private.",
+      "score": 0.971817,
+      "x": 85,
+      "y": 251,
+      "w": 1137,
+      "h": 30
+    },
+    {
+      "text": "This information will NOT be used for any discriminatory purpose. The Virginia Department of Health will",
+      "score": 0.966938,
+      "x": 83,
+      "y": 280,
+      "w": 1126,
+      "h": 32
+    },
+    {
+      "text": "use the results of this survey to guide future programming to support all youth in Virginia.",
+      "score": 0.965727,
+      "x": 84,
+      "y": 312,
+      "w": 958,
+      "h": 30
+    },
+    {
+      "text": "Name of School: CVossroadS Name of Teacher: DaVis",
+      "score": 0.929299,
+      "x": 422,
+      "y": 371,
+      "w": 713,
+      "h": 55
+    },
+    {
+      "text": "Today's Date: 1/7/25",
+      "score": 0.918406,
+      "x": 81,
+      "y": 379,
+      "w": 294,
+      "h": 37
+    },
+    {
+      "text": "Part A. Multiple Choice Questions: Please select the best answer for each question.",
+      "score": 0.978355,
+      "x": 83,
+      "y": 459,
+      "w": 967,
+      "h": 32
+    },
+    {
+      "text": "1.When Albert gets angry, his first instinct is to yell. Lately, he has started counting to 3 and taking a",
+      "score": 0.938953,
+      "x": 84,
+      "y": 502,
+      "w": 1087,
+      "h": 33
+    },
+    {
+      "text": "deep breath when he gets angry to prevent himself from yelling. What is Albert demonstrating?",
+      "score": 0.968301,
+      "x": 122,
+      "y": 532,
+      "w": 1020,
+      "h": 33
+    },
+    {
+      "text": "a. Relationship skills",
+      "score": 0.974333,
+      "x": 122,
+      "y": 564,
+      "w": 229,
+      "h": 25
+    },
+    {
+      "text": "b.The decision-making model",
+      "score": 0.962781,
+      "x": 547,
+      "y": 565,
+      "w": 331,
+      "h": 28
+    },
+    {
+      "text": "c.Self-management",
+      "score": 0.984501,
+      "x": 122,
+      "y": 593,
+      "w": 227,
+      "h": 30
+    },
+    {
+      "text": "d. Social awareness",
+      "score": 0.939434,
+      "x": 544,
+      "y": 596,
+      "w": 220,
+      "h": 26
+    },
+    {
+      "text": "2. When saying\"no,\"the most effective way to get your message across is to:",
+      "score": 0.948286,
+      "x": 81,
+      "y": 649,
+      "w": 847,
+      "h": 32
+    },
+    {
+      "text": "a.Use a soft tone of voice",
+      "score": 0.959783,
+      "x": 121,
+      "y": 681,
+      "w": 285,
+      "h": 25
+    },
+    {
+      "text": "b.Say\"no\"clearly and directly",
+      "score": 0.98014,
+      "x": 544,
+      "y": 682,
+      "w": 334,
+      "h": 29
+    },
+    {
+      "text": "c. Avoid eye contact",
+      "score": 0.964952,
+      "x": 122,
+      "y": 712,
+      "w": 223,
+      "h": 26
+    },
+    {
+      "text": "d. Giggle",
+      "score": 0.945351,
+      "x": 543,
+      "y": 710,
+      "w": 104,
+      "h": 34
+    },
+    {
+      "text": "3. In which situation is a person giving consent for sexual activity?",
+      "score": 0.966276,
+      "x": 82,
+      "y": 768,
+      "w": 724,
+      "h": 28
+    },
+    {
+      "text": "a. If they say\"yes\" enthusiastically and continue to give consent throughout the activity",
+      "score": 0.949463,
+      "x": 120,
+      "y": 798,
+      "w": 945,
+      "h": 32
+    },
+    {
+      "text": "b. If they are drunk or asleep and do not say anything",
+      "score": 0.97227,
+      "x": 122,
+      "y": 830,
+      "w": 572,
+      "h": 28
+    },
+    {
+      "text": "c. If they don't say anything",
+      "score": 0.958994,
+      "x": 121,
+      "y": 860,
+      "w": 299,
+      "h": 28
+    },
+    {
+      "text": "d. If they are pressured into saying\"yes\"",
+      "score": 0.943473,
+      "x": 121,
+      "y": 890,
+      "w": 437,
+      "h": 28
+    },
+    {
+      "text": "4. What percentage of high school students have sex?",
+      "score": 0.967253,
+      "x": 81,
+      "y": 945,
+      "w": 602,
+      "h": 29
+    },
+    {
+      "text": "a.100%",
+      "score": 0.999374,
+      "x": 121,
+      "y": 977,
+      "w": 93,
+      "h": 25
+    },
+    {
+      "text": "b.75%",
+      "score": 0.99918,
+      "x": 368,
+      "y": 976,
+      "w": 81,
+      "h": 28
+    },
+    {
+      "text": "c.50%",
+      "score": 0.991976,
+      "x": 589,
+      "y": 976,
+      "w": 82,
+      "h": 31
+    },
+    {
+      "text": "d.Less than 50%",
+      "score": 0.941804,
+      "x": 823,
+      "y": 979,
+      "w": 188,
+      "h": 27
+    },
+    {
+      "text": "5. Carlos wants to be an active listener when his brother shares his problems. When his brother starts",
+      "score": 0.968198,
+      "x": 80,
+      "y": 1031,
+      "w": 1116,
+      "h": 34
+    },
+    {
+      "text": "sharing his problems,Carlos should:",
+      "score": 0.970906,
+      "x": 120,
+      "y": 1063,
+      "w": 403,
+      "h": 28
+    },
+    {
+      "text": "a Stoptalking",
+      "score": 0.977632,
+      "x": 118,
+      "y": 1092,
+      "w": 164,
+      "h": 31
+    },
+    {
+      "text": "b. Leave his earbuds in",
+      "score": 0.971932,
+      "x": 414,
+      "y": 1093,
+      "w": 252,
+      "h": 30
+    },
+    {
+      "text": "c. Tell his brother he is being stupid",
+      "score": 0.946063,
+      "x": 805,
+      "y": 1096,
+      "w": 381,
+      "h": 31
+    },
+    {
+      "text": "d. Interrupt his brother to explain what he would do in the situation",
+      "score": 0.966058,
+      "x": 119,
+      "y": 1125,
+      "w": 723,
+      "h": 29
+    },
+    {
+      "text": "6. Talia likes to hug people, but her cousin hates to be hugged by anyone. Talia and her cousin have a",
+      "score": 0.960525,
+      "x": 80,
+      "y": 1180,
+      "w": 1098,
+      "h": 34
+    },
+    {
+      "text": "difference of:",
+      "score": 0.995317,
+      "x": 121,
+      "y": 1213,
+      "w": 149,
+      "h": 23
+    },
+    {
+      "text": "a. Gender identity",
+      "score": 0.968283,
+      "x": 119,
+      "y": 1240,
+      "w": 201,
+      "h": 32
+    },
+    {
+      "text": "b. Personal space",
+      "score": 0.969902,
+      "x": 392,
+      "y": 1243,
+      "w": 196,
+      "h": 27
+    },
+    {
+      "text": "c. Values about sex",
+      "score": 0.972789,
+      "x": 646,
+      "y": 1244,
+      "w": 214,
+      "h": 26
+    },
+    {
+      "text": "d. Puberty development",
+      "score": 0.969622,
+      "x": 905,
+      "y": 1244,
+      "w": 262,
+      "h": 30
+    },
+    {
+      "text": "Part B. True or False Questions: Please select either true or false for the following questions.",
+      "score": 0.956085,
+      "x": 81,
+      "y": 1296,
+      "w": 1057,
+      "h": 34
+    },
+    {
+      "text": "7. Every person who has a vagina also has a hymen.",
+      "score": 0.949479,
+      "x": 79,
+      "y": 1341,
+      "w": 576,
+      "h": 30
+    },
+    {
+      "text": "a.True",
+      "score": 0.99855,
+      "x": 116,
+      "y": 1370,
+      "w": 83,
+      "h": 31
+    },
+    {
+      "text": "b.False",
+      "score": 0.998244,
+      "x": 345,
+      "y": 1370,
+      "w": 93,
+      "h": 31
+    },
+    {
+      "text": "8.When a person begins menstruating, that means they're ready to have sex.",
+      "score": 0.974698,
+      "x": 78,
+      "y": 1427,
+      "w": 849,
+      "h": 32
+    },
+    {
+      "text": "a.True",
+      "score": 0.998714,
+      "x": 115,
+      "y": 1457,
+      "w": 84,
+      "h": 31
+    },
+    {
+      "text": "b.False",
+      "score": 0.997692,
+      "x": 344,
+      "y": 1458,
+      "w": 93,
+      "h": 30
+    },
+    {
+      "text": "9.Someone who has had sex before can never be abstinent.",
+      "score": 0.976062,
+      "x": 79,
+      "y": 1515,
+      "w": 664,
+      "h": 27
+    },
+    {
+      "text": "a.True",
+      "score": 0.998272,
+      "x": 115,
+      "y": 1542,
+      "w": 82,
+      "h": 32
+    },
+    {
+      "text": "b. False",
+      "score": 0.942464,
+      "x": 345,
+      "y": 1546,
+      "w": 91,
+      "h": 28
+    },
+    {
+      "text": "Page 1 of 2",
+      "score": 0.865229,
+      "x": 1130,
+      "y": 1619,
+      "w": 93,
+      "h": 24
+    }
+  ]
+}

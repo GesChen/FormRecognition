@@ -1,0 +1,688 @@
+{
+  "image_path": "/home/ges/Documents/evms_3/data/templates/2026/7post_a.png",
+  "image_name": "7post_a.png",
+  "image_width": 1275,
+  "image_height": 1650,
+  "rois": [
+    {
+      "h": 31,
+      "id": "r5ff6947ee",
+      "llm_prompt_override": "You are a strict JSON mapper.\nYou are NOT reading an image. You only receive OCR-extracted text.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string\"}\nTask:\nMap the OCR JSON field \"id\" into pipeline field \"detected_text\".\nRules:\n1. If OCR text contains JSON and key \"id\" exists with a non-empty value, output {\"detected_text\":\"<id value exactly as-is>\"}\n2. Otherwise, if a single id-like value is present, output it exactly as seen.\n3. If missing, null, empty, or unclear, output {\"detected_text\":null}\n4. Do not normalize, correct, trim, or transform the id value.",
+      "name": "id",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"id\":\"\" }\n```",
+      "w": 235,
+      "x": 42,
+      "y": 12
+    },
+    {
+      "h": 30,
+      "id": "ra708a04c3",
+      "llm_prompt_override": "You are a strict text normalizer for one OCR ROI field named \"date\".\nYou are NOT reading an image. You only receive OCR-extracted text.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\"detected_text\":\"string or null\"}\nTarget output format:\nMM/DD/YYYY\nRules:\n- Preserve meaning from OCR text; do not invent unseen digits.\n- If OCR contains structured JSON, parse it first.\n- If year is 2 digits, interpret as 20YY.\n- Zero-pad month and day to 2 digits.\n- Output only a valid calendar date in MM/DD/YYYY, or null.\n- If missing, unclear, or invalid, set detected_text to null.",
+      "name": "date",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"month\":\"\", \"day\":\"\", \"year\":\"\" }\n```",
+      "w": 343,
+      "x": 49,
+      "y": 145
+    },
+    {
+      "h": 31,
+      "id": "r28b39dd73",
+      "llm_prompt_override": "You are a strict text normalizer for ROI 'teacher'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\"detected_text\":\"string\"}\nRules:\n- Keep only the teacher name text from OCR input.\n- Remove labels and titles when present.\n- Do not invent, infer, or explain.\n- If OCR text is empty or unreadable, return detected_text as null.\nTask:\n- Normalize teacher name text conservatively.",
+      "name": "teacher",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"teacher_name\":\"\" }\n```",
+      "w": 359,
+      "x": 412,
+      "y": 144
+    },
+    {
+      "h": 30,
+      "id": "r89242ef80",
+      "llm_prompt_override": "You are a strict text normalizer for ROI 'school'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\"detected_text\":\"string\"}\nRules:\n- Keep only the school name text from OCR input.\n- Remove labels when present.\n- Do not invent, infer, or explain.\n- If OCR text is empty or unreadable, return detected_text as null.\nTask:\n- Normalize school name text conservatively.",
+      "name": "school",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"school_name\":\"\" }\n```",
+      "w": 387,
+      "x": 48,
+      "y": 166
+    },
+    {
+      "h": 29,
+      "id": "r97000d1b9",
+      "name": "1",
+      "w": 1065,
+      "x": 90,
+      "y": 263
+    },
+    {
+      "h": 29,
+      "id": "r4b342d7cd",
+      "name": "1a",
+      "w": 156,
+      "x": 91,
+      "y": 263
+    },
+    {
+      "h": 29,
+      "id": "rb833c0e9f",
+      "name": "1b",
+      "w": 178,
+      "x": 384,
+      "y": 263
+    },
+    {
+      "h": 29,
+      "id": "rf0a84ca1f",
+      "name": "1c",
+      "w": 168,
+      "x": 678,
+      "y": 263
+    },
+    {
+      "h": 29,
+      "id": "rd99acb340",
+      "name": "1d",
+      "w": 176,
+      "x": 972,
+      "y": 263
+    },
+    {
+      "h": 31,
+      "id": "rd02face7b",
+      "name": "2",
+      "w": 1025,
+      "x": 90,
+      "y": 357
+    },
+    {
+      "h": 31,
+      "id": "r1dd087b3a",
+      "name": "2a",
+      "w": 104,
+      "x": 91,
+      "y": 357
+    },
+    {
+      "h": 31,
+      "id": "rb4eadafe2",
+      "name": "2b",
+      "w": 82,
+      "x": 380,
+      "y": 357
+    },
+    {
+      "h": 31,
+      "id": "r530416ce1",
+      "name": "2c",
+      "w": 103,
+      "x": 679,
+      "y": 357
+    },
+    {
+      "h": 31,
+      "id": "r068d3cb7e",
+      "name": "2d",
+      "w": 139,
+      "x": 972,
+      "y": 357
+    },
+    {
+      "h": 53,
+      "id": "ra671d4a5a",
+      "name": "3",
+      "w": 706,
+      "x": 90,
+      "y": 429
+    },
+    {
+      "h": 27,
+      "id": "r93884b47c",
+      "name": "3a",
+      "w": 167,
+      "x": 92,
+      "y": 429
+    },
+    {
+      "h": 27,
+      "id": "r32bd2859a",
+      "name": "3b",
+      "w": 76,
+      "x": 676,
+      "y": 429
+    },
+    {
+      "h": 27,
+      "id": "r0f87b51a2",
+      "name": "3c",
+      "w": 228,
+      "x": 92,
+      "y": 454
+    },
+    {
+      "h": 28,
+      "id": "rfc4cba777",
+      "name": "3d",
+      "w": 116,
+      "x": 678,
+      "y": 452
+    },
+    {
+      "h": 31,
+      "id": "reee6f4c09",
+      "name": "4",
+      "w": 1068,
+      "x": 90,
+      "y": 522
+    },
+    {
+      "h": 31,
+      "id": "r8442ca1ee",
+      "name": "4a",
+      "w": 142,
+      "x": 91,
+      "y": 522
+    },
+    {
+      "h": 31,
+      "id": "rf16cdec43",
+      "name": "4b",
+      "w": 166,
+      "x": 383,
+      "y": 521
+    },
+    {
+      "h": 31,
+      "id": "rd08a98c34",
+      "name": "4c",
+      "w": 165,
+      "x": 677,
+      "y": 521
+    },
+    {
+      "h": 29,
+      "id": "rc4633b8a4",
+      "name": "4d",
+      "w": 186,
+      "x": 972,
+      "y": 524
+    },
+    {
+      "h": 31,
+      "id": "r9ec038383",
+      "name": "5",
+      "w": 1034,
+      "x": 88,
+      "y": 593
+    },
+    {
+      "h": 31,
+      "id": "r885ffc196",
+      "name": "5a",
+      "w": 88,
+      "x": 88,
+      "y": 593
+    },
+    {
+      "h": 29,
+      "id": "rc6f3f0202",
+      "name": "5b",
+      "w": 79,
+      "x": 383,
+      "y": 594
+    },
+    {
+      "h": 29,
+      "id": "r0629ea09b",
+      "name": "5c",
+      "w": 77,
+      "x": 677,
+      "y": 594
+    },
+    {
+      "h": 29,
+      "id": "r71cecf560",
+      "name": "5d",
+      "w": 148,
+      "x": 973,
+      "y": 594
+    },
+    {
+      "h": 29,
+      "id": "r6dab6bb57",
+      "name": "6",
+      "w": 969,
+      "x": 91,
+      "y": 664
+    },
+    {
+      "h": 29,
+      "id": "r84d16973f",
+      "name": "6a",
+      "w": 163,
+      "x": 92,
+      "y": 664
+    },
+    {
+      "h": 29,
+      "id": "r12dd94f9c",
+      "name": "6b",
+      "w": 120,
+      "x": 383,
+      "y": 664
+    },
+    {
+      "h": 29,
+      "id": "r25e36623d",
+      "name": "6c",
+      "w": 199,
+      "x": 678,
+      "y": 664
+    },
+    {
+      "h": 29,
+      "id": "r4be06f6ec",
+      "name": "6d",
+      "w": 89,
+      "x": 971,
+      "y": 663
+    },
+    {
+      "h": 55,
+      "id": "r8c1bd5b8e",
+      "name": "7",
+      "w": 723,
+      "x": 90,
+      "y": 736
+    },
+    {
+      "h": 30,
+      "id": "r4054b7cb5",
+      "name": "7a",
+      "w": 348,
+      "x": 91,
+      "y": 736
+    },
+    {
+      "h": 31,
+      "id": "rce9e773a4",
+      "name": "7b",
+      "w": 136,
+      "x": 676,
+      "y": 735
+    },
+    {
+      "h": 31,
+      "id": "rcb960bcf7",
+      "name": "7c",
+      "w": 177,
+      "x": 91,
+      "y": 759
+    },
+    {
+      "h": 31,
+      "id": "r9963f7c44",
+      "name": "7d",
+      "w": 129,
+      "x": 677,
+      "y": 758
+    },
+    {
+      "h": 30,
+      "id": "r62e289270",
+      "name": "8",
+      "w": 1093,
+      "x": 90,
+      "y": 832
+    },
+    {
+      "h": 28,
+      "id": "r1294733fb",
+      "name": "8a",
+      "w": 107,
+      "x": 91,
+      "y": 832
+    },
+    {
+      "h": 30,
+      "id": "rfd907b124",
+      "name": "8b",
+      "w": 81,
+      "x": 383,
+      "y": 831
+    },
+    {
+      "h": 30,
+      "id": "raa74ffe4a",
+      "name": "8c",
+      "w": 191,
+      "x": 677,
+      "y": 831
+    },
+    {
+      "h": 31,
+      "id": "r3c1c9d19d",
+      "name": "8d",
+      "w": 211,
+      "x": 972,
+      "y": 831
+    },
+    {
+      "h": 54,
+      "id": "rd770b1460",
+      "name": "9",
+      "w": 1127,
+      "x": 90,
+      "y": 903
+    },
+    {
+      "h": 25,
+      "id": "r902635f8a",
+      "name": "9a",
+      "w": 351,
+      "x": 92,
+      "y": 904
+    },
+    {
+      "h": 27,
+      "id": "r9411889fe",
+      "name": "9b",
+      "w": 534,
+      "x": 678,
+      "y": 903
+    },
+    {
+      "h": 24,
+      "id": "rd6d51d18d",
+      "name": "9c",
+      "w": 387,
+      "x": 93,
+      "y": 928
+    },
+    {
+      "h": 29,
+      "id": "rffc099cdf",
+      "name": "9d",
+      "w": 361,
+      "x": 678,
+      "y": 926
+    },
+    {
+      "h": 57,
+      "id": "r9231364ca",
+      "name": "10",
+      "w": 692,
+      "x": 89,
+      "y": 999
+    },
+    {
+      "h": 29,
+      "id": "r546412abe",
+      "name": "10a",
+      "w": 342,
+      "x": 91,
+      "y": 998
+    },
+    {
+      "h": 29,
+      "id": "reb7e99f70",
+      "name": "10b",
+      "w": 105,
+      "x": 677,
+      "y": 997
+    },
+    {
+      "h": 31,
+      "id": "r11b617e4b",
+      "name": "10c",
+      "w": 144,
+      "x": 91,
+      "y": 1021
+    },
+    {
+      "h": 34,
+      "id": "r3b56557f8",
+      "name": "10d",
+      "w": 100,
+      "x": 677,
+      "y": 1019
+    },
+    {
+      "h": 27,
+      "id": "rb6f3c73f1",
+      "name": "11",
+      "w": 154,
+      "x": 98,
+      "y": 1115
+    },
+    {
+      "h": 27,
+      "id": "re9da59364",
+      "name": "11a",
+      "w": 68,
+      "x": 99,
+      "y": 1115
+    },
+    {
+      "h": 27,
+      "id": "rb417dd17f",
+      "name": "11b",
+      "w": 75,
+      "x": 180,
+      "y": 1115
+    },
+    {
+      "h": 28,
+      "id": "r8e6f49d5f",
+      "name": "12",
+      "w": 154,
+      "x": 98,
+      "y": 1158
+    },
+    {
+      "h": 27,
+      "id": "r85578ecd4",
+      "name": "12a",
+      "w": 68,
+      "x": 99,
+      "y": 1158
+    },
+    {
+      "h": 28,
+      "id": "re13b7d65e",
+      "name": "12b",
+      "w": 75,
+      "x": 181,
+      "y": 1158
+    },
+    {
+      "h": 28,
+      "id": "rb07d590db",
+      "name": "13",
+      "w": 154,
+      "x": 98,
+      "y": 1200
+    },
+    {
+      "h": 27,
+      "id": "r64b91b54c",
+      "name": "13a",
+      "w": 68,
+      "x": 99,
+      "y": 1200
+    },
+    {
+      "h": 27,
+      "id": "r050b60de5",
+      "name": "13b",
+      "w": 75,
+      "x": 181,
+      "y": 1201
+    },
+    {
+      "h": 28,
+      "id": "r97b63b950",
+      "name": "14",
+      "w": 154,
+      "x": 98,
+      "y": 1243
+    },
+    {
+      "h": 28,
+      "id": "rd7fb977c1",
+      "name": "14a",
+      "w": 69,
+      "x": 99,
+      "y": 1243
+    },
+    {
+      "h": 28,
+      "id": "rb3af10ee1",
+      "name": "14b",
+      "w": 75,
+      "x": 181,
+      "y": 1243
+    },
+    {
+      "h": 29,
+      "id": "reeaefc974",
+      "name": "15",
+      "w": 155,
+      "x": 98,
+      "y": 1286
+    },
+    {
+      "h": 28,
+      "id": "rfcfc4d387",
+      "name": "15a",
+      "w": 69,
+      "x": 99,
+      "y": 1286
+    },
+    {
+      "h": 30,
+      "id": "rf9918ca94",
+      "name": "15b",
+      "w": 77,
+      "x": 180,
+      "y": 1285
+    },
+    {
+      "h": 28,
+      "id": "rc2aa702b6",
+      "name": "16",
+      "w": 154,
+      "x": 98,
+      "y": 1330
+    },
+    {
+      "h": 28,
+      "id": "re947b0639",
+      "name": "16a",
+      "w": 69,
+      "x": 99,
+      "y": 1330
+    },
+    {
+      "h": 28,
+      "id": "rddeb2dfc3",
+      "name": "16b",
+      "w": 74,
+      "x": 181,
+      "y": 1330
+    },
+    {
+      "h": 28,
+      "id": "r45d8fe2d4",
+      "name": "17",
+      "w": 154,
+      "x": 98,
+      "y": 1371
+    },
+    {
+      "h": 28,
+      "id": "r3d3a0908f",
+      "name": "17a",
+      "w": 69,
+      "x": 99,
+      "y": 1371
+    },
+    {
+      "h": 28,
+      "id": "raecce2677",
+      "name": "17b",
+      "w": 75,
+      "x": 181,
+      "y": 1371
+    },
+    {
+      "h": 28,
+      "id": "r285b68b15",
+      "name": "18",
+      "w": 154,
+      "x": 98,
+      "y": 1414
+    },
+    {
+      "h": 28,
+      "id": "r6ecb5822e",
+      "name": "18a",
+      "w": 69,
+      "x": 99,
+      "y": 1414
+    },
+    {
+      "h": 28,
+      "id": "r55611ddbc",
+      "name": "18b",
+      "w": 75,
+      "x": 181,
+      "y": 1415
+    },
+    {
+      "h": 27,
+      "id": "r5839a6fc0",
+      "name": "19",
+      "w": 154,
+      "x": 98,
+      "y": 1458
+    },
+    {
+      "h": 27,
+      "id": "rcc96c7eba",
+      "name": "19a",
+      "w": 70,
+      "x": 99,
+      "y": 1458
+    },
+    {
+      "h": 27,
+      "id": "r3ca246b14",
+      "name": "19b",
+      "w": 76,
+      "x": 180,
+      "y": 1458
+    },
+    {
+      "h": 27,
+      "id": "r182e0566c",
+      "name": "20",
+      "w": 154,
+      "x": 98,
+      "y": 1499
+    },
+    {
+      "h": 27,
+      "id": "rb4d90cb62",
+      "name": "20a",
+      "w": 69,
+      "x": 99,
+      "y": 1499
+    },
+    {
+      "h": 27,
+      "id": "ra8bf242bd",
+      "name": "20b",
+      "w": 75,
+      "x": 180,
+      "y": 1498
+    }
+  ]
+}

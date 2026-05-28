@@ -24,8 +24,30 @@ except Exception:
         "roi_schemas_root": ROOT / "data" / "roi_schemas",
     }
 
-TEMPLATES_ROOT = Path(PATHS.get("templates_root", ROOT / "data" / "templates")).resolve()
-SCHEMA_DIR = Path(PATHS.get("roi_schemas_root", ROOT / "data" / "roi_schemas")).resolve()
+def _resolve_collection_root(path_value: Path | str, expected_leaf: str) -> Path:
+    """
+    Resolve a collection root that may be release-scoped.
+    Example:
+      - .../data/templates/2025 -> .../data/templates
+      - .../data/roi_schemas/2025 -> .../data/roi_schemas
+    """
+    p = Path(path_value).resolve()
+    if p.name == expected_leaf:
+        return p
+    if p.parent.name == expected_leaf:
+        return p.parent
+    return p
+
+
+_data_root = Path(PATHS.get("data", ROOT / "data")).resolve()
+TEMPLATES_ROOT = _resolve_collection_root(
+    PATHS.get("templates_root", _data_root / "templates"),
+    "templates",
+)
+SCHEMA_DIR = _resolve_collection_root(
+    PATHS.get("roi_schemas_root", _data_root / "roi_schemas"),
+    "roi_schemas",
+)
 
 # Default browse root inside the project (relative to PROJECT_ROOT).
 try:

@@ -50,6 +50,16 @@
       flex: 0 0 auto;
       white-space: nowrap;
     }
+    .toolbar .schema-nav {
+      width: auto;
+      min-width: 34px;
+      padding: 5px 9px;
+      flex: 0 0 auto;
+    }
+    .toolbar .schema-nav:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
     .modal-overlay {
       display: none;
       position: fixed;
@@ -60,6 +70,55 @@
       justify-content: center;
     }
     .modal-overlay.open { display: flex; }
+    .batch-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 1300;
+      background: rgba(0, 0, 0, 0.45);
+      align-items: center;
+      justify-content: center;
+    }
+    .batch-overlay.open { display: flex; }
+    .batch-card {
+      width: min(520px, 92vw);
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-modal);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .batch-title {
+      font-weight: 700;
+      font-size: 0.95rem;
+    }
+    .batch-sub {
+      color: var(--muted);
+      font-size: 0.82rem;
+      word-break: break-all;
+    }
+    .batch-bar {
+      width: 100%;
+      height: 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      overflow: hidden;
+    }
+    .batch-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--accent);
+      transition: width 120ms linear;
+    }
+    .batch-actions {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 4px;
+    }
     .modal {
       background: var(--panel-bg);
       border: 1px solid var(--border);
@@ -298,6 +357,42 @@
       border: 1px solid var(--border);
     }
     .btn.subtle:hover { background: var(--secondary-btn-hover); }
+    .split-btn {
+      grid-column: 1 / -1;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 0;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: var(--secondary-btn);
+    }
+    .split-btn .btn {
+      margin: 0;
+      border: none;
+      border-radius: 0;
+    }
+    .split-btn .btn.main {
+      border-right: 1px solid var(--border);
+    }
+    .split-btn .btn.side {
+      width: auto;
+      min-width: 76px;
+      white-space: nowrap;
+      padding-left: 10px;
+      padding-right: 10px;
+    }
+    .split-btn.disabled {
+      opacity: 0.55;
+    }
+    .btn.compact {
+      width: auto;
+      padding: 5px 8px;
+      font-size: 0.72rem;
+      line-height: 1.1;
+      white-space: nowrap;
+      overflow-wrap: normal;
+    }
     .field-group {
       margin-top: 0;
       display: flex;
@@ -422,6 +517,27 @@
       font-size: 0.8rem;
       color: var(--muted);
     }
+    .mcq-status {
+      display: none;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--accent-muted-bg);
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+    .mcq-status.active {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .mcq-status.done {
+      display: inline-flex;
+      color: var(--success);
+      background: var(--surface-hover);
+    }
     .stream-status {
       margin-top: 4px;
       font-size: 0.78rem;
@@ -445,8 +561,10 @@
   <div class="toolbar">
     <button type="button" class="btn btn-select" id="btn-select-image">Select image…</button>
     <span class="status" id="status">No image</span>
-    <span class="status" id="roi-summary">ROIs: 0</span>
-    <span class="status" id="schema-status">Schema: (none)</span>
+    <span class="status" id="schema-status">Form: (none)</span>
+    <button type="button" class="btn subtle compact schema-nav" id="btn-prev-template" title="Previous template" aria-label="Previous template" disabled>&larr;</button>
+    <button type="button" class="btn subtle compact schema-nav" id="btn-next-template" title="Next template" aria-label="Next template" disabled>&rarr;</button>
+    <span class="mcq-status" id="mcq-status" aria-live="polite"></span>
     <details class="section-collapsible">
       <summary>Editor help & shortcuts</summary>
       <div class="section-inner">
@@ -597,6 +715,7 @@
       <div class="roi-list-shell">
         <div class="panel-head">
           <h2>ROIs</h2>
+          <button type="button" class="btn danger compact" id="btn-reset-view">Reset ROIs</button>
         </div>
         <ul id="roi-list"></ul>
       </div>
@@ -606,7 +725,10 @@
           <button type="button" class="btn" id="btn-new">New ROI</button>
           <button type="button" class="btn" id="btn-mcq">Add MCQ item</button>
           <button type="button" class="btn subtle span-2" id="btn-import">Import ROIs…</button>
-          <button type="button" class="btn subtle span-2" id="btn-auto-detect" disabled>Auto-Detect ROIs</button>
+          <div class="split-btn" id="auto-detect-split">
+            <button type="button" class="btn subtle main" id="btn-auto-detect" disabled>Auto-Detect ROIs</button>
+            <button type="button" class="btn subtle side" id="btn-batch-auto-detect">Batch</button>
+          </div>
           <button type="button" class="btn subtle" id="btn-rename">Rename (E)</button>
           <button type="button" class="btn subtle" id="btn-duplicate">Duplicate (D)</button>
           <button type="button" class="btn danger" id="btn-delete">Delete (Del)</button>
@@ -649,6 +771,36 @@
           <input type="text" id="roi-ocr-output-regex" placeholder="Example: ^[0-9]{7}[AB]$" />
           <div class="field-hint">Optional. Saved as <code>ocr_output_regex</code> and used for end-of-ROI retry flow.</div>
         </div>
+      </div>
+    </div>
+  </div>
+  <div class="modal-overlay" id="batch-modal" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3>Batch Side Auto-Detect</h3>
+          <div class="modal-breadcrumb" id="batch-breadcrumb">data/templates</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn subtle" id="batch-up">Up</button>
+          <button type="button" class="btn" id="batch-close">Close</button>
+        </div>
+      </div>
+      <div class="modal-body" id="batch-body"></div>
+      <div class="modal-footer">
+        <button type="button" class="btn subtle" id="batch-select-all">Select all</button>
+        <button type="button" class="btn subtle" id="batch-select-none">Select none</button>
+        <button type="button" class="btn save" id="batch-run">Run Batch</button>
+      </div>
+    </div>
+  </div>
+  <div class="batch-overlay" id="batch-run-overlay" aria-hidden="true">
+    <div class="batch-card">
+      <div class="batch-title" id="batch-run-title">Running Batch Auto-Detect...</div>
+      <div class="batch-sub" id="batch-run-sub">Preparing...</div>
+      <div class="batch-bar"><div class="batch-bar-fill" id="batch-run-fill"></div></div>
+      <div class="batch-actions">
+        <button type="button" class="btn danger compact" id="batch-cancel">Cancel</button>
       </div>
     </div>
   </div>
@@ -698,9 +850,14 @@
   const btnOpenOcrPromptCreator = document.getElementById("btn-open-ocr-prompt-creator");
   const btnGenerateOcrRoiPrompt = document.getElementById("btn-generate-ocr-roi-prompt");
   const btnAutoDetect = document.getElementById("btn-auto-detect");
+  const btnBatchAutoDetect = document.getElementById("btn-batch-auto-detect");
+  const autoDetectSplit = document.getElementById("auto-detect-split");
+  const btnResetView = document.getElementById("btn-reset-view");
   const statusEl = document.getElementById("status");
-  const roiSummaryEl = document.getElementById("roi-summary");
   const schemaStatusEl = document.getElementById("schema-status");
+  const btnPrevTemplate = document.getElementById("btn-prev-template");
+  const btnNextTemplate = document.getElementById("btn-next-template");
+  const mcqStatusEl = document.getElementById("mcq-status");
 
   let imagePath = "";
   let currentSchemaPath = "";
@@ -742,6 +899,7 @@
   let lastMouseImageX = 0;
   let lastMouseImageY = 0;
   let mcqSequence = null; // { names: string[], index: number } for sequential MCQ ROI creation
+  let mcqStatusDoneTimer = null;
   const TAB_ID = "roi_editor_" + Math.random().toString(36).slice(2, 10);
   const SINGLETON_KEY = "roi_editor.singleton.lock";
   const SINGLETON_HEARTBEAT_MS = 2000;
@@ -1082,23 +1240,91 @@
   function setStatus(msg) {
     statusEl.textContent = msg;
     updateSchemaStatus();
-    if (roiSummaryEl) {
-      const count = rois.length;
-      roiSummaryEl.textContent = imagePath ? `ROIs: ${count}` : "ROIs: 0";
+  }
+
+  function formLabelFromPath(path) {
+    const parts = String(path || "").split("/").filter(Boolean);
+    const file = parts.length ? parts[parts.length - 1] : "";
+    const stem = file.replace(/\.[^.]+$/, "");
+    const parent = parts.length >= 2 ? parts[parts.length - 2] : "";
+    if (parent && stem) return `${parent}/${stem}`;
+    return stem || path || "(unknown)";
+  }
+
+  function clearMcqStatus() {
+    if (mcqStatusDoneTimer) {
+      clearTimeout(mcqStatusDoneTimer);
+      mcqStatusDoneTimer = null;
+    }
+    if (!mcqStatusEl) return;
+    mcqStatusEl.className = "mcq-status";
+    mcqStatusEl.textContent = "";
+  }
+
+  function updateMcqStatus(message, state = "active") {
+    if (mcqStatusDoneTimer) {
+      clearTimeout(mcqStatusDoneTimer);
+      mcqStatusDoneTimer = null;
+    }
+    if (!mcqStatusEl) return;
+    mcqStatusEl.className = "mcq-status " + state;
+    mcqStatusEl.textContent = message;
+    if (state === "done") {
+      mcqStatusDoneTimer = setTimeout(clearMcqStatus, 2500);
+    }
+  }
+
+  function setMcqStepStatus() {
+    if (!mcqSequence) {
+      clearMcqStatus();
+      return;
+    }
+    const total = mcqSequence.names.length;
+    const current = mcqSequence.index + 1;
+    const name = mcqSequence.names[mcqSequence.index];
+    const label = mcqSequence.index === 0 ? "main ROI" : `choice ${name}`;
+    updateMcqStatus(`MCQ ${current}/${total}: draw ${label}`);
+    setStatus(`Draw ${label}: ${name}`);
+  }
+
+  function startAutoDetectSpinner(message) {
+    stopAutoDetectSpinner();
+    const base = String(message || "Auto-detecting ROIs with PaddleOCR + OpenAI");
+    autoDetectSpinnerFrame = 0;
+    setStatus(`${AUTO_DETECT_SPINNER_FRAMES[autoDetectSpinnerFrame]} ${base}`);
+    autoDetectSpinnerTimer = setInterval(() => {
+      autoDetectSpinnerFrame = (autoDetectSpinnerFrame + 1) % AUTO_DETECT_SPINNER_FRAMES.length;
+      setStatus(`${AUTO_DETECT_SPINNER_FRAMES[autoDetectSpinnerFrame]} ${base}`);
+    }, 140);
+  }
+
+  function stopAutoDetectSpinner() {
+    if (!autoDetectSpinnerTimer) return;
+    clearInterval(autoDetectSpinnerTimer);
+    autoDetectSpinnerTimer = null;
+  }
+
+  async function loadAutoDetectMode() {
+    try {
+      const r = await fetch("/api/roi-auto-detect-mode");
+      const data = await r.json();
+      if (!r.ok || !data || !data.ok) return;
+      const label = String(data.label || "").trim();
+      if (label) autoDetectProviderLabel = label;
+    } catch (e) {
     }
   }
 
   function updateSchemaStatus() {
     if (!schemaStatusEl) return;
+    if (btnPrevTemplate) btnPrevTemplate.disabled = !imagePath;
+    if (btnNextTemplate) btnNextTemplate.disabled = !imagePath;
     if (!imagePath) {
-      schemaStatusEl.textContent = "Schema: (none)";
+      schemaStatusEl.textContent = "Form: (none)";
       return;
     }
-    if (currentSchemaPath) {
-      schemaStatusEl.textContent = `Schema: ${currentSchemaPath}`;
-      return;
-    }
-    schemaStatusEl.textContent = "Schema: (unknown)";
+    const count = rois.length;
+    schemaStatusEl.textContent = `${formLabelFromPath(imagePath)} · ${count} ROI${count === 1 ? "" : "s"}`;
   }
 
   function snapshotState() {
@@ -1209,11 +1435,32 @@
   const importSelectNoneBtn = document.getElementById("import-select-none");
   const importConfirmBtn = document.getElementById("import-confirm");
   const importCloseBtn = document.getElementById("import-close");
+  const batchModal = document.getElementById("batch-modal");
+  const batchBody = document.getElementById("batch-body");
+  const batchBreadcrumb = document.getElementById("batch-breadcrumb");
+  const batchUpBtn = document.getElementById("batch-up");
+  const batchCloseBtn = document.getElementById("batch-close");
+  const batchSelectAllBtn = document.getElementById("batch-select-all");
+  const batchSelectNoneBtn = document.getElementById("batch-select-none");
+  const batchRunBtn = document.getElementById("batch-run");
+  const batchRunOverlay = document.getElementById("batch-run-overlay");
+  const batchRunSub = document.getElementById("batch-run-sub");
+  const batchRunFill = document.getElementById("batch-run-fill");
+  const batchCancelBtn = document.getElementById("batch-cancel");
   let TEMPLATES_ROOT = "data/templates";
+  let autoDetectSpinnerTimer = null;
+  let autoDetectSpinnerFrame = 0;
+  const AUTO_DETECT_SPINNER_FRAMES = ["|", "/", "-", "\\"];
   let browseMode = "load"; // "load" | "import"
   let browseDir = TEMPLATES_ROOT;
   let currentImportSource = null;
   let currentImportRois = null;
+  let isAutoDetectRunning = false;
+  let isBatchRunning = false;
+  let batchCancelRequested = false;
+  let autoDetectProviderLabel = "OpenAI";
+  let batchBrowseDir = TEMPLATES_ROOT;
+  const batchSelected = new Set();
   function isUnderTemplates(path) {
     const p = String(path || "").trim().replace(/\/+$/, "");
     return p === TEMPLATES_ROOT || p.startsWith(TEMPLATES_ROOT + "/");
@@ -1229,6 +1476,125 @@
   function closeBrowseModal() {
     browseModal.classList.remove("open");
     browseModal.setAttribute("aria-hidden", "true");
+  }
+
+  function openBatchModal() {
+    batchBrowseDir = TEMPLATES_ROOT;
+    batchModal.classList.add("open");
+    batchModal.setAttribute("aria-hidden", "false");
+    refreshBatchBrowse();
+  }
+
+  function closeBatchModal() {
+    if (isBatchRunning) return;
+    batchModal.classList.remove("open");
+    batchModal.setAttribute("aria-hidden", "true");
+  }
+
+  function renderBatchRow(path, isFile) {
+    const row = document.createElement("div");
+    row.className = "item" + (isFile ? " file" : " folder");
+    row.dataset.path = path;
+    if (!isFile) {
+      row.textContent = "[DIR] " + path.split("/").pop();
+      row.addEventListener("click", () => {
+        batchBrowseDir = path;
+        refreshBatchBrowse();
+      });
+      return row;
+    }
+    const cb = document.createElement("input");
+    cb.type = "checkbox";
+    cb.checked = batchSelected.has(path);
+    cb.style.marginRight = "8px";
+    cb.addEventListener("change", () => {
+      if (cb.checked) batchSelected.add(path);
+      else batchSelected.delete(path);
+      updateBatchRunButton();
+    });
+    const label = document.createElement("span");
+    label.textContent = path.split("/").pop();
+    row.appendChild(cb);
+    row.appendChild(label);
+    row.addEventListener("click", (e) => {
+      if (e.target === cb) return;
+      cb.checked = !cb.checked;
+      if (cb.checked) batchSelected.add(path);
+      else batchSelected.delete(path);
+      updateBatchRunButton();
+    });
+    return row;
+  }
+
+  function updateBatchRunButton() {
+    if (!batchRunBtn) return;
+    batchRunBtn.disabled = isBatchRunning || batchSelected.size === 0;
+    batchRunBtn.textContent = isBatchRunning
+      ? "Running..."
+      : `Run Batch (${batchSelected.size})`;
+  }
+
+  function setAutoDetectButtonsEnabled(enabled) {
+    const on = !!enabled;
+    if (btnAutoDetect) btnAutoDetect.disabled = !on;
+    if (btnBatchAutoDetect) btnBatchAutoDetect.disabled = isBatchRunning;
+    if (autoDetectSplit) {
+      if (isBatchRunning) autoDetectSplit.classList.add("disabled");
+      else autoDetectSplit.classList.remove("disabled");
+    }
+  }
+
+  async function refreshBatchBrowse() {
+    batchBreadcrumb.textContent = batchBrowseDir;
+    batchBody.innerHTML = "";
+    batchUpBtn.disabled = batchBrowseDir === TEMPLATES_ROOT || isBatchRunning;
+    try {
+      const r = await fetch("/api/browse?dir=" + encodeURIComponent(batchBrowseDir));
+      const data = await r.json();
+      if (!r.ok) throw new Error((data && data.error) ? data.error : "Browse failed.");
+      const dirs = Array.isArray(data.dirs) ? data.dirs : [];
+      const files = Array.isArray(data.files) ? data.files : [];
+      if (!dirs.length && !files.length) {
+        const empty = document.createElement("div");
+        empty.className = "item";
+        empty.textContent = "(empty)";
+        batchBody.appendChild(empty);
+        updateBatchRunButton();
+        return;
+      }
+      dirs.forEach((d) => {
+        if (!isUnderTemplates(d)) return;
+        batchBody.appendChild(renderBatchRow(d, false));
+      });
+      files.forEach((f) => {
+        if (!isUnderTemplates(f)) return;
+        if (!String(f).toLowerCase().endsWith(".png")) return;
+        batchBody.appendChild(renderBatchRow(f, true));
+      });
+      updateBatchRunButton();
+    } catch (err) {
+      const row = document.createElement("div");
+      row.className = "item";
+      row.textContent = "Failed to load directory: " + String(err);
+      batchBody.appendChild(row);
+      updateBatchRunButton();
+    }
+  }
+
+  function setBatchOverlay(open, idx, total, path) {
+    if (!batchRunOverlay) return;
+    if (!open) {
+      batchRunOverlay.classList.remove("open");
+      batchRunOverlay.setAttribute("aria-hidden", "true");
+      if (batchRunFill) batchRunFill.style.width = "0%";
+      if (batchRunSub) batchRunSub.textContent = "Preparing...";
+      return;
+    }
+    batchRunOverlay.classList.add("open");
+    batchRunOverlay.setAttribute("aria-hidden", "false");
+    const pct = total > 0 ? Math.max(0, Math.min(100, Math.round((idx / total) * 100))) : 0;
+    if (batchRunFill) batchRunFill.style.width = pct + "%";
+    if (batchRunSub) batchRunSub.textContent = `File ${idx}/${total}: ${path || ""}`;
   }
 
   async function refreshBrowse() {
@@ -1294,6 +1660,8 @@
   }
 
   document.getElementById("btn-select-image").addEventListener("click", () => openBrowseModal("load"));
+  if (btnPrevTemplate) btnPrevTemplate.addEventListener("click", () => navigateTemplate("prev"));
+  if (btnNextTemplate) btnNextTemplate.addEventListener("click", () => navigateTemplate("next"));
   browseUpBtn.addEventListener("click", () => {
     browseDir = parentDir(browseDir);
     if (!isUnderTemplates(browseDir)) browseDir = TEMPLATES_ROOT;
@@ -1316,6 +1684,78 @@
   importCloseBtn.addEventListener("click", () => {
     importModal.classList.remove("open");
     importModal.setAttribute("aria-hidden", "true");
+  });
+  if (btnBatchAutoDetect) {
+    btnBatchAutoDetect.addEventListener("click", () => {
+      if (!isPrimaryEditorTab) {
+        setStatus("Read-only tab: another ROI editor tab is active.");
+        return;
+      }
+      openBatchModal();
+    });
+  }
+  batchUpBtn.addEventListener("click", () => {
+    batchBrowseDir = parentDir(batchBrowseDir);
+    if (!isUnderTemplates(batchBrowseDir)) batchBrowseDir = TEMPLATES_ROOT;
+    refreshBatchBrowse();
+  });
+  batchCloseBtn.addEventListener("click", closeBatchModal);
+  batchModal.addEventListener("click", (e) => {
+    if (e.target === batchModal) closeBatchModal();
+  });
+  batchSelectAllBtn.addEventListener("click", () => {
+    const pathRows = Array.from(batchBody.querySelectorAll(".item.file"));
+    pathRows.forEach((row) => {
+      const p = row.dataset.path;
+      if (p) batchSelected.add(p);
+    });
+    refreshBatchBrowse();
+  });
+  batchSelectNoneBtn.addEventListener("click", () => {
+    const paths = Array.from(batchBody.querySelectorAll(".item.file")).map((row) => {
+      return row.dataset.path || "";
+    });
+    paths.forEach((p) => {
+      if (p) batchSelected.delete(p);
+    });
+    refreshBatchBrowse();
+  });
+  batchRunBtn.addEventListener("click", async () => {
+    if (isBatchRunning || batchSelected.size === 0) return;
+    isBatchRunning = true;
+    batchCancelRequested = false;
+    setAutoDetectButtonsEnabled(false);
+    updateBatchRunButton();
+    closeBatchModal();
+    const files = Array.from(batchSelected).sort();
+    setBatchOverlay(true, 0, files.length, "");
+    try {
+      for (let i = 0; i < files.length; i++) {
+        if (batchCancelRequested) break;
+        const path = files[i];
+        setBatchOverlay(true, i + 1, files.length, path);
+        await loadImage(path);
+        await autoDetectRois();
+      }
+      setStatus(
+        batchCancelRequested
+          ? "Batch cancelled."
+          : `Batch complete: ${files.length} file(s) processed.`
+      );
+    } catch (err) {
+      setStatus("Batch auto-detect failed.");
+      alert(err instanceof Error ? err.message : String(err));
+    } finally {
+      isBatchRunning = false;
+      setBatchOverlay(false, 0, 0, "");
+      setAutoDetectButtonsEnabled(!!imagePath);
+      updateBatchRunButton();
+    }
+  });
+  batchCancelBtn.addEventListener("click", () => {
+    if (!isBatchRunning) return;
+    batchCancelRequested = true;
+    if (batchRunSub) batchRunSub.textContent = "Cancelling after current file...";
   });
 
   function normalizeIncomingRois(inputRois) {
@@ -1340,7 +1780,9 @@
       rois = [];
       selectedIds.clear();
       primarySelectedId = null;
-      if (btnAutoDetect) btnAutoDetect.disabled = true;
+      mcqSequence = null;
+      clearMcqStatus();
+      setAutoDetectButtonsEnabled(false);
       draw();
       return;
     }
@@ -1360,6 +1802,8 @@
       selectedIds.clear();
       primarySelectedId = null;
       roiCounter = 0;
+      mcqSequence = null;
+      clearMcqStatus();
       zoomFactor = 1;
       panX = panY = 0;
 
@@ -1374,24 +1818,90 @@
         imageWidth = schema.image_width;
         imageHeight = schema.image_height;
       }
-      setStatus(path + " — " + rois.length + " ROI(s)");
+      setStatus("Loaded.");
       selectedIds.clear();
       primarySelectedId = null;
       if (autosaveTimer) { clearTimeout(autosaveTimer); autosaveTimer = null; }
       undoStack.length = 0;
       redoStack.length = 0;
       if (rois.length) pushUndo();
-      if (btnAutoDetect) btnAutoDetect.disabled = false;
+      setAutoDetectButtonsEnabled(true);
       resizeCanvas();
       draw();
     } catch (e) {
       currentSchemaPath = "";
-      if (btnAutoDetect) btnAutoDetect.disabled = true;
+      setAutoDetectButtonsEnabled(false);
       setStatus("Failed to load image");
     }
   }
 
+  async function navigateTemplate(direction) {
+    if (!imagePath) return;
+    const currentPath = imagePath;
+    try {
+      if (autosaveTimer) {
+        clearTimeout(autosaveTimer);
+        autosaveTimer = null;
+        await saveSchema();
+      }
+      const dir = parentDir(currentPath);
+      const r = await fetch("/api/browse?dir=" + encodeURIComponent(dir));
+      const raw = await r.text();
+      let data = null;
+      try {
+        data = JSON.parse(raw);
+      } catch (parseErr) {
+        throw new Error(raw ? raw.slice(0, 180) : "Browse endpoint returned non-JSON.");
+      }
+      if (!r.ok || !data) {
+        throw new Error((data && data.error) ? data.error : "Template navigation failed.");
+      }
+      const files = (Array.isArray(data.files) ? data.files : [])
+        .filter((p) => String(p).toLowerCase().endsWith(".png"))
+        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+      if (!files.length) {
+        throw new Error("No templates found in this directory.");
+      }
+      const index = files.indexOf(currentPath);
+      const safeIndex = index >= 0 ? index : 0;
+      const step = direction === "prev" ? -1 : 1;
+      const targetPath = files[(safeIndex + step + files.length) % files.length];
+      if (targetPath === currentPath) {
+        setStatus("Only one template in this directory.");
+        return;
+      }
+      await loadImage(targetPath);
+    } catch (err) {
+      setStatus("Template navigation failed.");
+      alert(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+
+  function resetCanvasView() {
+    if (!image) return;
+    if (!isPrimaryEditorTab) {
+      setStatus("Read-only tab: another ROI editor tab is active.");
+      return;
+    }
+    if (!rois.length) {
+      setStatus("No ROIs to clear.");
+      return;
+    }
+    const ok = window.confirm(`Clear all ${rois.length} ROI(s) from this image?`);
+    if (!ok) return;
+    pushUndo();
+    rois = [];
+    roiCounter = 0;
+    selectedIds.clear();
+    primarySelectedId = null;
+    draw();
+    scheduleAutosave();
+    setStatus("All ROIs cleared.");
+  }
+
   async function autoDetectRois() {
+    if (isAutoDetectRunning) return;
     if (!imagePath) {
       alert("Load an image first.");
       return;
@@ -1400,13 +1910,47 @@
       setStatus("Read-only tab: another ROI editor tab is active.");
       return;
     }
+    isAutoDetectRunning = true;
     if (btnAutoDetect) btnAutoDetect.disabled = true;
-    setStatus("Auto-detecting ROIs with PaddleOCR + OpenAI...");
+    if (btnBatchAutoDetect) btnBatchAutoDetect.disabled = true;
+    if (autoDetectSplit) autoDetectSplit.classList.add("disabled");
+    await loadAutoDetectMode();
+    startAutoDetectSpinner(`Auto-detecting ROIs with PaddleOCR + ${autoDetectProviderLabel}`);
     try {
+      let previewDocStructure = null;
+      // Fun pre-LLM preview: draw Paddle OCR regions using detected text as ROI names.
+      try {
+        const p = await fetch("/api/roi-auto-detect-preview", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ path: imagePath })
+        });
+        const pData = await p.json();
+        if (p.ok && pData && pData.ok && Array.isArray(pData.rois)) {
+          if (pData.document_structure_from_paddleocr && typeof pData.document_structure_from_paddleocr === "object") {
+            previewDocStructure = pData.document_structure_from_paddleocr;
+          }
+          const previewRois = normalizeIncomingRois(pData.rois || []);
+          if (previewRois.length) {
+            rois = previewRois;
+            roiCounter = rois.length;
+            selectedIds.clear();
+            primarySelectedId = null;
+            draw();
+            setStatus(`Paddle preview: ${rois.length} region(s)`);
+          }
+        }
+      } catch (previewErr) {
+      }
+
       const r = await fetch("/api/roi-auto-detect", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ path: imagePath, model_profile: "balanced" })
+        body: JSON.stringify({
+          path: imagePath,
+          model_profile: "max_quality",
+          precomputed_doc_structure: previewDocStructure
+        })
       });
       const contentType = String(r.headers.get("content-type") || "").toLowerCase();
       let data = null;
@@ -1434,14 +1978,17 @@
         imageHeight = parseInt(data.image_height, 10) || imageHeight;
       }
       const model = data.model ? ` model=${data.model}` : "";
+      const provider = data.provider ? ` provider=${data.provider}` : "";
       const ref = data.reference_schema_path ? ` ref=${data.reference_schema_path}` : "";
-      setStatus(`Auto-detected ${rois.length} ROI(s).${model}${ref}`);
+      setStatus(`Auto-detected ${rois.length} ROI(s).${provider}${model}${ref}`);
       draw();
     } catch (err) {
       setStatus("ROI auto-detect failed.");
       alert(err instanceof Error ? err.message : String(err));
     } finally {
-      if (btnAutoDetect) btnAutoDetect.disabled = !imagePath;
+      stopAutoDetectSpinner();
+      isAutoDetectRunning = false;
+      if (!isBatchRunning) setAutoDetectButtonsEnabled(!!imagePath);
     }
   }
 
@@ -1559,6 +2106,7 @@
     dragMode = null;
     hoverState = null;
     mcqSequence = null;
+    clearMcqStatus();
     draw();
   }
 
@@ -1579,7 +2127,7 @@
     selectedIds.clear();
     primarySelectedId = null;
     dragMode = null;
-    setStatus("Draw main ROI: " + names[0]);
+    setMcqStepStatus();
     canvas.style.cursor = "crosshair";
     draw();
   }
@@ -2023,17 +2571,18 @@
           w: w,
           h: h
         };
-        rois.push(newRoi);
+          rois.push(newRoi);
         if (mcqSequence) {
           mcqSequence.index++;
           if (mcqSequence.index >= mcqSequence.names.length) {
             setStatus("MCQ item complete.");
+            updateMcqStatus("MCQ complete", "done");
             mcqSequence = null;
             scheduleAutosave();
             selectedIds = new Set([newRoi.id]);
             primarySelectedId = newRoi.id;
           } else {
-            setStatus("Draw " + mcqSequence.names[mcqSequence.index]);
+            setMcqStepStatus();
             selectedIds.clear();
             primarySelectedId = null;
           }
@@ -2092,6 +2641,7 @@
   document.getElementById("btn-mcq").addEventListener("click", startMcqSequence);
   document.getElementById("btn-import").addEventListener("click", () => openBrowseModal("import"));
   document.getElementById("btn-auto-detect").addEventListener("click", autoDetectRois);
+  if (btnResetView) btnResetView.addEventListener("click", resetCanvasView);
   document.getElementById("btn-rename").addEventListener("click", renameSelected);
   document.getElementById("btn-duplicate").addEventListener("click", duplicateSelected);
   document.getElementById("btn-delete").addEventListener("click", deleteSelected);

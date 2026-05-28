@@ -11,28 +11,48 @@ Flow:
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
 from openai_client import call_json, resolve_model
+from llm_client import generate
 
 try:
-    from config import PATHS
+    from config import PATHS, ROI_AUTO_DETECT
 except Exception:  # pragma: no cover
     ROOT = Path(__file__).resolve().parent.parent
     PATHS = {"data": ROOT / "data"}
+    ROI_AUTO_DETECT = {"use_openai": True, "local_model": "qwen3.5:9b", "local_reasoning": True}
 
 
 ROI_MIN_SIZE = 5
 
 
+def _resolve_collection_root(path_value: Path | str, expected_leaf: str) -> Path:
+    p = Path(path_value).resolve()
+    if p.name == expected_leaf:
+        return p
+    if p.parent.name == expected_leaf:
+        return p.parent
+    return p
+
+
 def _schema_dir() -> Path:
-    return Path(PATHS.get("roi_schemas_root", Path(PATHS["data"]) / "roi_schemas")).resolve()
+    data_root = Path(PATHS.get("data", Path(__file__).resolve().parent.parent / "data")).resolve()
+    return _resolve_collection_root(
+        PATHS.get("roi_schemas_root", data_root / "roi_schemas"),
+        "roi_schemas",
+    )
 
 
 def _templates_dir() -> Path:
-    return Path(PATHS.get("templates_root", Path(PATHS["data"]) / "templates")).resolve()
+    data_root = Path(PATHS.get("data", Path(__file__).resolve().parent.parent / "data")).resolve()
+    return _resolve_collection_root(
+        PATHS.get("templates_root", data_root / "templates"),
+        "templates",
+    )
 
 
 def _safe_float(v: Any, default: float = 0.0) -> float:
@@ -164,44 +184,169 @@ def _load_nonempty_schema(path: Path) -> dict[str, Any] | None:
     return data
 
 
-def _pick_reference_schema(image_path: Path) -> tuple[Path, dict[str, Any]]:
+def _load_custom_reference_schema() -> tuple[str, dict[str, Any]]:
     schema_dir = _schema_dir()
-    templates_dir = _templates_dir()
-    stem = image_path.stem.lower()
-
-    exact: Path | None = None
+    ref_a_path = schema_dir / "reference" / "6pre_a_vlm_reference.json"
+    ref_b_path = schema_dir / "reference" / "6pre_b_vlm_reference.json"
+    if not ref_a_path.exists():
+        raise RuntimeError(f"Custom reference schema not found: {ref_a_path}")
+    if not ref_b_path.exists():
+        raise RuntimeError(f"Custom reference schema not found: {ref_b_path}")
     try:
-        rel = image_path.resolve().relative_to(templates_dir)
-        exact = schema_dir / rel.with_suffix(".json")
-    except ValueError:
-        exact = schema_dir / f"{image_path.stem}.json"
-    exact_data = _load_nonempty_schema(exact)
-    if exact_data is not None:
-        return exact, exact_data
+        side_a = json.loads(ref_a_path.read_text(encoding="utf-8"))
+        side_b = json.loads(ref_b_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise RuntimeError(
+            f"Failed to read custom reference schema pair: {ref_a_path} | {ref_b_path}"
+        ) from exc
+    if not isinstance(side_a, dict):
+        raise RuntimeError(f"Custom reference schema must be a JSON object: {ref_a_path}")
+    if not isinstance(side_b, dict):
+        raise RuntimeError(f"Custom reference schema must be a JSON object: {ref_b_path}")
+    merged = {
+        "form_type": side_a.get("form_type") or side_b.get("form_type") or "6pre",
+        "side_a": {
+            "image_width": side_a.get("image_width"),
+            "image_height": side_a.get("image_height"),
+            "rois": side_a.get("rois", []),
+        },
+        "side_b": {
+            "image_width": side_b.get("image_width"),
+            "image_height": side_b.get("image_height"),
+            "rois": side_b.get("rois", []),
+        },
+    }
+    ref_label = f"{ref_a_path.resolve()} + {ref_b_path.resolve()}"
+    return ref_label, merged
 
-    form_keys = ["6pre", "6post", "7pre", "7post", "8pre", "8post", "hpre", "hpost"]
-    inferred_form = next((k for k in form_keys if k in stem), None)
-    inferred_side = "a" if stem.endswith("_a") else ("b" if stem.endswith("_b") else None)
 
-    if inferred_form and inferred_side:
-        p = schema_dir / f"{inferred_form}_{inferred_side}.json"
-        data = _load_nonempty_schema(p)
-        if data is not None:
-            return p, data
+def _load_custom_reference_paddle(side: str) -> dict[str, Any]:
+    schema_dir = _schema_dir()
+    side_key = "a" if str(side).strip().lower() == "a" else "b"
+    path = schema_dir / "reference" / f"6pre_{side_key}_paddle_raw.json"
+    if not path.exists():
+        raise RuntimeError(f"Custom Paddle reference not found: {path}")
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        raise RuntimeError(f"Failed to read custom Paddle reference: {path}") from exc
+    if not isinstance(data, dict):
+        raise RuntimeError(f"Custom Paddle reference must be a JSON object: {path}")
+    return data
 
-    if inferred_side:
-        side_candidates = sorted(schema_dir.rglob(f"*_{inferred_side}.json"))
-        for p in side_candidates:
-            data = _load_nonempty_schema(p)
-            if data is not None:
-                return p, data
 
-    for p in sorted(schema_dir.rglob("*.json")):
-        data = _load_nonempty_schema(p)
-        if data is not None:
-            return p, data
+def _reference_rois_without_id(ref_example: dict[str, Any], side: str) -> list[dict[str, Any]]:
+    side_key = "side_a" if str(side).strip().lower() == "a" else "side_b"
+    side_obj = ref_example.get(side_key) or {}
+    rois = side_obj.get("rois") or []
+    out: list[dict[str, Any]] = []
+    for roi in rois:
+        if not isinstance(roi, dict):
+            continue
+        name = str(roi.get("name", "")).strip().lower()
+        if name == "id":
+            continue
+        out.append(roi)
+    return out
 
-    raise RuntimeError("No reference ROI schema with ROIs found in data/roi_schemas.")
+
+def _extract_json_object(text: str) -> dict[str, Any]:
+    s = str(text or "").strip()
+    if not s:
+        raise RuntimeError("Local model returned empty output.")
+    try:
+        obj = json.loads(s)
+        if isinstance(obj, dict):
+            return obj
+    except Exception:
+        pass
+
+    # Fallback: extract first top-level JSON object block.
+    start = s.find("{")
+    while start >= 0:
+        depth = 0
+        in_str = False
+        esc = False
+        for i in range(start, len(s)):
+            ch = s[i]
+            if in_str:
+                if esc:
+                    esc = False
+                elif ch == "\\":
+                    esc = True
+                elif ch == '"':
+                    in_str = False
+                continue
+            if ch == '"':
+                in_str = True
+                continue
+            if ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0:
+                    cand = s[start : i + 1]
+                    try:
+                        obj = json.loads(cand)
+                        if isinstance(obj, dict):
+                            return obj
+                    except Exception:
+                        break
+        start = s.find("{", start + 1)
+    raise RuntimeError("Local model output did not contain a valid JSON object.")
+
+
+def _call_local_json(
+    *,
+    payload: dict[str, Any],
+    instructions: str,
+    schema: dict[str, Any],
+) -> dict[str, Any]:
+    model = str(ROI_AUTO_DETECT.get("local_model", "qwen3.5:9b") or "qwen3.5:9b")
+    reasoning = bool(ROI_AUTO_DETECT.get("local_reasoning", True))
+    prompt = (
+        f"{instructions}\n\n"
+        "Strict output requirements:\n"
+        "- Return exactly one JSON object.\n"
+        "- No markdown, no code fences, no explanation.\n"
+        "- JSON must match this schema:\n"
+        f"{json.dumps(schema, ensure_ascii=False)}\n\n"
+        "Input payload:\n"
+        f"{json.dumps(payload, ensure_ascii=False)}"
+    )
+    extra_params: dict[str, Any] = {
+        "options": {"temperature": 0},
+        "format": schema,
+    }
+    if reasoning:
+        extra_params["think"] = True
+
+    out = generate(
+        prompt,
+        model=model,
+        timeout=300,
+        extra_params=extra_params,
+    )
+    text = str(out.get("text", "") or "")
+    elapsed = float(out.get("elapsed") or 0.0)
+    raw = out.get("raw")
+
+    if not text.strip():
+        print("[roi_auto_detect][local] Empty model output.")
+        print(f"[roi_auto_detect][local] elapsed_sec={elapsed:.3f}")
+        print(f"[roi_auto_detect][local] raw_response={raw}")
+        raise RuntimeError(f"Local model returned empty output (elapsed={elapsed:.2f}s).")
+
+    try:
+        return _extract_json_object(text)
+    except Exception as exc:
+        print("[roi_auto_detect][local] Failed to parse JSON output.")
+        print(f"[roi_auto_detect][local] elapsed_sec={elapsed:.3f}")
+        print(f"[roi_auto_detect][local] raw_response={raw}")
+        print(f"[roi_auto_detect][local] text_output={text}")
+        raise RuntimeError(
+            f"Local model output parse failed (elapsed={elapsed:.2f}s): {exc}"
+        ) from exc
 
 
 def _output_schema() -> dict[str, Any]:
@@ -221,8 +366,18 @@ def _output_schema() -> dict[str, Any]:
                         "y": {"type": "integer", "minimum": 0},
                         "w": {"type": "integer", "minimum": ROI_MIN_SIZE},
                         "h": {"type": "integer", "minimum": ROI_MIN_SIZE},
+                        "llm_prompt_override": {"type": ["string", "null"]},
+                        "ocr_prompt_override": {"type": ["string", "null"]},
                     },
-                    "required": ["name", "x", "y", "w", "h"],
+                    "required": [
+                        "name",
+                        "x",
+                        "y",
+                        "w",
+                        "h",
+                        "llm_prompt_override",
+                        "ocr_prompt_override",
+                    ],
                 },
             }
         },
@@ -269,30 +424,78 @@ def _validate_and_normalize_rois(raw_obj: dict[str, Any], image_w: int, image_h:
                 "h": int(h),
             }
         )
+        llm_override = roi.get("llm_prompt_override")
+        if isinstance(llm_override, str):
+            llm_clean = llm_override.strip()
+            out[-1]["llm_prompt_override"] = llm_clean if llm_clean else None
+        else:
+            out[-1]["llm_prompt_override"] = None
+
+        ocr_override = roi.get("ocr_prompt_override")
+        if isinstance(ocr_override, str):
+            ocr_clean = ocr_override.strip()
+            out[-1]["ocr_prompt_override"] = ocr_clean if ocr_clean else None
+        else:
+            out[-1]["ocr_prompt_override"] = None
 
     return out
+
+
+def paddle_preview_rois(image_path: Path) -> dict[str, Any]:
+    """
+    Build lightweight preview ROIs directly from Paddle detections:
+      - ROI name = detected text (truncated)
+      - ROI geometry = Paddle line box
+    """
+    image_path = image_path.resolve()
+    if not image_path.exists():
+        raise FileNotFoundError(f"Image not found: {image_path}")
+    image_w, image_h = _load_image_size(image_path)
+    doc_structure = _collect_document_structure(image_path)
+    lines = doc_structure.get("lines") or []
+    rois: list[dict[str, Any]] = []
+    for i, line in enumerate(lines, start=1):
+        text = " ".join(str(line.get("text", "") or "").split())
+        if not text:
+            continue
+        name = text[:80]
+        rois.append(
+            {
+                "id": "p" + uuid.uuid4().hex[:9],
+                "name": name,
+                "x": int(_coerce_int(line.get("x"))),
+                "y": int(_coerce_int(line.get("y"))),
+                "w": max(ROI_MIN_SIZE, int(_coerce_int(line.get("w"), ROI_MIN_SIZE))),
+                "h": max(ROI_MIN_SIZE, int(_coerce_int(line.get("h"), ROI_MIN_SIZE))),
+                "llm_prompt_override": None,
+                "ocr_prompt_override": None,
+            }
+        )
+    return {
+        "rois": rois,
+        "image_width": image_w,
+        "image_height": image_h,
+        "ocr_line_count": int(doc_structure.get("line_count", 0)),
+        "document_structure_from_paddleocr": doc_structure,
+    }
 
 
 def detect_rois_with_openai(
     image_path: Path,
     *,
-    model_profile: str = "balanced",
+    model_profile: str = "max_quality",
+    precomputed_doc_structure: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     image_path = image_path.resolve()
     if not image_path.exists():
         raise FileNotFoundError(f"Image not found: {image_path}")
 
     image_w, image_h = _load_image_size(image_path)
-    doc_structure = _collect_document_structure(image_path)
+    doc_structure = precomputed_doc_structure or _collect_document_structure(image_path)
     if not doc_structure.get("lines"):
         raise RuntimeError("PaddleOCR detected no text lines.")
 
-    ref_path, ref_schema = _pick_reference_schema(image_path)
-    ref_example = {
-        "image_width": ref_schema.get("image_width"),
-        "image_height": ref_schema.get("image_height"),
-        "rois": ref_schema.get("rois", []),
-    }
+    ref_path, ref_example = _load_custom_reference_schema()
 
     instructions = (
         "You generate ROI templates for fixed-layout assessment forms.\n"
@@ -300,13 +503,27 @@ def detect_rois_with_openai(
         "Do not include markdown, prose, comments, or extra keys.\n"
         "Rules:\n"
         "1) Use the OCR line boxes and text as the source of layout truth.\n"
-        "2) Follow the naming style and granularity pattern of the reference template.\n"
+        "2) Follow the naming style and granularity pattern of the reference templates (side_a + side_b).\n"
+        "2a) Use the provided reference_paddle_to_schema_examples to map Paddle line patterns into schema ROI structure.\n"
+        "2b) Do not copy ROI geometry directly from references.\n"
         "3) For MCQ blocks, include both question ROI (numeric name) and choice ROIs (e.g., 1a, 1b...).\n"
         "4) Coordinates must be integer pixels in the target image coordinate space.\n"
         "5) Every ROI must stay fully inside the image bounds.\n"
-        "6) Do not hallucinate fields not supported by the document structure.\n"
+        "6) For free-response/text ROIs, generate concise, field-specific prompt overrides.\n"
+        "6a) Prompt overrides must closely model the reference style and wording patterns.\n"
+        "6b) ocr_prompt_override must follow the Chinese template style used in the reference, including a JSON object to fill.\n"
+        "6c) ocr_prompt_override should begin with: 请按下列JSON格式输出图中信息:\n"
+        "6d) ocr_prompt_override JSON keys must be specific to the ROI use case (e.g., date parts, school_name, teacher_name, id, answer_letter, age).\n"
+        "6e) llm_prompt_override must be strict-normalizer style, ROI-specific, and return a single normalized value (or null when appropriate).\n"
+        "7) Always include llm_prompt_override and ocr_prompt_override keys for every ROI.\n"
+        "8) For MCQ ROIs, set llm_prompt_override=null and ocr_prompt_override=null.\n"
+        "9) For free-response/text ROIs, set both prompt override values to non-empty strings.\n"
+        "10) Do not hallucinate fields not supported by the document structure.\n"
+        "11) Keep prompt text compact and consistent across similar ROI types.\n"
+        "12) For ROI named 'id', infer bounds from target OCR header evidence only; do not use reference 'id' geometry priors.\n"
     )
 
+    schema = _output_schema()
     payload = {
         "target_image": {
             "path": str(image_path),
@@ -315,23 +532,50 @@ def detect_rois_with_openai(
         },
         "document_structure_from_paddleocr": doc_structure,
         "reference_template_example": ref_example,
+        "reference_paddle_to_schema_examples": {
+            "side_a": {
+                "paddle_output": _load_custom_reference_paddle("a"),
+                "schema_rois": _reference_rois_without_id(ref_example, "a"),
+            },
+            "side_b": {
+                "paddle_output": _load_custom_reference_paddle("b"),
+                "schema_rois": _reference_rois_without_id(ref_example, "b"),
+            },
+        },
     }
 
-    raw_obj = call_json(
-        json.dumps(payload, ensure_ascii=False),
-        schema=_output_schema(),
-        schema_name="roi_template",
-        instructions=instructions,
-        model_profile=model_profile,
-        max_output_tokens=12000,
-    )
+    use_openai = bool(ROI_AUTO_DETECT.get("use_openai", True))
+    openai_model_override = str(ROI_AUTO_DETECT.get("openai_model") or "").strip() or None
+    openai_reasoning_enabled = bool(ROI_AUTO_DETECT.get("openai_reasoning", True))
+    openai_reasoning_cfg = None if openai_reasoning_enabled else {"effort": "none"}
+    if use_openai:
+        raw_obj = call_json(
+            json.dumps(payload, ensure_ascii=False),
+            schema=schema,
+            schema_name="roi_template",
+            instructions=instructions,
+            model=openai_model_override,
+            model_profile=None if openai_model_override else model_profile,
+            max_output_tokens=12000,
+            reasoning=openai_reasoning_cfg,
+        )
+    else:
+        raw_obj = _call_local_json(
+            payload=payload,
+            instructions=instructions,
+            schema=schema,
+        )
     rois = _validate_and_normalize_rois(raw_obj, image_w, image_h)
 
     return {
         "rois": rois,
         "image_width": image_w,
         "image_height": image_h,
-        "reference_schema_path": str(ref_path.resolve()),
+        "reference_schema_path": ref_path,
         "ocr_line_count": int(doc_structure.get("line_count", 0)),
-        "model": resolve_model(model_profile=model_profile),
+        "model": (
+            (openai_model_override or resolve_model(model_profile=model_profile))
+            if use_openai
+            else str(ROI_AUTO_DETECT.get("local_model", "qwen3.5:9b") or "qwen3.5:9b")
+        ),
     }

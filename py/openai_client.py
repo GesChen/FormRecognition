@@ -132,6 +132,7 @@ def call_json(
     instructions: Optional[str] = None,
     temperature: Optional[float] = None,
     max_output_tokens: Optional[int] = None,
+    reasoning: Optional[Dict[str, Any]] = None,
     api_key: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Run a structured-output call and return parsed JSON (as dict).
@@ -160,6 +161,8 @@ def call_json(
         kwargs["temperature"] = float(temperature)
     if max_output_tokens is not None:
         kwargs["max_output_tokens"] = int(max_output_tokens)
+    if reasoning is not None:
+        kwargs["reasoning"] = reasoning
 
     resp = client.responses.create(**kwargs)
     parsed = getattr(resp, "output_parsed", None)

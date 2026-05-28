@@ -37,6 +37,14 @@ ROI_PROMPT_CREATOR = {
     "model": "qwen3.5:9b",  # Dedicated text model for ROI prompt generation.
 }
 
+ROI_AUTO_DETECT = {
+    "use_openai": True,  # True => OpenAI Responses API, False => local Ollama model.
+    "openai_model": "gpt-5.5",  # Optional explicit OpenAI model override (e.g. "gpt-5.5"). None => use profile.
+    "openai_reasoning": True,  # True => omit reasoning arg (model default). False => send reasoning={"effort":"none"}.
+    "local_model": "qwen3.5:9b",  # Local model for ROI auto-detector when use_openai=False.
+    "local_reasoning": False,  # Enable local model reasoning/thinking mode when supported.
+}
+
 TEXT_ROI_LLM = {
     "enabled": True,  # LLM post-step for non-header text ROIs (after default OCR extraction).
     "model": None,  # None => use LLM["model"].

@@ -1,0 +1,408 @@
+{
+  "image_path": "/home/ges/Documents/evms_3/data/templates/2026/6pre_a.png",
+  "image_name": "6pre_a.png",
+  "image_width": 1275,
+  "image_height": 1650,
+  "rois": [
+    {
+      "h": 36,
+      "id": "rb88bfdce5",
+      "llm_prompt_override": "You are a strict text normalizer for one OCR ROI field named \"date\".\nYou are NOT reading an image. You only receive OCR-extracted text.\nReturn ONE valid JSON object only, no markdown and no extra text.\n\nRequired schema:\n{\"detected_text\":\"string or null\"}\n\nTarget output format:\nMM/DD/YYYY\n\nRules:\n- Preserve meaning from OCR text; do not invent unseen digits.\n- If OCR contains structured JSON (for example keys like day/month/year), parse it first.\n- If year is 2 digits (YY), interpret as 20YY.\n- Zero-pad month and day to 2 digits.\n- Output only a valid calendar date in MM/DD/YYYY, or null.\n- If missing/unclear/invalid, set detected_text to null.\n- Forbid placeholders and artifacts (N/A, ---, string, markdown fences, explanations).\n\nOCR extracted text:\n<ocr_text>",
+      "name": "date",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"month\":\"\", \"day\":\"\", \"year\":\"\" }\n```",
+      "w": 427,
+      "x": 64,
+      "y": 242
+    },
+    {
+      "h": 36,
+      "id": "re70cf4e83",
+      "llm_prompt_override": "You are a strict text normalizer for ROI 'teacher'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the teacher name text from OCR input.\n- Remove titles (Mr., Mrs., Ms., Dr.) when present.\n- Do not invent, infer, or explain.\n- If OCR text is empty/unreadable, return detected_text as null.\nTask:\n- Normalize teacher name text conservatively.",
+      "name": "teacher",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"teacher_name\":\"\" }\n```",
+      "w": 487,
+      "x": 495,
+      "y": 246
+    },
+    {
+      "h": 34,
+      "id": "r10d7dc054",
+      "llm_prompt_override": "You are a strict text normalizer for ROI 'school'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the school name text from OCR input.\n- Do not invent, infer, or explain.\n- If OCR text is empty/unreadable, return detected_text as null.\nTask:\n- Normalize school name text conservatively.",
+      "name": "school",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"school_name\":\"\" }\n```",
+      "w": 468,
+      "x": 62,
+      "y": 274
+    },
+    {
+      "h": 58,
+      "id": "r94bc142ba",
+      "name": "1",
+      "w": 865,
+      "x": 107,
+      "y": 423
+    },
+    {
+      "h": 28,
+      "id": "r5b40fcbcb",
+      "name": "1a",
+      "w": 210,
+      "x": 110,
+      "y": 422
+    },
+    {
+      "h": 29,
+      "id": "rbaa082485",
+      "name": "1b",
+      "w": 300,
+      "x": 676,
+      "y": 421
+    },
+    {
+      "h": 30,
+      "id": "ra7c7010f8",
+      "name": "1c",
+      "w": 212,
+      "x": 108,
+      "y": 451
+    },
+    {
+      "h": 28,
+      "id": "rce31ec308",
+      "name": "1d",
+      "w": 205,
+      "x": 676,
+      "y": 451
+    },
+    {
+      "h": 62,
+      "id": "r9f67a9296",
+      "name": "2",
+      "w": 868,
+      "x": 108,
+      "y": 537
+    },
+    {
+      "h": 28,
+      "id": "r79d39a39c",
+      "name": "2a",
+      "w": 255,
+      "x": 110,
+      "y": 536
+    },
+    {
+      "h": 30,
+      "id": "r943c8b852",
+      "name": "2b",
+      "w": 300,
+      "x": 676,
+      "y": 535
+    },
+    {
+      "h": 34,
+      "id": "r62b0b087d",
+      "name": "2c",
+      "w": 205,
+      "x": 108,
+      "y": 563
+    },
+    {
+      "h": 36,
+      "id": "rbb4f3593d",
+      "name": "2d",
+      "w": 115,
+      "x": 674,
+      "y": 562
+    },
+    {
+      "h": 85,
+      "id": "r3a68fc738",
+      "name": "3",
+      "w": 1065,
+      "x": 110,
+      "y": 650
+    },
+    {
+      "h": 56,
+      "id": "rf224fb627",
+      "name": "3a",
+      "w": 510,
+      "x": 110,
+      "y": 651
+    },
+    {
+      "h": 29,
+      "id": "r4811c33a5",
+      "name": "3b",
+      "w": 495,
+      "x": 677,
+      "y": 651
+    },
+    {
+      "h": 29,
+      "id": "rfadcbfa43",
+      "name": "3c",
+      "w": 270,
+      "x": 110,
+      "y": 706
+    },
+    {
+      "h": 30,
+      "id": "r2ce8197f6",
+      "name": "3d",
+      "w": 385,
+      "x": 677,
+      "y": 704
+    },
+    {
+      "h": 32,
+      "id": "rebc896db1",
+      "name": "4",
+      "w": 1030,
+      "x": 108,
+      "y": 789
+    },
+    {
+      "h": 31,
+      "id": "rc18ce6cc1",
+      "name": "4a",
+      "w": 100,
+      "x": 108,
+      "y": 788
+    },
+    {
+      "h": 31,
+      "id": "r03cf1006c",
+      "name": "4b",
+      "w": 95,
+      "x": 388,
+      "y": 787
+    },
+    {
+      "h": 29,
+      "id": "r0969bddbe",
+      "name": "4c",
+      "w": 90,
+      "x": 674,
+      "y": 789
+    },
+    {
+      "h": 29,
+      "id": "re0eefa0e4",
+      "name": "4d",
+      "w": 175,
+      "x": 960,
+      "y": 788
+    },
+    {
+      "h": 86,
+      "id": "rd3b6b29ad",
+      "name": "5",
+      "w": 1108,
+      "x": 108,
+      "y": 902
+    },
+    {
+      "h": 29,
+      "id": "ra0e5002ff",
+      "name": "5a",
+      "w": 155,
+      "x": 109,
+      "y": 902
+    },
+    {
+      "h": 27,
+      "id": "r7b3c1b777",
+      "name": "5b",
+      "w": 230,
+      "x": 677,
+      "y": 903
+    },
+    {
+      "h": 31,
+      "id": "r9aa2b4a59",
+      "name": "5c",
+      "w": 345,
+      "x": 108,
+      "y": 931
+    },
+    {
+      "h": 56,
+      "id": "raf5f43452",
+      "name": "5d",
+      "w": 540,
+      "x": 677,
+      "y": 932
+    },
+    {
+      "h": 32,
+      "id": "reccd8e7d7",
+      "name": "6",
+      "w": 1090,
+      "x": 109,
+      "y": 1043
+    },
+    {
+      "h": 31,
+      "id": "r92b2ab2cb",
+      "name": "6a",
+      "w": 185,
+      "x": 109,
+      "y": 1042
+    },
+    {
+      "h": 31,
+      "id": "rc6c10f827",
+      "name": "6b",
+      "w": 185,
+      "x": 392,
+      "y": 1042
+    },
+    {
+      "h": 29,
+      "id": "reb3f8f59b",
+      "name": "6c",
+      "w": 195,
+      "x": 677,
+      "y": 1043
+    },
+    {
+      "h": 32,
+      "id": "rced5bdf52",
+      "name": "6d",
+      "w": 240,
+      "x": 961,
+      "y": 1041
+    },
+    {
+      "h": 30,
+      "id": "r9c625ccd9",
+      "name": "7",
+      "w": 185,
+      "x": 117,
+      "y": 1155
+    },
+    {
+      "h": 28,
+      "id": "rd75fdc1ee",
+      "name": "7a",
+      "w": 80,
+      "x": 117,
+      "y": 1155
+    },
+    {
+      "h": 28,
+      "id": "r38005bcce",
+      "name": "7b",
+      "w": 88,
+      "x": 216,
+      "y": 1155
+    },
+    {
+      "h": 29,
+      "id": "r3a7cb29c0",
+      "name": "8",
+      "w": 185,
+      "x": 117,
+      "y": 1209
+    },
+    {
+      "h": 27,
+      "id": "r8a90b1c05",
+      "name": "8a",
+      "w": 80,
+      "x": 117,
+      "y": 1209
+    },
+    {
+      "h": 27,
+      "id": "r5183f0f62",
+      "name": "8b",
+      "w": 89,
+      "x": 216,
+      "y": 1209
+    },
+    {
+      "h": 30,
+      "id": "r462f96998",
+      "name": "9",
+      "w": 185,
+      "x": 117,
+      "y": 1262
+    },
+    {
+      "h": 28,
+      "id": "rba319e46d",
+      "name": "9a",
+      "w": 80,
+      "x": 117,
+      "y": 1262
+    },
+    {
+      "h": 28,
+      "id": "rb5c5e8d6d",
+      "name": "9b",
+      "w": 90,
+      "x": 215,
+      "y": 1261
+    },
+    {
+      "h": 29,
+      "id": "r9cad69950",
+      "name": "10",
+      "w": 185,
+      "x": 117,
+      "y": 1316
+    },
+    {
+      "h": 27,
+      "id": "r6411fe7b2",
+      "name": "10a",
+      "w": 80,
+      "x": 117,
+      "y": 1316
+    },
+    {
+      "h": 27,
+      "id": "r9b33de2f8",
+      "name": "10b",
+      "w": 88,
+      "x": 216,
+      "y": 1316
+    },
+    {
+      "h": 30,
+      "id": "r3604d71c4",
+      "name": "11",
+      "w": 185,
+      "x": 118,
+      "y": 1369
+    },
+    {
+      "h": 28,
+      "id": "r0290912a1",
+      "name": "11a",
+      "w": 79,
+      "x": 118,
+      "y": 1369
+    },
+    {
+      "h": 27,
+      "id": "rb354a7e05",
+      "name": "11b",
+      "w": 90,
+      "x": 215,
+      "y": 1369
+    },
+    {
+      "h": 38,
+      "id": "ra8263cdfc",
+      "llm_prompt_override": "You are a strict JSON mapper.\nYou are NOT reading an image. You only receive OCR-extracted text.\n\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string\"}\n\nTask:\nMap the OCR JSON field \"id\" into pipeline field \"detected_text\".\n\nRules:\n1. If OCR text contains JSON and key \"id\" exists with a non-empty value, output:\n   {\"detected_text\":\"<id value exactly as-is>\"}\n2. If key \"id\" is missing, null, or empty, output:\n   {\"detected_text\":null}\n3. Do not normalize, correct, trim, or transform the id value.\n4. Do not add any extra keys or text.\n\nOCR extracted text:",
+      "name": "id",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"id\":\"\" }\n```",
+      "w": 270,
+      "x": 60,
+      "y": 18
+    }
+  ]
+}

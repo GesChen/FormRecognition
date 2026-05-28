@@ -26,7 +26,11 @@ from roi_prompt_creator import (
     llm_generator_prompt_template_preview,
     ocr_generator_prompt_template_preview,
 )
-from roi_auto_detector import detect_rois_with_openai
+from roi_auto_detector import detect_rois_with_openai, paddle_preview_rois
+try:
+    from config import ROI_AUTO_DETECT  # type: ignore
+except Exception:
+    ROI_AUTO_DETECT = {"use_openai": True}
 
 SERVER_INSTANCE_ID = uuid.uuid4().hex
 
@@ -77,6 +81,35 @@ def create_app() -> Flask:
         if not path:
             return jsonify({"error": "Invalid or missing path"}), 400
         return send_file(path, mimetype="image/png")
+
+    @app.route("/api/template-nav")
+    def api_template_nav():
+        rel = request.args.get("path", "").strip()
+        direction = request.args.get("direction", "next").strip().lower()
+        path = _resolve_image_path(rel)
+        if not path:
+            return jsonify({"error": "Invalid or missing path"}), 400
+        if direction not in {"next", "prev"}:
+            return jsonify({"error": "Invalid direction"}), 400
+
+        siblings = sorted(
+            (p for p in path.parent.iterdir() if p.is_file() and p.suffix.lower() == ".png"),
+            key=lambda p: p.name.lower(),
+        )
+        if not siblings:
+            return jsonify({"error": "No templates found in this directory"}), 404
+
+        try:
+            index = siblings.index(path)
+        except ValueError:
+            index = 0
+        step = 1 if direction == "next" else -1
+        target = siblings[(index + step) % len(siblings)]
+        try:
+            target_rel = str(target.relative_to(core.PROJECT_ROOT.resolve())).replace("\\", "/")
+        except ValueError:
+            return jsonify({"error": "Template is outside project root"}), 400
+        return jsonify({"path": target_rel})
 
     @app.route("/api/schema")
     def api_get_schema():
@@ -260,9 +293,16 @@ def create_app() -> Flask:
         if not path:
             return jsonify({"error": "Invalid path"}), 400
 
-        model_profile = str(body.get("model_profile", "balanced") or "balanced").strip().lower()
+        model_profile = str(body.get("model_profile", "max_quality") or "max_quality").strip().lower()
+        precomputed_doc_structure = body.get("precomputed_doc_structure")
+        if precomputed_doc_structure is not None and not isinstance(precomputed_doc_structure, dict):
+            return jsonify({"error": "precomputed_doc_structure must be an object when provided."}), 400
         try:
-            result = detect_rois_with_openai(path, model_profile=model_profile)
+            result = detect_rois_with_openai(
+                path,
+                model_profile=model_profile,
+                precomputed_doc_structure=precomputed_doc_structure,
+            )
             rois = result.get("rois", [])
             w = int(result.get("image_width", 0) or 0)
             h = int(result.get("image_height", 0) or 0)
@@ -285,6 +325,43 @@ def create_app() -> Flask:
                 "reference_schema_path": result.get("reference_schema_path"),
                 "ocr_line_count": result.get("ocr_line_count"),
                 "model": result.get("model"),
+                "provider": "openai" if bool(ROI_AUTO_DETECT.get("use_openai", True)) else "local",
+            }
+        )
+
+    @app.route("/api/roi-auto-detect-preview", methods=["POST"])
+    def api_roi_auto_detect_preview():
+        body = request.get_json(silent=True) or {}
+        rel = str(body.get("path", "")).strip()
+        if not rel:
+            return jsonify({"error": "path is required"}), 400
+        path = _resolve_image_path(rel)
+        if not path:
+            return jsonify({"error": "Invalid path"}), 400
+        try:
+            result = paddle_preview_rois(path)
+        except Exception as exc:
+            return jsonify({"error": f"Paddle preview failed: {exc}"}), 500
+        return jsonify(
+            {
+                "ok": True,
+                "path": rel,
+                "rois": result.get("rois", []),
+                "image_width": int(result.get("image_width", 0) or 0),
+                "image_height": int(result.get("image_height", 0) or 0),
+                "ocr_line_count": int(result.get("ocr_line_count", 0) or 0),
+                "document_structure_from_paddleocr": result.get("document_structure_from_paddleocr"),
+            }
+        )
+
+    @app.route("/api/roi-auto-detect-mode")
+    def api_roi_auto_detect_mode():
+        use_openai = bool(ROI_AUTO_DETECT.get("use_openai", True))
+        return jsonify(
+            {
+                "ok": True,
+                "provider": "openai" if use_openai else "local",
+                "label": "OpenAI" if use_openai else "Local",
             }
         )
 

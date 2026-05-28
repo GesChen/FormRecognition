@@ -1,0 +1,668 @@
+{
+  "image_path": "/home/ges/Documents/evms_3/data/templates/2026/7pre_a.png",
+  "image_name": "7pre_a.png",
+  "image_width": 1275,
+  "image_height": 1650,
+  "rois": [
+    {
+      "id": "rbae6788d8",
+      "name": "id",
+      "x": 53,
+      "y": 14,
+      "w": 255,
+      "h": 38,
+      "llm_prompt_override": "You are a strict JSON mapper.\nYou are NOT reading an image. You only receive OCR-extracted text.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string\"}\nTask:\nMap the OCR JSON field \"id\" into pipeline field \"detected_text\".\nRules:\n1. If OCR text contains JSON and key \"id\" exists with a non-empty value, output {\"detected_text\":\"<id value exactly as-is>\"}.\n2. If key \"id\" is missing, null, or empty, output {\"detected_text\":null}.\n3. Do not normalize, correct, trim, or transform the id value.\n4. Do not add any extra keys or text.",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"id\":\"\" }\n```"
+    },
+    {
+      "id": "ra81820f78",
+      "name": "date",
+      "x": 58,
+      "y": 226,
+      "w": 167,
+      "h": 32,
+      "llm_prompt_override": "You are a strict text normalizer for one OCR ROI field named \"date\".\nYou are NOT reading an image. You only receive OCR-extracted text.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\"detected_text\":\"string or null\"}\nTarget output format:\nMM/DD/YYYY\nRules:\n- Preserve meaning from OCR text; do not invent unseen digits.\n- If OCR contains structured JSON, parse it first.\n- If year is 2 digits (YY), interpret as 20YY.\n- Zero-pad month and day to 2 digits.\n- Output only a valid calendar date in MM/DD/YYYY, or null.\n- If missing/unclear/invalid, set detected_text to null.",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"month\":\"\", \"day\":\"\", \"year\":\"\" }\n```"
+    },
+    {
+      "id": "r44bbffec9",
+      "name": "teacher",
+      "x": 465,
+      "y": 225,
+      "w": 338,
+      "h": 33,
+      "llm_prompt_override": "You are a strict text normalizer for ROI 'teacher'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the teacher name text from OCR input.\n- Remove titles (Mr., Mrs., Ms., Dr.) when present.\n- Do not invent, infer, or explain.\n- If OCR text is empty/unreadable, return detected_text as null.\nTask:\n- Normalize teacher name text conservatively.",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"teacher_name\":\"\" }\n```"
+    },
+    {
+      "id": "r391997e2b",
+      "name": "school",
+      "x": 58,
+      "y": 252,
+      "w": 438,
+      "h": 32,
+      "llm_prompt_override": "You are a strict text normalizer for ROI 'school'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the school name text from OCR input.\n- Do not invent, infer, or explain.\n- If OCR text is empty/unreadable, return detected_text as null.\nTask:\n- Normalize school name text conservatively.",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"school_name\":\"\" }\n```"
+    },
+    {
+      "id": "rbebea2736",
+      "name": "1",
+      "x": 58,
+      "y": 339,
+      "w": 1099,
+      "h": 89,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r76e30a69c",
+      "name": "1a",
+      "x": 105,
+      "y": 393,
+      "w": 171,
+      "h": 28,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r0c9053b3f",
+      "name": "1b",
+      "x": 390,
+      "y": 392,
+      "w": 198,
+      "h": 30,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "rd8fcc2ebd",
+      "name": "1c",
+      "x": 679,
+      "y": 395,
+      "w": 185,
+      "h": 28,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "rda6382407",
+      "name": "1d",
+      "x": 966,
+      "y": 395,
+      "w": 192,
+      "h": 28,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r492b2ea71",
+      "name": "2",
+      "x": 57,
+      "y": 446,
+      "w": 1119,
+      "h": 92,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r8ccdf62fc",
+      "name": "2a",
+      "x": 105,
+      "y": 502,
+      "w": 114,
+      "h": 28,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r4b705f243",
+      "name": "2b",
+      "x": 388,
+      "y": 500,
+      "w": 86,
+      "h": 36,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "rd37f8ca40",
+      "name": "2c",
+      "x": 676,
+      "y": 502,
+      "w": 118,
+      "h": 28,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "rac148c727",
+      "name": "2d",
+      "x": 963,
+      "y": 501,
+      "w": 156,
+      "h": 31,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r1f3bb2f92",
+      "name": "3",
+      "x": 59,
+      "y": 557,
+      "w": 1060,
+      "h": 71,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r47c165cc9",
+      "name": "3a",
+      "x": 107,
+      "y": 586,
+      "w": 186,
+      "h": 28,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r78b0c7dd1",
+      "name": "3b",
+      "x": 677,
+      "y": 585,
+      "w": 81,
+      "h": 28,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r230094781",
+      "name": "3c",
+      "x": 106,
+      "y": 614,
+      "w": 256,
+      "h": 28,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r90c35ab7f",
+      "name": "3d",
+      "x": 677,
+      "y": 612,
+      "w": 129,
+      "h": 32,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r7e634cba4",
+      "name": "4",
+      "x": 58,
+      "y": 666,
+      "w": 1113,
+      "h": 62,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "rc85eb9f2a",
+      "name": "4a",
+      "x": 105,
+      "y": 695,
+      "w": 153,
+      "h": 29,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r51b55a34d",
+      "name": "4b",
+      "x": 391,
+      "y": 697,
+      "w": 178,
+      "h": 28,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r2d6331ee0",
+      "name": "4c",
+      "x": 678,
+      "y": 696,
+      "w": 176,
+      "h": 29,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r4b14796c8",
+      "name": "4d",
+      "x": 965,
+      "y": 697,
+      "w": 201,
+      "h": 29,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r1e7e4e65f",
+      "name": "5",
+      "x": 59,
+      "y": 750,
+      "w": 1074,
+      "h": 62,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "rac325d555",
+      "name": "5a",
+      "x": 106,
+      "y": 778,
+      "w": 91,
+      "h": 27,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r7d5a388f5",
+      "name": "5b",
+      "x": 391,
+      "y": 777,
+      "w": 84,
+      "h": 28,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "rfdf16a1a2",
+      "name": "5c",
+      "x": 677,
+      "y": 778,
+      "w": 82,
+      "h": 28,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r3b3e7e89d",
+      "name": "5d",
+      "x": 965,
+      "y": 778,
+      "w": 165,
+      "h": 27,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r25d96dd46",
+      "name": "6",
+      "x": 59,
+      "y": 832,
+      "w": 1002,
+      "h": 62,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r1769aa32f",
+      "name": "6a",
+      "x": 107,
+      "y": 861,
+      "w": 178,
+      "h": 27,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "rab8fc56f6",
+      "name": "6b",
+      "x": 391,
+      "y": 861,
+      "w": 126,
+      "h": 27,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r2331ed550",
+      "name": "6c",
+      "x": 679,
+      "y": 862,
+      "w": 215,
+      "h": 28,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r8316d2578",
+      "name": "6d",
+      "x": 963,
+      "y": 859,
+      "w": 93,
+      "h": 31,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r29ba1e89e",
+      "name": "7",
+      "x": 59,
+      "y": 915,
+      "w": 900,
+      "h": 67,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r3c542dc23",
+      "name": "7a",
+      "x": 108,
+      "y": 944,
+      "w": 389,
+      "h": 28,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r38c59cb2b",
+      "name": "7b",
+      "x": 676,
+      "y": 941,
+      "w": 145,
+      "h": 34,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "re65895b95",
+      "name": "7c",
+      "x": 107,
+      "y": 972,
+      "w": 197,
+      "h": 28,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "re874e7a39",
+      "name": "7d",
+      "x": 677,
+      "y": 969,
+      "w": 137,
+      "h": 35,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "rc62ea4361",
+      "name": "8",
+      "x": 60,
+      "y": 1026,
+      "w": 1139,
+      "h": 61,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "ra6f5181d5",
+      "name": "8a",
+      "x": 106,
+      "y": 1053,
+      "w": 119,
+      "h": 28,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "rbe2c7f743",
+      "name": "8b",
+      "x": 390,
+      "y": 1053,
+      "w": 87,
+      "h": 29,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r31172d9bb",
+      "name": "8c",
+      "x": 679,
+      "y": 1054,
+      "w": 217,
+      "h": 29,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "rea5035310",
+      "name": "8d",
+      "x": 964,
+      "y": 1053,
+      "w": 235,
+      "h": 31,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r06ca5a21b",
+      "name": "9",
+      "x": 59,
+      "y": 1108,
+      "w": 1187,
+      "h": 111,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "rd578786a8",
+      "name": "9a",
+      "x": 108,
+      "y": 1137,
+      "w": 394,
+      "h": 27,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "re2126d06c",
+      "name": "9b",
+      "x": 678,
+      "y": 1134,
+      "w": 563,
+      "h": 57,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r995aed792",
+      "name": "9c",
+      "x": 107,
+      "y": 1188,
+      "w": 443,
+      "h": 29,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "rc6842a158",
+      "name": "9d",
+      "x": 678,
+      "y": 1188,
+      "w": 410,
+      "h": 28,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r50820eb60",
+      "name": "10",
+      "x": 60,
+      "y": 1242,
+      "w": 758,
+      "h": 88,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r70ed9741a",
+      "name": "10a",
+      "x": 106,
+      "y": 1269,
+      "w": 383,
+      "h": 29,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r34e8b8e25",
+      "name": "10b",
+      "x": 677,
+      "y": 1269,
+      "w": 115,
+      "h": 30,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r80c47ceb7",
+      "name": "10c",
+      "x": 106,
+      "y": 1299,
+      "w": 158,
+      "h": 27,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "ra703b5b5e",
+      "name": "10d",
+      "x": 677,
+      "y": 1297,
+      "w": 109,
+      "h": 31,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r906cfc592",
+      "name": "11",
+      "x": 58,
+      "y": 1380,
+      "w": 230,
+      "h": 55,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r7b3477c5a",
+      "name": "11a",
+      "x": 113,
+      "y": 1406,
+      "w": 76,
+      "h": 27,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "raa6cb6131",
+      "name": "11b",
+      "x": 207,
+      "y": 1406,
+      "w": 81,
+      "h": 27,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "ra546e0d99",
+      "name": "12",
+      "x": 57,
+      "y": 1429,
+      "w": 231,
+      "h": 57,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r0a452905d",
+      "name": "12a",
+      "x": 114,
+      "y": 1457,
+      "w": 75,
+      "h": 26,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r54ba71c91",
+      "name": "12b",
+      "x": 207,
+      "y": 1458,
+      "w": 81,
+      "h": 26,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r620eca9b6",
+      "name": "13",
+      "x": 58,
+      "y": 1482,
+      "w": 231,
+      "h": 56,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r8c9b66d8d",
+      "name": "13a",
+      "x": 114,
+      "y": 1509,
+      "w": 76,
+      "h": 27,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r5eebf2e29",
+      "name": "13b",
+      "x": 207,
+      "y": 1509,
+      "w": 81,
+      "h": 27,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "rde18a52e5",
+      "name": "14",
+      "x": 57,
+      "y": 1533,
+      "w": 231,
+      "h": 58,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r1d7490b42",
+      "name": "14a",
+      "x": 114,
+      "y": 1560,
+      "w": 76,
+      "h": 28,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    },
+    {
+      "id": "r5c8cd3995",
+      "name": "14b",
+      "x": 206,
+      "y": 1558,
+      "w": 82,
+      "h": 30,
+      "llm_prompt_override": null,
+      "ocr_prompt_override": null
+    }
+  ]
+}

@@ -1,0 +1,266 @@
+{
+  "image_path": "/home/ges/Documents/evms_3/data/templates/2026/hpre_b.png",
+  "image_name": "hpre_b.png",
+  "image_width": 1275,
+  "image_height": 1650,
+  "rois": [
+    {
+      "h": 84,
+      "id": "rc620c10ef",
+      "name": "14",
+      "w": 1058,
+      "x": 61,
+      "y": 116
+    },
+    {
+      "h": 29,
+      "id": "r403356354",
+      "name": "14a",
+      "w": 212,
+      "x": 107,
+      "y": 143
+    },
+    {
+      "h": 28,
+      "id": "raddf11d7a",
+      "name": "14b",
+      "w": 386,
+      "x": 679,
+      "y": 144
+    },
+    {
+      "h": 27,
+      "id": "recad073ee",
+      "name": "14c",
+      "w": 444,
+      "x": 107,
+      "y": 172
+    },
+    {
+      "h": 27,
+      "id": "rb7450d194",
+      "name": "14d",
+      "w": 439,
+      "x": 679,
+      "y": 172
+    },
+    {
+      "h": 82,
+      "id": "r0530e268a",
+      "name": "15",
+      "w": 1060,
+      "x": 60,
+      "y": 222
+    },
+    {
+      "h": 28,
+      "id": "r00ce5c354",
+      "name": "15a",
+      "w": 337,
+      "x": 107,
+      "y": 251
+    },
+    {
+      "h": 28,
+      "id": "rde58a5fdc",
+      "name": "15b",
+      "w": 440,
+      "x": 680,
+      "y": 251
+    },
+    {
+      "h": 27,
+      "id": "r88d606ccf",
+      "name": "15c",
+      "w": 296,
+      "x": 107,
+      "y": 279
+    },
+    {
+      "h": 27,
+      "id": "r4fce4bc5a",
+      "name": "15d",
+      "w": 208,
+      "x": 679,
+      "y": 279
+    },
+    {
+      "h": 28,
+      "id": "rc44a0835f",
+      "name": "16",
+      "w": 810,
+      "x": 60,
+      "y": 357
+    },
+    {
+      "h": 28,
+      "id": "r84d55d819",
+      "name": "16a",
+      "w": 38,
+      "x": 619,
+      "y": 358
+    },
+    {
+      "h": 28,
+      "id": "r82d8128e5",
+      "name": "16b",
+      "w": 36,
+      "x": 663,
+      "y": 358
+    },
+    {
+      "h": 28,
+      "id": "rb96bbda6a",
+      "name": "16c",
+      "w": 37,
+      "x": 711,
+      "y": 358
+    },
+    {
+      "h": 28,
+      "id": "r596c593c5",
+      "name": "16d",
+      "w": 37,
+      "x": 756,
+      "y": 359
+    },
+    {
+      "h": 28,
+      "id": "ra58180084",
+      "name": "16e",
+      "w": 80,
+      "x": 793,
+      "y": 359
+    },
+    {
+      "h": 36,
+      "id": "r0abdaca3f",
+      "llm_prompt_override": "You are a strict text normalizer for ROI age extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be digits only (0-9), or null.\n- Remove surrounding words/symbols if a clear numeric age exists.\n- Do not output units, explanations, or placeholders.\n- If unreadable/unclear, return detected_text as null.\nTask:\n- Normalize OCR text into age digits.",
+      "name": "17",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"age\":\"\" }\n```",
+      "w": 114,
+      "x": 258,
+      "y": 385
+    },
+    {
+      "h": 148,
+      "id": "rc24000e54",
+      "name": "18",
+      "w": 840,
+      "x": 60,
+      "y": 415
+    },
+    {
+      "h": 28,
+      "id": "r50c3d1f62",
+      "name": "18a",
+      "w": 322,
+      "x": 106,
+      "y": 448
+    },
+    {
+      "h": 29,
+      "id": "rc68524224",
+      "name": "18b",
+      "w": 96,
+      "x": 678,
+      "y": 448
+    },
+    {
+      "h": 30,
+      "id": "r890fd2086",
+      "name": "18c",
+      "w": 262,
+      "x": 105,
+      "y": 477
+    },
+    {
+      "h": 29,
+      "id": "r6903753e1",
+      "name": "18d",
+      "w": 199,
+      "x": 679,
+      "y": 477
+    },
+    {
+      "h": 30,
+      "id": "rba844dcd8",
+      "name": "18e",
+      "w": 337,
+      "x": 104,
+      "y": 504
+    },
+    {
+      "h": 28,
+      "id": "r6bf518d81",
+      "name": "18f",
+      "w": 206,
+      "x": 677,
+      "y": 505
+    },
+    {
+      "h": 35,
+      "id": "rb80e543a9",
+      "name": "18g",
+      "w": 217,
+      "x": 102,
+      "y": 529
+    },
+    {
+      "h": 30,
+      "id": "r80188f904",
+      "name": "18h",
+      "w": 223,
+      "x": 677,
+      "y": 531
+    },
+    {
+      "h": 117,
+      "id": "rde65ab6fe",
+      "name": "19",
+      "w": 860,
+      "x": 61,
+      "y": 586
+    },
+    {
+      "h": 29,
+      "id": "r955ed3ab4",
+      "name": "19a",
+      "w": 126,
+      "x": 106,
+      "y": 617
+    },
+    {
+      "h": 28,
+      "id": "r42dece235",
+      "name": "19b",
+      "w": 143,
+      "x": 678,
+      "y": 617
+    },
+    {
+      "h": 36,
+      "id": "rb4d3ce341",
+      "name": "19c",
+      "w": 101,
+      "x": 102,
+      "y": 640
+    },
+    {
+      "h": 27,
+      "id": "r4404db9b2",
+      "name": "19d",
+      "w": 238,
+      "x": 678,
+      "y": 644
+    },
+    {
+      "h": 29,
+      "id": "r5944bd418",
+      "name": "19e",
+      "w": 221,
+      "x": 105,
+      "y": 672
+    }
+  ]
+}
