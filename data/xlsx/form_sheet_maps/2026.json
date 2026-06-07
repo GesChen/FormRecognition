@@ -1,0 +1,50 @@
+{
+  "6pre": {
+    "sheet": "6th Grade Pre-Assessment Data",
+    "template": "6pre",
+    "grade": "6",
+    "phase": "pre"
+  },
+  "7pre": {
+    "sheet": "7th Grade Pre-Assessment Data",
+    "template": "7pre",
+    "grade": "7",
+    "phase": "pre"
+  },
+  "8pre": {
+    "sheet": "8th Grade Pre-Assessment Data",
+    "template": "8pre",
+    "grade": "8",
+    "phase": "pre"
+  },
+  "6post": {
+    "sheet": "6th Grade Post-Assessment Data",
+    "template": "6post",
+    "grade": "6",
+    "phase": "post"
+  },
+  "7post": {
+    "sheet": "7th Grade Post-Assessment Data",
+    "template": "7post",
+    "grade": "7",
+    "phase": "post"
+  },
+  "8post": {
+    "sheet": "8th Grade Post-Assessment Data",
+    "template": "8post",
+    "grade": "8",
+    "phase": "post"
+  },
+  "hpre": {
+    "sheet": "HS Pre-Assessment Data",
+    "template": "hpre",
+    "grade": "high_school",
+    "phase": "pre"
+  },
+  "hpost": {
+    "sheet": "HS Post-Assessment Data",
+    "template": "hpost",
+    "grade": "high_school",
+    "phase": "post"
+  }
+}

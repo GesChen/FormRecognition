@@ -31,10 +31,12 @@ import json
 import re
 import time
 from datetime import date, datetime
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Mapping
 
 from config import PATHS, XLSX_DATA_ENTRY
+from form_sheet_map import form_sheet_name, workbook_template_path
 
 try:
     from openpyxl.utils import column_index_from_string
@@ -67,10 +69,10 @@ def load_mapping(
     """
     Load a mapping file for *form_type* from ``cfg["mapping_dir"]``.
 
-    Resolves to ``<mapping_dir>/<form_type>.json`` (e.g. ``data/xlsx_mappings/6post.json``).
+    Resolves to ``<mapping_dir>/<form_type>.json`` (e.g. ``data/xlsx/mappings/2026/6post.json``).
     """
     cfg = cfg or XLSX_DATA_ENTRY
-    root = Path(cfg.get("mapping_dir", PATHS["data"] / "xlsx_mappings"))
+    root = Path(cfg.get("mapping_dir", PATHS["data"] / "xlsx" / "mappings"))
     name = f"{form_type.strip()}.json"
     p = (root / name).resolve()
     if not p.is_file():
@@ -84,6 +86,10 @@ def load_mapping(
     for key in ("form_type", "sheet", "start_row", "mappings"):
         if key not in data:
             raise ValueError(f"Mapping file missing required key {key!r}: {p}")
+    configured_sheet = form_sheet_name(str(data.get("form_type") or form_type))
+    if configured_sheet:
+        data["sheet"] = configured_sheet
+    data["_mapping_release"] = p.parent.name
     return data
 
 
@@ -128,18 +134,12 @@ def items_from_payload(
 
 def resolve_template_path(
     cfg: Mapping[str, Any] | None = None,
+    *,
+    release: str | None = None,
 ) -> Path:
-    """Resolve the master template workbook from config."""
+    """Resolve the release-scoped master template workbook from data/."""
     _require_openpyxl()
-    cfg = cfg or XLSX_DATA_ENTRY
-    master = cfg.get("master_template_workbook")
-    if master:
-        mp = Path(master).resolve()
-        if mp.is_file():
-            return mp
-    raise FileNotFoundError(
-        'Set XLSX_DATA_ENTRY["master_template_workbook"] to an existing .xlsx'
-    )
+    return workbook_template_path(release)
 
 
 # ---------------------------------------------------------------------------
@@ -349,6 +349,56 @@ def _stamp_data_rows(dst_ws: Worksheet, src_ws: Worksheet, start_row: int, count
                 dst_cell.alignment = copy(src_cell.alignment)
 
 
+def original_sheet_name(form_type: str) -> str:
+    """
+    Concise original/raw sheet name. Excel sheet titles are limited to 31 chars.
+    """
+    ft = str(form_type or "").strip().lower()
+    m = re.match(r"^([678h])(pre|post)$", ft)
+    if not m:
+        base = re.sub(r"[\[\]:*?/\\]", " ", str(form_type or "Data")).strip() or "Data"
+        base = " ".join(base.split())[:20].strip() or "Data"
+        return f"{base} (Original)"[:31]
+    grade, timing = m.group(1), m.group(2)
+    grade_label = {"6": "6th", "7": "7th", "8": "8th", "h": "HS"}[grade]
+    timing_label = "Pre" if timing == "pre" else "Post"
+    return f"{grade_label} {timing_label} Data (Original)"
+
+
+def _copy_sheet_structure(
+    src_ws: Worksheet,
+    dst_ws: Worksheet,
+    *,
+    start_row: int,
+    row_count: int,
+) -> None:
+    """
+    Copy source worksheet cells/styles/dimensions into destination and stamp data rows.
+    """
+    from copy import copy
+
+    for row in src_ws.iter_rows():
+        for cell in row:
+            dst_cell = dst_ws.cell(row=cell.row, column=cell.column, value=cell.value)
+            if cell.has_style:
+                dst_cell.font = copy(cell.font)
+                dst_cell.border = copy(cell.border)
+                dst_cell.fill = copy(cell.fill)
+                dst_cell.number_format = cell.number_format
+                dst_cell.protection = copy(cell.protection)
+                dst_cell.alignment = copy(cell.alignment)
+
+    for merged in src_ws.merged_cells.ranges:
+        dst_ws.merge_cells(str(merged))
+
+    for i, dim in src_ws.column_dimensions.items():
+        dst_ws.column_dimensions[i].width = dim.width
+    for i, dim in src_ws.row_dimensions.items():
+        dst_ws.row_dimensions[i].height = dim.height
+
+    _stamp_data_rows(dst_ws, src_ws, start_row, row_count)
+
+
 def fill_template(
     mapping: Mapping[str, Any],
     items: list[Mapping[str, Any]],
@@ -365,12 +415,13 @@ def fill_template(
     Returns the resolved output path.
     """
     _require_openpyxl()
-    from copy import copy
-
     from openpyxl import Workbook, load_workbook
 
     cfg = cfg or XLSX_DATA_ENTRY
-    tpl = Path(template_path).resolve() if template_path else resolve_template_path(cfg)
+    tpl = Path(template_path).resolve() if template_path else resolve_template_path(
+        cfg,
+        release=str(mapping.get("_mapping_release") or "").strip() or None,
+    )
     out = Path(output_path).resolve()
 
     if not tpl.is_file():
@@ -389,29 +440,65 @@ def fill_template(
         dst_ws = dst_wb.active
         dst_ws.title = sheet_name
 
-        for row in src_ws.iter_rows():
-            for cell in row:
-                dst_cell = dst_ws.cell(row=cell.row, column=cell.column, value=cell.value)
-                if cell.has_style:
-                    dst_cell.font = copy(cell.font)
-                    dst_cell.border = copy(cell.border)
-                    dst_cell.fill = copy(cell.fill)
-                    dst_cell.number_format = cell.number_format
-                    dst_cell.protection = copy(cell.protection)
-                    dst_cell.alignment = copy(cell.alignment)
-
-        for merged in src_ws.merged_cells.ranges:
-            dst_ws.merge_cells(str(merged))
-
-        for i, dim in src_ws.column_dimensions.items():
-            dst_ws.column_dimensions[i].width = dim.width
-        for i, dim in src_ws.row_dimensions.items():
-            dst_ws.row_dimensions[i].height = dim.height
-
-        _stamp_data_rows(dst_ws, src_ws, start_row, len(items))
+        _copy_sheet_structure(src_ws, dst_ws, start_row=start_row, row_count=len(items))
 
         for i, item in enumerate(items):
             fill_row(dst_ws, start_row + i, mapping, item)
+
+        out.parent.mkdir(parents=True, exist_ok=True)
+        dst_wb.save(out)
+        dst_wb.close()
+    finally:
+        src_wb.close()
+    return out
+
+
+def fill_template_pair(
+    mapping: Mapping[str, Any],
+    items: list[Mapping[str, Any]],
+    original_items: list[Mapping[str, Any]],
+    output_path: str | Path,
+    *,
+    template_path: str | Path | None = None,
+    cfg: Mapping[str, Any] | None = None,
+) -> Path:
+    """
+    Fill one staging workbook with normalized and original sheets for a form type.
+    """
+    _require_openpyxl()
+    from openpyxl import Workbook, load_workbook
+
+    cfg = cfg or XLSX_DATA_ENTRY
+    tpl = Path(template_path).resolve() if template_path else resolve_template_path(
+        cfg,
+        release=str(mapping.get("_mapping_release") or "").strip() or None,
+    )
+    out = Path(output_path).resolve()
+
+    if not tpl.is_file():
+        raise FileNotFoundError(f"Template not found: {tpl}")
+
+    sheet_name = str(mapping["sheet"])
+    start_row = int(mapping.get("start_row", 4))
+    original_name = original_sheet_name(str(mapping.get("form_type", "")))
+
+    src_wb = load_workbook(tpl)
+    try:
+        if sheet_name not in src_wb.sheetnames:
+            raise KeyError(f"No sheet {sheet_name!r} in workbook; have {src_wb.sheetnames}")
+        src_ws = src_wb[sheet_name]
+
+        dst_wb = Workbook()
+        norm_ws = dst_wb.active
+        norm_ws.title = sheet_name
+        _copy_sheet_structure(src_ws, norm_ws, start_row=start_row, row_count=len(items))
+        for i, item in enumerate(items):
+            fill_row(norm_ws, start_row + i, mapping, item)
+
+        original_ws = dst_wb.create_sheet(title=original_name)
+        _copy_sheet_structure(src_ws, original_ws, start_row=start_row, row_count=len(original_items))
+        for i, item in enumerate(original_items):
+            fill_row(original_ws, start_row + i, mapping, item)
 
         out.parent.mkdir(parents=True, exist_ok=True)
         dst_wb.save(out)
@@ -465,38 +552,38 @@ def merge_workbooks(
     dst_wb = Workbook()
     created_default = True
 
-    for form_type, src_path in staging_paths.items():
+    for _form_type, src_path in staging_paths.items():
         src_wb = load_workbook(src_path)
         try:
-            src_ws = src_wb.active
-            if src_ws is None:
-                continue
-            if created_default:
-                dst_ws = dst_wb.active
-                dst_ws.title = src_ws.title
-                created_default = False
-            else:
-                dst_ws = dst_wb.create_sheet(title=src_ws.title)
+            for src_ws in src_wb.worksheets:
+                if src_ws is None:
+                    continue
+                if created_default:
+                    dst_ws = dst_wb.active
+                    dst_ws.title = src_ws.title
+                    created_default = False
+                else:
+                    dst_ws = dst_wb.create_sheet(title=src_ws.title)
 
-            for row in src_ws.iter_rows():
-                for cell in row:
-                    dst_cell = dst_ws.cell(
-                        row=cell.row, column=cell.column, value=cell.value,
-                    )
-                    if cell.has_style:
-                        dst_cell.font = copy(cell.font)
-                        dst_cell.border = copy(cell.border)
-                        dst_cell.fill = copy(cell.fill)
-                        dst_cell.number_format = cell.number_format
-                        dst_cell.protection = copy(cell.protection)
-                        dst_cell.alignment = copy(cell.alignment)
+                for row in src_ws.iter_rows():
+                    for cell in row:
+                        dst_cell = dst_ws.cell(
+                            row=cell.row, column=cell.column, value=cell.value,
+                        )
+                        if cell.has_style:
+                            dst_cell.font = copy(cell.font)
+                            dst_cell.border = copy(cell.border)
+                            dst_cell.fill = copy(cell.fill)
+                            dst_cell.number_format = cell.number_format
+                            dst_cell.protection = copy(cell.protection)
+                            dst_cell.alignment = copy(cell.alignment)
 
-            for merged in src_ws.merged_cells.ranges:
-                dst_ws.merge_cells(str(merged))
-            for i, dim in src_ws.column_dimensions.items():
-                dst_ws.column_dimensions[i].width = dim.width
-            for i, dim in src_ws.row_dimensions.items():
-                dst_ws.row_dimensions[i].height = dim.height
+                for merged in src_ws.merged_cells.ranges:
+                    dst_ws.merge_cells(str(merged))
+                for i, dim in src_ws.column_dimensions.items():
+                    dst_ws.column_dimensions[i].width = dim.width
+                for i, dim in src_ws.row_dimensions.items():
+                    dst_ws.row_dimensions[i].height = dim.height
         finally:
             src_wb.close()
 
@@ -516,12 +603,16 @@ def fill_from_pipeline(
     pdf_stem: str | None = None,
     cfg: Mapping[str, Any] | None = None,
     verbose: bool = True,
+    original_items: list[dict[str, Any]] | None = None,
 ) -> Path | None:
     """
     Group pipeline items by ``form_type``, fill one staging workbook per type,
     then merge all sheets into a single output workbook.
 
     *items*: list of pipeline item dicts (each with ``form_type``, ``id``, ``data[]``).
+    *original_items*: optional pre-post-normalization item list. When provided,
+      each form_type staging workbook includes a normalized sheet and an
+      ``(Original)`` sheet.
     *output_path*: explicit path for the merged workbook.  When ``None``, auto-generates
       ``<output_dir>/<pdf_stem>.xlsx`` (or a timestamped name if *pdf_stem* is also ``None``).
     *pdf_stem*: used for the default output filename (e.g. ``"maury_1"``).
@@ -538,12 +629,20 @@ def fill_from_pipeline(
             continue
         groups.setdefault(ft, []).append(item)
 
+    original_groups: dict[str, list[dict[str, Any]]] = {}
+    if original_items is not None:
+        for item in original_items:
+            ft = (item.get("form_type") or "").strip()
+            if not ft:
+                continue
+            original_groups.setdefault(ft, []).append(item)
+
     if not groups:
         if verbose:
             print("  [xlsx] No items with form_type — skipping xlsx fill.")
         return None
 
-    staging: dict[str, Path] = {}
+    staging: dict[str, Path] = OrderedDict()
     for ft, ft_items in groups.items():
         try:
             mapping = load_mapping(ft, cfg)
@@ -553,10 +652,17 @@ def fill_from_pipeline(
             continue
 
         staging_path = make_staging_output_path(ft, cfg)
-        fill_template(mapping, ft_items, staging_path, cfg=cfg)
+        ft_original_items = original_groups.get(ft) if original_items is not None else None
+        if ft_original_items is not None:
+            fill_template_pair(mapping, ft_items, ft_original_items, staging_path, cfg=cfg)
+        else:
+            fill_template(mapping, ft_items, staging_path, cfg=cfg)
         staging[ft] = staging_path
         if verbose:
-            print(f"  [xlsx] {ft}: {len(ft_items)} item(s) → {mapping['sheet']!r}")
+            suffix = ""
+            if ft_original_items is not None:
+                suffix = f" + {original_sheet_name(ft)!r}"
+            print(f"  [xlsx] {ft}: {len(ft_items)} item(s) → {mapping['sheet']!r}{suffix}")
 
     if not staging:
         if verbose:
@@ -592,7 +698,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "form_type",
-        help="Form type (resolves to data/xlsx_mappings/<form_type>.json mapping file)",
+        help="Form type (resolves to data/xlsx/mappings/<release>/<form_type>.json mapping file)",
     )
     parser.add_argument(
         "pipeline_json",
@@ -603,11 +709,6 @@ if __name__ == "__main__":
         nargs="?",
         default=None,
         help="Output workbook path (required unless --staging)",
-    )
-    parser.add_argument(
-        "--template",
-        default=None,
-        help="Override master template .xlsx path",
     )
     parser.add_argument(
         "--staging",
@@ -642,7 +743,6 @@ if __name__ == "__main__":
     if args.staging:
         out = fill_staging(
             mapping, items,
-            template_path=args.template,
             cfg=cfg,
         )
     else:
@@ -651,7 +751,6 @@ if __name__ == "__main__":
             sys.exit(2)
         out = fill_template(
             mapping, items, args.output_xlsx,
-            template_path=args.template,
             cfg=cfg,
         )
 

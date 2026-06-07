@@ -1,0 +1,17 @@
+{
+  "form_type": "hpost",
+  "sheet": "HS Post-Assessment Data",
+  "start_row": 4,
+  "mappings": [
+    {
+      "type": "direct",
+      "source": "id",
+      "column": "A"
+    },
+    {
+      "type": "direct",
+      "source": "teacher",
+      "column": "K"
+    }
+  ]
+}

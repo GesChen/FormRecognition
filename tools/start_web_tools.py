@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-Start all Flask web tools (Web tools hub, ROI editor, ROI previewer, pipeline debug, human review, XLSX compare).
+Start all Flask web tools (Web tools hub, ROI editor, ROI previewer, pipeline debug,
+human review, XLSX compare, XLSX mapping editor, ROI-to-XLSX visualizer).
 
   # Background daemons (current terminal returns); logs under testing/output/web_tools/
   python3 tools/start_web_tools.py
@@ -51,6 +52,8 @@ WEB_TOOLS: tuple[tuple[str, str, int], ...] = (
     ("pipeline_debug", "pipeline_debug_web.py", 5002),
     ("human_review", "human_review_web.py", 5003),
     ("xlsx_compare", "xlsx_compare_web.py", 5004),
+    ("xlsx_mapping", "xlsx_mapping_web.py", 5005),
+    ("pipeline_map", "pipeline_map_web.py", 5006),
 )
 LEGACY_WEB_TOOL_SCRIPTS: tuple[str, ...] = (
     "evms_hub_web.py",

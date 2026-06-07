@@ -58,7 +58,6 @@ def main() -> int:
         default=None,
         help=f"Output workbook (default: {DEFAULT_OUT}; with --staging → auto name)",
     )
-    p.add_argument("--template", type=Path, default=None, help="Override template .xlsx path")
     p.add_argument(
         "-n",
         "--limit",
@@ -109,9 +108,9 @@ def main() -> int:
     if args.staging:
         cfg["staging_dir"] = OUTPUT_DIR
 
-    tpl = Path(args.template).resolve() if args.template else resolve_template_path(cfg)
+    tpl = resolve_template_path(cfg)
     print(f"Template:  {tpl}")
-    print(f"Mapping:   data/xlsx_mappings/{args.form_type}.json → sheet {mapping['sheet']!r}")
+    print(f"Mapping:   data/xlsx/mappings/<release>/{args.form_type}.json → sheet {mapping['sheet']!r}")
     print(f"  {len(mapping.get('mappings', []))} mapping entries")
 
     if args.staging:
@@ -121,7 +120,6 @@ def main() -> int:
             items,
             output_path=out_path,
             cfg=cfg,
-            template_path=args.template,
         )
         print(f"Staging:   {out} ({out.stat().st_size} bytes)")
         return 0
@@ -132,7 +130,6 @@ def main() -> int:
 
     fill_template(
         mapping, items, out,
-        template_path=args.template,
         cfg=cfg,
     )
     print(f"Wrote:     {out} ({out.stat().st_size} bytes)")

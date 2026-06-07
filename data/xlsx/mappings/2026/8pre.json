@@ -1,0 +1,283 @@
+{
+  "form_type": "8pre",
+  "sheet": "8th Grade Pre-Assessment Data",
+  "start_row": 4,
+  "mappings": [
+    {
+      "type": "direct",
+      "source": "id",
+      "column": "A"
+    },
+    {
+      "type": "direct",
+      "source": "date",
+      "column": "B",
+      "transform": "date"
+    },
+    {
+      "type": "static",
+      "column": "C",
+      "value": "NPS"
+    },
+    {
+      "type": "static",
+      "column": "D",
+      "value": "In-Person"
+    },
+    {
+      "type": "static",
+      "column": "F",
+      "value": "EVMS"
+    },
+    {
+      "type": "static",
+      "column": "G",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "H",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "I",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "J",
+      "value": "Yes"
+    },
+    {
+      "type": "direct",
+      "source": "teacher",
+      "column": "K"
+    },
+    {
+      "type": "direct",
+      "source": "1",
+      "column": "L",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "2",
+      "column": "M",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "3",
+      "column": "N",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "4",
+      "column": "O",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "5",
+      "column": "P",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "6",
+      "column": "Q",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "7",
+      "column": "R",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "8",
+      "column": "S",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "9",
+      "column": "T",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "10",
+      "column": "U",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "11",
+      "column": "V",
+      "transform": "upper"
+    },
+    {
+      "type": "lookup",
+      "source": "12",
+      "column": "W",
+      "map": {
+        "a": "True",
+        "b": "False"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "13",
+      "column": "X",
+      "map": {
+        "a": "True",
+        "b": "False"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "14",
+      "column": "Y",
+      "map": {
+        "a": "True",
+        "b": "False"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "15",
+      "column": "Z",
+      "map": {
+        "a": "True",
+        "b": "False"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "16",
+      "column": "AA",
+      "map": {
+        "a": "True",
+        "b": "False"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "17",
+      "column": "AB",
+      "map": {
+        "a": "True",
+        "b": "False"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "18",
+      "column": "AC",
+      "map": {
+        "a": "True",
+        "b": "False"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "19",
+      "column": "AD",
+      "map": {
+        "a": "True",
+        "b": "False"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "20",
+      "column": "AE",
+      "map": {
+        "a": "True",
+        "b": "False"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "21",
+      "column": "AF",
+      "map": {
+        "a": "True",
+        "b": "False"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "22",
+      "column": "AG",
+      "map": {
+        "a": "True",
+        "b": "False"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "23",
+      "column": "AH",
+      "map": {
+        "a": "True",
+        "b": "False"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "24",
+      "column": "AI",
+      "map": {
+        "a": "6th Grade",
+        "b": "7th Grade",
+        "c": "8th Grade",
+        "d": "9th Grade",
+        "e": "Other Grade"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "25",
+      "column": "AJ",
+      "transform": "number"
+    },
+    {
+      "type": "multi_column",
+      "source": "26",
+      "choices": {
+        "a": "AK",
+        "b": "AL",
+        "c": "AM",
+        "d": "AN",
+        "e": "AO",
+        "f": "AP",
+        "g": "AQ",
+        "h": "AR"
+      },
+      "mark": "Yes",
+      "no_answer": "AR"
+    },
+    {
+      "type": "lookup",
+      "source": "27",
+      "column": "AS",
+      "map": {
+        "a": "Boy",
+        "b": "Girl",
+        "c": "Other",
+        "d": "Other",
+        "e": "Unknown/Not Reported"
+      }
+    },
+    {
+      "type": "static",
+      "column": "AT",
+      "value": "Unknown/Not Reported"
+    }
+  ]
+}

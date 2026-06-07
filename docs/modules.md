@@ -551,16 +551,14 @@ See `docs/ocr_human_review_schema.md`.
 
 Fills **row-oriented** Excel templates from **human-authored mapping JSON** files
 and raw **pipeline items** (from `pdf_recognize`).  Each form type has a mapping
-file at `data/xlsx_mappings/<form_type>.json`.  See `docs/xlsx_mapping_spec.md` for the full spec.
+file at `data/xlsx/mappings/<release>/<form_type>.json`.  See `docs/xlsx_mapping_spec.md` for the full spec.
 
 ### Config: `XLSX_DATA_ENTRY`
 
 | Key | Default | Purpose |
 |---|---|---|
-| `mapping_dir` | `PATHS["data"] / "xlsx_mappings"` | Directory for `<form_type>.json` mapping files. |
-| `master_template_workbook` | `data/2025 EVMS NPS Data Entry tool … .xlsx` | One multi-sheet blank workbook; all form types are sheets inside this file. |
+| `mapping_dir` | `PATHS["data"] / "xlsx" / "mappings" / <release>` | Directory for `<form_type>.json` mapping files. |
 | `output_dir` | `PATHS["output"] / "xlsx"` | Directory for merged per-PDF output workbooks. |
-| `form_type_sheet_map` | dict | Pipeline `form_type` (`6post`, `hpre`, …) → exact Excel tab name. |
 | `staging_dir` | `PATHS["cache"] / "xlsx_staging"` | Default directory for staging filled copies. |
 
 ### Mapping types
@@ -578,7 +576,7 @@ file at `data/xlsx_mappings/<form_type>.json`.  See `docs/xlsx_mapping_spec.md` 
 |---|---|
 | `load_mapping(form_type, cfg)` | Load `data/<form_type>.json`. |
 | `items_from_payload(payload, limit=None)` | Extract pipeline items from `{"items":[]}`, array, or single dict. |
-| `resolve_template_path(cfg)` | Resolve master template workbook path. |
+| `resolve_template_path(cfg)` | Resolve the release-scoped workbook template from `data/xlsx/workbook_templates/<release>/`. |
 | `resolve_source(item, source)` | Read value from a pipeline item by source string. |
 | `apply_mapping_entry(ws, row, entry, item)` | Apply one mapping entry to a cell. |
 | `fill_row(ws, row, mapping, item)` | Apply all mappings for one item. |
@@ -591,7 +589,7 @@ file at `data/xlsx_mappings/<form_type>.json`.  See `docs/xlsx_mapping_spec.md` 
 ### CLI
 
 ```
-python3 py/xlsx_data_entry.py <form_type> <pipeline.json> [output.xlsx] [--template path.xlsx]
+python3 py/xlsx_data_entry.py <form_type> <pipeline.json> [output.xlsx]
 python3 py/xlsx_data_entry.py <form_type> <pipeline.json> --staging
 python3 py/xlsx_data_entry.py 6post output/recognition/post_crossroads_6_Davis.json output/filled.xlsx
 ```

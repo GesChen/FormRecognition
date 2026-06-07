@@ -1,7 +1,7 @@
 # XLSX Mapping Specification
 
 Human-authored JSON files that define how pipeline recognition output maps onto
-Excel template columns. One file per `form_type`, stored as `data/xlsx_mappings/<form_type>.json`.
+Excel template columns. One file per `form_type`, stored as `data/xlsx/mappings/<release>/<form_type>.json`.
 
 ---
 
@@ -426,8 +426,8 @@ template column table to verify every column is covered.
 4. **Write each mapping** in the `mappings` array. Go column by column
    (left to right through the template) so nothing is missed.
 
-5. **Save** the file as `data/xlsx_mappings/<form_type>.json`
-   (e.g. `data/xlsx_mappings/6post.json`).
+5. **Save** the file as `data/xlsx/mappings/<release>/<form_type>.json`
+   (e.g. `data/xlsx/mappings/2026/6post.json`).
 
 ---
 

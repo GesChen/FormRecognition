@@ -141,8 +141,8 @@ def create_app() -> Flask:
         s1 = steps.get("1_pdf_to_images") or {}
         page_paths = s1.get("page_paths") or []
         n_pages = len(page_paths)
-        s5 = steps.get("5_output") or {}
-        item_count = s5.get("item_count")
+        output_step = steps.get("6_output") or steps.get("5_output") or {}
+        item_count = output_step.get("item_count")
         if item_count is None and n_pages:
             item_count = (n_pages + 1) // 2
         try:

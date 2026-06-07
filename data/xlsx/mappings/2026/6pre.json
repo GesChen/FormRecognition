@@ -1,0 +1,12 @@
+{
+  "form_type": "6pre",
+  "sheet": "6th Grade Pre-Assessment Data",
+  "start_row": 4,
+  "mappings": [
+    {
+      "type": "direct",
+      "source": "id",
+      "column": "A"
+    }
+  ]
+}

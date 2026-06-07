@@ -180,16 +180,21 @@ def extract_item_pipeline_debug(
             page_indexes,
         )
 
-    # 5 — pointer to full output + which item this slice is
-    s5 = steps.get("5_output") or {}
-    out_steps["5_output"] = {
-        "output_path": s5.get("output_path"),
-        "item_count_full_run": s5.get("item_count"),
+    if "5_post_normalize" in steps:
+        out_steps["5_post_normalize"] = steps["5_post_normalize"]
+
+    # 6 — pointer to full output + which item this slice is
+    s6 = steps.get("6_output") or steps.get("5_output") or {}
+    out_steps["6_output"] = {
+        "output_path": s6.get("output_path"),
+        "item_count_full_run": s6.get("item_count"),
         "item_index_this_slice": item_index,
         "note": "This object describes one item; the full run wrote item_count_full_run items.",
     }
 
-    if "6_xlsx" in steps:
+    if "7_xlsx" in steps:
+        out_steps["7_xlsx"] = steps["7_xlsx"]
+    elif "6_xlsx" in steps:
         out_steps["6_xlsx"] = steps["6_xlsx"]
 
     return {

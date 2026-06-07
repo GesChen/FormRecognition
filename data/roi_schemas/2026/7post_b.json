@@ -5,884 +5,462 @@
   "image_height": 1650,
   "rois": [
     {
-      "id": "rbc6605652",
-      "name": "id",
-      "x": 42,
-      "y": 10,
-      "w": 240,
-      "h": 35,
-      "llm_prompt_override": "You are a strict JSON mapper.\nYou are NOT reading an image. You only receive OCR-extracted text.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string\"}\nTask:\nMap the OCR JSON field \"id\" into pipeline field \"detected_text\".\nRules:\n1. If OCR text contains JSON and key \"id\" exists with a non-empty value, output {\"detected_text\":\"<id value exactly as-is>\"}.\n2. If key \"id\" is missing, null, or empty, output {\"detected_text\":null}.\n3. Do not normalize, correct, trim, or transform the id value.\n4. Do not add any extra keys or text.",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"id\":\"\" }\n```"
-    },
-    {
+      "h": 28,
       "id": "rd879dab08",
+      "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "21",
-      "x": 44,
-      "y": 186,
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\" }\n```",
       "w": 730,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 98,
+      "y": 214
     },
     {
-      "id": "r16fa820d7",
-      "name": "21a",
-      "x": 89,
-      "y": 88,
-      "w": 115,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r156955db5",
-      "name": "21b",
-      "x": 383,
-      "y": 88,
-      "w": 70,
       "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r6599334c6",
-      "name": "21c",
-      "x": 680,
-      "y": 90,
-      "w": 225,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r0cc68baf7",
-      "name": "21d",
-      "x": 973,
-      "y": 89,
-      "w": 118,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r4731b76f7",
-      "name": "21e",
-      "x": 91,
-      "y": 113,
-      "w": 103,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "rc901f895c",
-      "name": "21f",
-      "x": 382,
-      "y": 112,
-      "w": 100,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r35a8cbbd3",
-      "name": "21g",
-      "x": 677,
-      "y": 112,
-      "w": 95,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r156bf31f7",
-      "name": "21h",
-      "x": 973,
-      "y": 115,
-      "w": 121,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r4eabae656",
-      "name": "21i",
-      "x": 90,
-      "y": 139,
-      "w": 132,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "rfcbc7a0ef",
-      "name": "21j",
-      "x": 381,
-      "y": 139,
-      "w": 105,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
       "id": "rf51707331",
+      "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "22",
-      "x": 44,
-      "y": 233,
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\" }\n```",
       "w": 1000,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 98,
+      "y": 261
     },
     {
-      "id": "r902e2bb55",
-      "name": "22a",
-      "x": 89,
-      "y": 88,
-      "w": 115,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r553eff44f",
-      "name": "22b",
-      "x": 383,
-      "y": 88,
-      "w": 70,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r8f7b6b725",
-      "name": "22c",
-      "x": 680,
-      "y": 90,
-      "w": 225,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r6a95bbfdb",
-      "name": "22d",
-      "x": 973,
-      "y": 89,
-      "w": 118,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "rd2b3f2906",
-      "name": "22e",
-      "x": 91,
-      "y": 113,
-      "w": 103,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r1ee5ed513",
-      "name": "22f",
-      "x": 382,
-      "y": 112,
-      "w": 100,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r9a4682d91",
-      "name": "22g",
-      "x": 677,
-      "y": 112,
-      "w": 95,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "rc2914f216",
-      "name": "22h",
-      "x": 973,
-      "y": 115,
-      "w": 121,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "ra3ae234a7",
-      "name": "22i",
-      "x": 90,
-      "y": 139,
-      "w": 132,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r30e0fa03f",
-      "name": "22j",
-      "x": 381,
-      "y": 139,
-      "w": 105,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "rabcf73dd2",
-      "name": "23",
-      "x": 45,
-      "y": 278,
-      "w": 605,
       "h": 31,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "id": "rabcf73dd2",
+      "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
+      "name": "23",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\" }\n```",
+      "w": 605,
+      "x": 99,
+      "y": 302
     },
     {
-      "id": "rf4ea760e0",
-      "name": "23a",
-      "x": 89,
-      "y": 88,
-      "w": 115,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r385fbb236",
-      "name": "23b",
-      "x": 383,
-      "y": 88,
-      "w": 70,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r9da107301",
-      "name": "23c",
-      "x": 680,
-      "y": 90,
-      "w": 225,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "rd1b1544db",
-      "name": "23d",
-      "x": 973,
-      "y": 89,
-      "w": 118,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r725ee50e3",
-      "name": "23e",
-      "x": 91,
-      "y": 113,
-      "w": 103,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r96f77b886",
-      "name": "23f",
-      "x": 382,
-      "y": 112,
-      "w": 100,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "rce098dfaa",
-      "name": "23g",
-      "x": 677,
-      "y": 112,
-      "w": 95,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r7cbfc5559",
-      "name": "23h",
-      "x": 973,
-      "y": 115,
-      "w": 121,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r98728318f",
-      "name": "23i",
-      "x": 90,
-      "y": 139,
-      "w": 132,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r9dc086d0c",
-      "name": "23j",
-      "x": 381,
-      "y": 139,
-      "w": 105,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
+      "h": 33,
       "id": "r5c726d0cc",
       "name": "24",
-      "x": 44,
-      "y": 373,
       "w": 720,
-      "h": 33,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 44,
+      "y": 373
     },
     {
+      "h": 30,
       "id": "rf5057e1a4",
       "name": "24a",
-      "x": 91,
-      "y": 397,
       "w": 146,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 91,
+      "y": 397
     },
     {
+      "h": 30,
       "id": "rad35c0f87",
       "name": "24b",
-      "x": 677,
-      "y": 397,
       "w": 86,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 677,
+      "y": 397
     },
     {
+      "h": 29,
       "id": "ra7f28d83e",
       "name": "24c",
-      "x": 92,
-      "y": 423,
       "w": 235,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 92,
+      "y": 423
     },
     {
+      "h": 30,
       "id": "r5e631e88a",
       "name": "24d",
-      "x": 678,
-      "y": 420,
       "w": 105,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 678,
+      "y": 420
     },
     {
+      "h": 29,
       "id": "r7f9154619",
       "name": "24e",
-      "x": 92,
-      "y": 447,
       "w": 165,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 92,
+      "y": 447
     },
     {
+      "h": 31,
       "id": "rb545efd34",
       "name": "25",
-      "x": 44,
-      "y": 497,
       "w": 618,
-      "h": 31,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 44,
+      "y": 497
     },
     {
+      "h": 29,
       "id": "r25061bd1e",
       "name": "25a",
-      "x": 92,
-      "y": 522,
       "w": 144,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 92,
+      "y": 522
     },
     {
+      "h": 30,
       "id": "rcfbd3f3c0",
       "name": "25b",
-      "x": 677,
-      "y": 520,
       "w": 86,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 677,
+      "y": 520
     },
     {
+      "h": 30,
       "id": "rc98553f91",
       "name": "25c",
-      "x": 91,
-      "y": 544,
       "w": 236,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 91,
+      "y": 544
     },
     {
+      "h": 30,
       "id": "r971e0766a",
       "name": "25d",
-      "x": 678,
-      "y": 544,
       "w": 105,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 678,
+      "y": 544
     },
     {
+      "h": 29,
       "id": "r31f02918c",
       "name": "25e",
-      "x": 92,
-      "y": 569,
       "w": 164,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 92,
+      "y": 569
     },
     {
+      "h": 31,
       "id": "rbeba9fb93",
       "name": "26",
-      "x": 45,
-      "y": 622,
       "w": 885,
-      "h": 31,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 45,
+      "y": 622
     },
     {
+      "h": 29,
       "id": "r32031c181",
       "name": "26a",
-      "x": 91,
-      "y": 646,
       "w": 145,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 91,
+      "y": 646
     },
     {
+      "h": 30,
       "id": "r818d2f76b",
       "name": "26b",
-      "x": 677,
-      "y": 644,
       "w": 86,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 677,
+      "y": 644
     },
     {
+      "h": 28,
       "id": "reeb901f97",
       "name": "26c",
-      "x": 91,
-      "y": 670,
       "w": 235,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 91,
+      "y": 670
     },
     {
+      "h": 30,
       "id": "rbca87668e",
       "name": "26d",
-      "x": 678,
-      "y": 668,
       "w": 105,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 678,
+      "y": 668
     },
     {
+      "h": 29,
       "id": "r7dbc92b75",
       "name": "26e",
-      "x": 92,
-      "y": 694,
       "w": 165,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 92,
+      "y": 694
     },
     {
+      "h": 33,
       "id": "rcc6a64d9f",
       "name": "27",
-      "x": 44,
-      "y": 743,
       "w": 758,
-      "h": 33,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 44,
+      "y": 743
     },
     {
+      "h": 29,
       "id": "r35ae482ca",
       "name": "27a",
-      "x": 91,
-      "y": 769,
       "w": 146,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 91,
+      "y": 769
     },
     {
+      "h": 30,
       "id": "rd74bfe783",
       "name": "27b",
-      "x": 677,
-      "y": 767,
       "w": 86,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 677,
+      "y": 767
     },
     {
+      "h": 29,
       "id": "re42f2e1be",
       "name": "27c",
-      "x": 91,
-      "y": 792,
       "w": 236,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 91,
+      "y": 792
     },
     {
+      "h": 30,
       "id": "r094487da2",
       "name": "27d",
-      "x": 678,
-      "y": 791,
       "w": 105,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 678,
+      "y": 791
     },
     {
+      "h": 29,
       "id": "r7fc8319e3",
       "name": "27e",
-      "x": 92,
-      "y": 818,
       "w": 165,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 92,
+      "y": 818
     },
     {
+      "h": 31,
       "id": "rd532e392a",
       "name": "28",
-      "x": 45,
-      "y": 869,
       "w": 481,
-      "h": 31,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 45,
+      "y": 869
     },
     {
+      "h": 30,
       "id": "r181201e4f",
       "name": "28a",
-      "x": 90,
-      "y": 892,
       "w": 147,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 90,
+      "y": 892
     },
     {
+      "h": 29,
       "id": "r9a2a565f6",
       "name": "28b",
-      "x": 678,
-      "y": 892,
       "w": 85,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 678,
+      "y": 892
     },
     {
+      "h": 28,
       "id": "r75cbedefd",
       "name": "28c",
-      "x": 92,
-      "y": 917,
       "w": 235,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 92,
+      "y": 917
     },
     {
+      "h": 30,
       "id": "ref5b8838e",
       "name": "28d",
-      "x": 678,
-      "y": 915,
       "w": 105,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 678,
+      "y": 915
     },
     {
+      "h": 29,
       "id": "ra257713e9",
       "name": "28e",
-      "x": 92,
-      "y": 942,
       "w": 165,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 92,
+      "y": 942
     },
     {
+      "h": 71,
       "id": "rbc419813b",
-      "name": "29",
-      "x": 44,
-      "y": 992,
-      "w": 750,
-      "h": 32,
       "llm_prompt_override": "You are a strict text normalizer for ROI '29'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the respondent's written feedback for what could have made the experience better.\n- Remove printed question text when present.\n- Preserve wording conservatively.\n- If empty, crossed out, or unreadable, return detected_text as null.",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"improvement_feedback\":\"\" }\n```"
+      "name": "29",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"improvement_feedback\":\"\" }\n```",
+      "w": 1186,
+      "x": 44,
+      "y": 992
     },
     {
+      "h": 33,
       "id": "rbaec51b75",
       "name": "30",
+      "w": 526,
       "x": 44,
-      "y": 1084,
-      "w": 760,
-      "h": 33,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "y": 1084
     },
     {
+      "h": 32,
       "id": "r8bb07673f",
       "name": "30a",
-      "x": 820,
-      "y": 1081,
-      "w": 55,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "w": 30,
+      "x": 572,
+      "y": 1085
     },
     {
+      "h": 32,
       "id": "rafc7154cc",
       "name": "30b",
-      "x": 885,
-      "y": 1081,
-      "w": 55,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "w": 31,
+      "x": 615,
+      "y": 1085
     },
     {
+      "h": 32,
       "id": "rf09e51c99",
       "name": "30c",
-      "x": 950,
-      "y": 1081,
-      "w": 55,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "w": 29,
+      "x": 659,
+      "y": 1086
     },
     {
+      "h": 32,
       "id": "r49c09b59e",
       "name": "30d",
-      "x": 1015,
-      "y": 1081,
-      "w": 55,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "w": 29,
+      "x": 705,
+      "y": 1084
     },
     {
+      "h": 32,
       "id": "re53f4e802",
       "name": "30e",
-      "x": 1075,
-      "y": 1081,
-      "w": 120,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "w": 62,
+      "x": 741,
+      "y": 1084
     },
     {
-      "id": "r298766db4",
-      "name": "31",
-      "x": 44,
-      "y": 1113,
-      "w": 190,
       "h": 30,
+      "id": "r298766db4",
       "llm_prompt_override": "You are a strict text normalizer for ROI age extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be digits only (0-9), or null.\n- Remove surrounding words or symbols if a clear numeric age exists.\n- Do not output units, explanations, or placeholders.\n- If unreadable or unclear, return detected_text as null.\nTask:\n- Normalize OCR text into age digits.",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"age\":\"\" }\n```"
+      "name": "31",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"age\":\"\" }\n```",
+      "w": 409,
+      "x": 44,
+      "y": 1113
     },
     {
+      "h": 31,
       "id": "r24dc81b22",
       "name": "32",
-      "x": 44,
-      "y": 1138,
       "w": 500,
-      "h": 31,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 44,
+      "y": 1138
     },
     {
+      "h": 28,
       "id": "r9d0d78674",
       "name": "32a",
-      "x": 91,
-      "y": 1169,
       "w": 281,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 91,
+      "y": 1169
     },
     {
+      "h": 28,
       "id": "r4b22696ad",
       "name": "32b",
-      "x": 679,
-      "y": 1168,
       "w": 78,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 679,
+      "y": 1168
     },
     {
+      "h": 29,
       "id": "r9b8fdc9c8",
       "name": "32c",
-      "x": 88,
-      "y": 1190,
       "w": 228,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 88,
+      "y": 1190
     },
     {
+      "h": 28,
       "id": "r0f8df68b6",
       "name": "32d",
-      "x": 680,
-      "y": 1192,
       "w": 171,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 680,
+      "y": 1192
     },
     {
+      "h": 28,
       "id": "rce5014321",
       "name": "32e",
-      "x": 90,
-      "y": 1217,
       "w": 294,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 90,
+      "y": 1217
     },
     {
+      "h": 28,
       "id": "r357de19f0",
       "name": "32f",
-      "x": 678,
-      "y": 1216,
       "w": 177,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 678,
+      "y": 1216
     },
     {
+      "h": 29,
       "id": "r95caedaad",
       "name": "32g",
-      "x": 89,
-      "y": 1240,
       "w": 184,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 89,
+      "y": 1240
     },
     {
+      "h": 28,
       "id": "r7d6565237",
       "name": "32h",
-      "x": 679,
-      "y": 1239,
       "w": 189,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 679,
+      "y": 1239
     },
     {
+      "h": 31,
       "id": "r6a994acd3",
       "name": "33",
-      "x": 44,
-      "y": 1286,
       "w": 220,
-      "h": 31,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 44,
+      "y": 1286
     },
     {
+      "h": 30,
       "id": "r5c95b15a4",
       "name": "33a",
-      "x": 89,
-      "y": 1313,
       "w": 109,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 89,
+      "y": 1313
     },
     {
+      "h": 29,
       "id": "rdd7514d69",
       "name": "33b",
-      "x": 679,
-      "y": 1315,
       "w": 121,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 679,
+      "y": 1315
     },
     {
+      "h": 28,
       "id": "r791b164c8",
       "name": "33c",
-      "x": 91,
-      "y": 1338,
       "w": 80,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 91,
+      "y": 1338
     },
     {
+      "h": 28,
       "id": "re065918ac",
       "name": "33d",
-      "x": 679,
-      "y": 1340,
       "w": 207,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 679,
+      "y": 1340
     },
     {
+      "h": 28,
       "id": "r88a1cacc9",
       "name": "33e",
-      "x": 92,
-      "y": 1364,
       "w": 187,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
-    },
-    {
-      "id": "r71023fda2",
-      "name": "33d_text",
-      "x": 892,
-      "y": 1338,
-      "w": 260,
-      "h": 31,
-      "llm_prompt_override": "You are a strict text normalizer for ROI '33d_text'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the self-described gender text written after the prompt.\n- Remove printed label text such as 'Prefer to self-describe'.\n- Preserve respondent wording conservatively.\n- If blank, crossed out, or unreadable, return detected_text as null.",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"self_described_gender\":\"\" }\n```"
+      "x": 92,
+      "y": 1364
     }
   ]
 }

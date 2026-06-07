@@ -354,8 +354,17 @@ def create_app() -> Flask:
         if not pdf_stem:
             pdf_stem = read_path.stem
 
+        original_items = data.get("items_original")
+        if not isinstance(original_items, list):
+            original_items = None
+
         try:
-            out = fill_from_pipeline(merged, pdf_stem=str(pdf_stem), verbose=False)
+            out = fill_from_pipeline(
+                merged,
+                pdf_stem=str(pdf_stem),
+                verbose=False,
+                original_items=original_items,
+            )
         except Exception as exc:
             return jsonify({"error": str(exc)}), 500
 

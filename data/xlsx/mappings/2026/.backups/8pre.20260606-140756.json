@@ -1,0 +1,17 @@
+{
+  "form_type": "8pre",
+  "sheet": "8th Grade Pre-Assessment Data",
+  "start_row": 4,
+  "mappings": [
+    {
+      "type": "direct",
+      "source": "id",
+      "column": "A"
+    },
+    {
+      "type": "direct",
+      "source": "teacher",
+      "column": "K"
+    }
+  ]
+}

@@ -97,7 +97,7 @@
       "id": "r84d55d819",
       "name": "16a",
       "w": 38,
-      "x": 619,
+      "x": 614,
       "y": 358
     },
     {
@@ -105,16 +105,16 @@
       "id": "r82d8128e5",
       "name": "16b",
       "w": 36,
-      "x": 663,
-      "y": 358
+      "x": 659,
+      "y": 359
     },
     {
       "h": 28,
       "id": "rb96bbda6a",
       "name": "16c",
       "w": 37,
-      "x": 711,
-      "y": 358
+      "x": 709,
+      "y": 360
     },
     {
       "h": 28,
@@ -138,8 +138,8 @@
       "llm_prompt_override": "You are a strict text normalizer for ROI age extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be digits only (0-9), or null.\n- Remove surrounding words/symbols if a clear numeric age exists.\n- Do not output units, explanations, or placeholders.\n- If unreadable/unclear, return detected_text as null.\nTask:\n- Normalize OCR text into age digits.",
       "name": "17",
       "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"age\":\"\" }\n```",
-      "w": 114,
-      "x": 258,
+      "w": 401,
+      "x": 58,
       "y": 385
     },
     {

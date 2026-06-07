@@ -295,12 +295,12 @@
       "y": 1026
     },
     {
-      "h": 68,
+      "h": 82,
       "id": "r689183490",
       "llm_prompt_override": "You are a strict text normalizer for ROI '25'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the written response text for what could have made the experience better.\n- Preserve wording conservatively.\n- Do not invent, infer, summarize, or explain.\n- If OCR text is empty, crossed out, or unreadable, return detected_text as null.\nTask:\n- Normalize the optional written response only.",
       "name": "25",
       "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"experience_better_response\":\"\" }\n```",
-      "w": 798,
+      "w": 1207,
       "x": 54,
       "y": 1076
     },
@@ -435,52 +435,52 @@
       "y": 1489
     },
     {
+      "h": 32,
       "id": "rx2u0wp9z",
       "name": "26",
-      "x": 52,
-      "y": 1181,
       "w": 826,
-      "h": 32
+      "x": 52,
+      "y": 1181
     },
     {
+      "h": 31,
       "id": "rvefbwvqm",
       "name": "26a",
-      "x": 612,
-      "y": 1182,
       "w": 32,
-      "h": 31
+      "x": 612,
+      "y": 1182
     },
     {
+      "h": 31,
       "id": "rsedskz9p",
       "name": "26b",
-      "x": 656,
-      "y": 1182,
       "w": 35,
-      "h": 31
+      "x": 656,
+      "y": 1182
     },
     {
+      "h": 31,
       "id": "rq3pfejzz",
       "name": "26c",
-      "x": 706,
-      "y": 1183,
       "w": 31,
-      "h": 31
+      "x": 706,
+      "y": 1183
     },
     {
+      "h": 35,
       "id": "r3pjo51si",
       "name": "26d",
-      "x": 752,
-      "y": 1180,
       "w": 34,
-      "h": 35
+      "x": 752,
+      "y": 1180
     },
     {
+      "h": 34,
       "id": "reiw0hpxm",
       "name": "26e",
-      "x": 796,
-      "y": 1181,
       "w": 68,
-      "h": 34
+      "x": 796,
+      "y": 1181
     }
   ]
 }

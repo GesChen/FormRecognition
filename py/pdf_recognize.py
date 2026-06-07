@@ -147,12 +147,6 @@ def _form_type_predicted_debug(form_type: str | None) -> str:
     return f"form_type={form_type!r} (predicted: {grade_word} {timing_word})"
 
 
-def _schema_path(key: str) -> Path:
-    cfg = PDF_RECOGNITION
-    schema_dir = Path(cfg.get("schema_dir", Path(__file__).resolve().parent.parent / "data" / "roi_schemas"))
-    return schema_dir.resolve() / f"{key}.json"
-
-
 def _schema_path_for_form(form_type: str | None, side: str) -> Path:
     """Resolve per-form schema: data/roi_schemas/<form_type>_<side>.json with config fallback."""
     cfg = PDF_RECOGNITION
@@ -161,115 +155,6 @@ def _schema_path_for_form(form_type: str | None, side: str) -> Path:
         return schema_dir / f"{form_type}_{side}.json"
     fallback = cfg.get("schema_key_sidea", "schema_sidea") if side == "a" else cfg.get("schema_key_sideb", "schema_sideb")
     return schema_dir / f"{fallback}.json"
-
-
-def _get_mc_roi_names(schema_path: Path) -> list[str]:
-    """ROI names that look like MCQ bubbles: digits + one of a-h."""
-    data = json.loads(schema_path.read_text())
-    names = []
-    for roi in data.get("rois", []):
-        n = roi.get("name", "")
-        if n and len(n) >= 2 and n[-1].lower() in "abcdefgh" and n[:-1].isdigit():
-            names.append(n)
-    return sorted(names, key=lambda x: (int(re.match(r"\d+", x).group()), x[-1]))
-
-
-def _bool_dict_to_letter_per_question(roi_filled: dict[str, bool]) -> dict[str, str]:
-    """Convert ROI name -> filled (bool) to question number -> chosen letter (a-h). When multiple filled, returns ""."""
-    by_question: dict[str, list[tuple[str, bool]]] = {}
-    for roi_name, filled in roi_filled.items():
-        m = re.match(r"^(\d+)([a-h])$", roi_name, re.I)
-        if not m:
-            continue
-        q, letter = m.group(1), m.group(2).lower()
-        by_question.setdefault(q, []).append((letter, filled))
-    out: dict[str, str] = {}
-    for q, options in sorted(by_question.items(), key=lambda x: int(x[0])):
-        chosen = [letter for letter, filled in options if filled]
-        out[q] = chosen[0] if len(chosen) == 1 else ""
-    return out
-
-
-def _letter_per_question_from_filled_and_darkness(
-    roi_filled: dict[str, bool],
-    roi_darkness: dict[str, dict],
-    use_graduated: bool,
-) -> dict[str, str]:
-    """
-    Convert ROI filled + darkness to question -> chosen letter.
-    When exactly one option is filled, return that letter.
-    When multiple are filled, return the letter with the highest darkness (flat or graduated per config).
-    When none filled, return "".
-    """
-    key = "darkness_graduated" if use_graduated else "darkness_flat"
-    by_question: dict[str, list[tuple[str, bool, float]]] = {}
-    for roi_name, filled in roi_filled.items():
-        m = re.match(r"^(\d+)([a-h])$", roi_name, re.I)
-        if not m:
-            continue
-        q, letter = m.group(1), m.group(2).lower()
-        dark_data = roi_darkness.get(roi_name, {})
-        darkness = float(dark_data.get(key, 0.0))
-        by_question.setdefault(q, []).append((letter, filled, darkness))
-    out: dict[str, str] = {}
-    for q, options in sorted(by_question.items(), key=lambda x: int(x[0])):
-        chosen = [(letter, darkness) for letter, filled, darkness in options if filled]
-        if not chosen:
-            out[q] = ""
-        elif len(chosen) == 1:
-            out[q] = chosen[0][0]
-        else:
-            out[q] = max(chosen, key=lambda x: x[1])[0]
-    return out
-
-
-def _merge_mcq_letters(odd_letters: dict[str, str], even_letters: dict[str, str]) -> dict[str, str]:
-    """Merge odd and even page question->letter dicts into one with keys 1, 2, ..., N (odd first, then even)."""
-    n_odd = len(odd_letters)
-    merged: dict[str, str] = {}
-    for i, (q, letter) in enumerate(sorted(odd_letters.items(), key=lambda x: int(x[0])), start=1):
-        merged[str(i)] = letter
-    for i, (q, letter) in enumerate(sorted(even_letters.items(), key=lambda x: int(x[0])), start=1):
-        merged[str(n_odd + i)] = letter
-    return merged
-
-
-def _darkness_by_question(roi_darkness: dict[str, dict]) -> dict[str, dict[str, dict]]:
-    """Group ROI darkness dict (roi_name -> {flat, graduated, filled}) by question number. Returns question -> letter -> {darkness_flat, darkness_graduated, filled}."""
-    by_q: dict[str, dict[str, dict]] = {}
-    for roi_name, data in roi_darkness.items():
-        m = re.match(r"^(\d+)([a-h])$", roi_name, re.I)
-        if not m:
-            continue
-        q, letter = m.group(1), m.group(2).lower()
-        by_q.setdefault(q, {})[letter] = {
-            "darkness_flat": data.get("darkness_flat", 0.0),
-            "darkness_graduated": data.get("darkness_graduated", 0.0),
-            "filled": data.get("filled", False),
-        }
-    return by_q
-
-
-def _merge_mcq_darknesses(
-    by_question_odd: dict[str, dict[str, dict]],
-    by_question_even: dict[str, dict[str, dict]],
-) -> dict[str, dict[str, dict]]:
-    """Merge odd/even question->letter->darkness into one dict with keys 1..N (odd then even)."""
-    n_odd = len(by_question_odd)
-    merged: dict[str, dict[str, dict]] = {}
-    for i, (q, choices) in enumerate(sorted(by_question_odd.items(), key=lambda x: int(x[0])), start=1):
-        merged[str(i)] = choices
-    for i, (q, choices) in enumerate(sorted(by_question_even.items(), key=lambda x: int(x[0])), start=1):
-        merged[str(n_odd + i)] = choices
-    return merged
-
-
-def _normalized_path_for_page(page_path: Path) -> Path:
-    """Path to normalized image for this cached page: cache_normalized / subdir / page_N_bin.png."""
-    cache = Path(IMAGE_NORMALIZE["cache_root"]).resolve()
-    suffix = "_bin" if IMAGE_NORMALIZE.get("binarize", True) else "_normalized"
-    subdir = page_path.parent.name
-    return cache / subdir / f"{page_path.stem}{suffix}.png"
 
 
 def _roi_name_sort_key(entry: dict[str, Any]) -> tuple[float | int, str]:
@@ -1146,191 +1031,6 @@ def _run_deferred_text_llm_postprocess(
             row.pop("_ocr_retry_prompt_override", None)
 
 
-def _header_id_schema_and_roi() -> tuple[dict[str, Any], dict[str, Any]]:
-    """Load side-a header schema and return raw schema + ROI entry for name='id'."""
-    schema_dir = Path(
-        PDF_RECOGNITION.get("schema_dir", Path(__file__).resolve().parent.parent / "data" / "roi_schemas")
-    ).resolve()
-    key = str(PDF_RECOGNITION.get("schema_key_sidea", "schema_sidea") or "schema_sidea").strip()
-    schema_path = schema_dir / f"{key}.json"
-    raw_schema = json.loads(schema_path.read_text(encoding="utf-8"))
-    rois = raw_schema.get("rois")
-    if not isinstance(rois, list):
-        raise ValueError(f"Invalid header schema rois list: {schema_path}")
-    for roi in rois:
-        if isinstance(roi, dict) and str(roi.get("name", "")).strip().lower() == "id":
-            return raw_schema, roi
-    raise ValueError(f"Header schema missing ROI named 'id': {schema_path}")
-
-
-def _extract_text_from_roi_on_page(
-    page_path: Path,
-    *,
-    raw_schema: dict[str, Any],
-    roi: dict[str, Any],
-) -> tuple[str, dict[str, Any], dict[str, Any]]:
-    """OCR one ROI from one page image using the same OCR path as text ROIs."""
-    import cv2
-    import tempfile
-    from ocr_engine import ocr_confidence_stats, ocr_raw
-
-    img = cv2.imread(str(page_path))
-    if img is None:
-        return "", {}, ocr_confidence_stats({})
-    ih, iw = img.shape[:2]
-    try:
-        rx = float(roi.get("x", 0))
-        ry = float(roi.get("y", 0))
-        rw = float(roi.get("w", 0))
-        rh = float(roi.get("h", 0))
-    except Exception:
-        return "", {}, ocr_confidence_stats({})
-    if rw <= 0 or rh <= 0:
-        return "", {}, ocr_confidence_stats({})
-
-    ref_w_raw = raw_schema.get("image_width")
-    ref_h_raw = raw_schema.get("image_height")
-    try:
-        ref_w = int(ref_w_raw) if ref_w_raw is not None else None
-    except Exception:
-        ref_w = None
-    try:
-        ref_h = int(ref_h_raw) if ref_h_raw is not None else None
-    except Exception:
-        ref_h = None
-
-    if ref_w and ref_h and ref_w > 0 and ref_h > 0 and (ref_w != iw or ref_h != ih):
-        sx = iw / ref_w
-        sy = ih / ref_h
-    else:
-        sx = sy = 1.0
-
-    x1 = max(int(round(rx * sx)), 0)
-    y1 = max(int(round(ry * sy)), 0)
-    x2 = min(int(round((rx + rw) * sx)), iw)
-    y2 = min(int(round((ry + rh) * sy)), ih)
-    if x2 <= x1 or y2 <= y1:
-        return "", {}, ocr_confidence_stats({})
-
-    crop = img[y1:y2, x1:x2]
-    with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
-        tmp_path = Path(tmp.name)
-    try:
-        cv2.imwrite(str(tmp_path), crop)
-        roi_meta = roi if isinstance(roi, dict) else {}
-        prompt_override = str(
-            roi_meta.get("ocr_prompt_override") or roi_meta.get("prompt_override") or ""
-        ).strip() or None
-        raw_out = ocr_raw(tmp_path, prompt_override=prompt_override)
-        raw_result = raw_out if isinstance(raw_out, dict) else {}
-        text = str(raw_result.get("detected_text", "") or "").strip()
-        stats = ocr_confidence_stats(raw_result)
-        return text, raw_result, stats
-    finally:
-        try:
-            tmp_path.unlink(missing_ok=True)
-        except OSError:
-            pass
-
-
-def _extract_pair_ids_from_roi(
-    text_paths: list[Path],
-    *,
-    verbose: bool,
-    debug_out: dict | None = None,
-) -> dict[int, dict[str, Any]]:
-    """
-    Extract one ID per odd page (one per pair) using ROI OCR + deferred LLM postprocess.
-    Returns: pair_index -> {id, ocr_text_pre_llm, ocr_text_post_llm, raw_ocr, stats}
-    """
-    from id_form_llm import _extract_id_from_ocr_raw
-    from text_roi_llm import postprocess_text_rois
-
-    raw_schema, id_roi = _header_id_schema_and_roi()
-    odd_indices = list(range(0, len(text_paths), 2))
-    id_text_by_uid: dict[str, str] = {}
-    id_raw_by_uid: dict[str, dict[str, Any]] = {}
-    id_stats_by_uid: dict[str, dict[str, Any]] = {}
-    pair_by_uid: dict[str, int] = {}
-
-    iterator = odd_indices
-    if verbose:
-        iterator = tqdm(
-            odd_indices,
-            desc="      ID ROI OCR (odd pages)",
-            unit="pair",
-            disable=not _tqdm_enabled(),
-            dynamic_ncols=True,
-            leave=False,
-        )
-    for page_idx in iterator:
-        pair_index = page_idx // 2
-        uid = f"pair{pair_index}"
-        text, raw_ocr, stats = _extract_text_from_roi_on_page(
-            text_paths[page_idx],
-            raw_schema=raw_schema,
-            roi=id_roi,
-        )
-        id_text_by_uid[uid] = " ".join(str(text or "").split())
-        id_raw_by_uid[uid] = raw_ocr if isinstance(raw_ocr, dict) else {}
-        id_stats_by_uid[uid] = stats if isinstance(stats, dict) else {}
-        pair_by_uid[uid] = pair_index
-
-    meta = {
-        "id": {
-            "llm_field_data_type": id_roi.get("llm_field_data_type"),
-            "llm_validation_rules": id_roi.get("llm_validation_rules"),
-            "llm_prompt_instruction": id_roi.get("llm_prompt_instruction"),
-            "llm_prompt_override": id_roi.get("llm_prompt_override"),
-        }
-    }
-    llm_inputs = {uid: id_text_by_uid.get(uid, "") for uid in id_text_by_uid}
-    llm_meta = {uid: meta["id"] for uid in llm_inputs}
-    llm_debug: dict[str, Any] | None = {} if isinstance(debug_out, dict) else None
-    try:
-        processed = postprocess_text_rois(
-            llm_inputs,
-            roi_meta_by_name=llm_meta,
-            debug_out=llm_debug,
-            use_tqdm=bool(verbose and _tqdm_enabled()),
-            tqdm_desc="      ID LLM deferred",
-        )
-    except Exception as exc:
-        processed = dict(llm_inputs)
-        if llm_debug is not None:
-            llm_debug["error"] = str(exc)
-
-    out: dict[int, dict[str, Any]] = {}
-    for uid, pair_index in pair_by_uid.items():
-        text_pre = id_text_by_uid.get(uid, "")
-        text_post = "" if processed.get(uid) is None else str(processed.get(uid, ""))
-        id_value = _extract_id_from_ocr_raw(id_raw_by_uid.get(uid), text_post or text_pre)
-        out[pair_index] = {
-            "id": id_value,
-            "ocr_text_pre_llm": text_pre,
-            "ocr_text_post_llm": text_post,
-            "raw_ocr": id_raw_by_uid.get(uid, {}),
-            "stats": id_stats_by_uid.get(uid, {}),
-        }
-
-    if isinstance(debug_out, dict):
-        debug_out["id_roi_deferred"] = {
-            "pair_count": len(out),
-            "llm": llm_debug if isinstance(llm_debug, dict) else {},
-            "per_pair": {
-                str(k): {
-                    "id": v.get("id"),
-                    "ocr_text_pre_llm": v.get("ocr_text_pre_llm"),
-                    "ocr_text_post_llm": v.get("ocr_text_post_llm"),
-                    "raw_ocr": v.get("raw_ocr"),
-                    "stats": v.get("stats"),
-                }
-                for k, v in out.items()
-            },
-        }
-    return out
-
-
 def _build_pair_items(
     text_paths: list[Path],
     mcq_paths: list[Path],
@@ -1442,10 +1142,12 @@ def _write_output(
     verbose: bool,
     *,
     human_review: dict[str, Any] | None = None,
+    original_items: list[dict[str, Any]] | None = None,
+    post_normalize: dict[str, Any] | None = None,
 ) -> Path | None:
-    """Step 5: Write final JSON. Returns output file path when write_json True, else None."""
+    """Write final JSON. Returns output file path when write_json True, else None."""
     cfg = PDF_RECOGNITION
-    _log("[5/6] Writing JSON output...", verbose)
+    _log("[6/7] Writing JSON output...", verbose)
     out_dir = Path(output_dir) if output_dir is not None else Path(
         cfg.get("output_dir", Path(__file__).resolve().parent.parent / "output" / "recognition")
     )
@@ -1453,7 +1155,7 @@ def _write_output(
     out_file = out_dir / f"{pdf_stem}.json"
     if not write_json:
         _log("      Skipped (write_json=False).", verbose)
-        _log("Done.", verbose)
+        _log("      JSON output complete.", verbose)
         return None
     body: dict[str, Any] = {
         "pdf_path": str(pdf_path.resolve()),
@@ -1462,12 +1164,53 @@ def _write_output(
         "item_count": len(items),
         "items": items,
     }
+    if original_items is not None:
+        body["items_original"] = original_items
+    if post_normalize is not None:
+        body["post_normalize"] = post_normalize
     if human_review is not None:
         body["human_review"] = human_review
     out_file.write_text(json.dumps(body, indent=2))
     _log(f"      Wrote {out_file}.", verbose)
-    _log("Done.", verbose)
+    _log("      JSON output complete.", verbose)
     return out_file
+
+
+def _post_normalize_enabled_fields(page_infos: list[dict[str, Any]]) -> dict[str, dict[str, dict[str, str]]]:
+    """
+    Return form_type -> ROI settings marked post_normalize=true in schemas used by this run.
+    """
+    out: dict[str, dict[str, dict[str, str]]] = {}
+    seen_paths: set[Path] = set()
+    for info in page_infos or []:
+        form_type = str(info.get("form_type", "") or "").strip()
+        schema_path = info.get("schema_path")
+        if not form_type or not schema_path:
+            continue
+        path = Path(schema_path)
+        if path in seen_paths:
+            continue
+        seen_paths.add(path)
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        for roi in data.get("rois") or []:
+            if not isinstance(roi, dict):
+                continue
+            if not bool(roi.get("post_normalize")):
+                continue
+            name = str(roi.get("name", "") or "").strip()
+            if name:
+                mode = str(roi.get("post_normalize_mode", "") or "").strip().lower()
+                if mode in {"strict", "conservative"}:
+                    mode = "casual"
+                elif mode == "balanced":
+                    mode = "aggressive"
+                if mode not in {"casual", "aggressive", "consensus"}:
+                    mode = "aggressive"
+                out.setdefault(form_type, {})[name] = {"mode": mode}
+    return out
 
 def _run_workflow(
     pdf_path: str | Path,
@@ -1558,7 +1301,7 @@ def _run_workflow(
         debug_data["last_updated_utc"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         _write_debug_snapshot(debug_data, dbg_path, verbose)
 
-    _log(f"[1/6] PDF: {pdf_path.name}", verbose)
+    _log(f"[1/7] PDF: {pdf_path.name}", verbose)
     _log(f"      Workflow start (UTC): {workflow_start_utc}", verbose)
 
     try:
@@ -1686,6 +1429,57 @@ def _run_workflow(
             payload_4["pair_item_count"] = len(items)
             _debug_step_done("4_roi", payload_4, t_step_4)
 
+        # Step 5: optional batch post-normalization for selected ROI fields.
+        _log("[5/7] Batch post-normalization...", verbose)
+        t_step_5 = _debug_step_begin("5_post_normalize")
+        post_normalize_payload: dict[str, Any] = {
+            "enabled": False,
+            "skipped_reason": None,
+            "enabled_fields": {},
+        }
+        items_original: list[dict[str, Any]] | None = None
+        enabled_fields = _post_normalize_enabled_fields(page_infos)
+        post_normalize_payload["enabled_fields"] = {
+            ft: {
+                name: dict(settings)
+                for name, settings in sorted(fields.items())
+            }
+            for ft, fields in sorted(enabled_fields.items())
+        }
+        if not enabled_fields:
+            post_normalize_payload["skipped_reason"] = "no_enabled_rois"
+            _log("      Skipped (no ROI has post_normalize=true).", verbose)
+        else:
+            try:
+                from post_normalize import normalize_items
+
+                pn_debug: dict[str, Any] = {}
+                items, items_original = normalize_items(
+                    items,
+                    enabled_fields,
+                    debug_out=pn_debug,
+                    use_tqdm=bool(verbose and _tqdm_enabled()),
+                )
+                post_normalize_payload.update(pn_debug)
+                if post_normalize_payload.get("skipped_reason"):
+                    items_original = None
+                    _log(f"      Skipped ({post_normalize_payload.get('skipped_reason')}).", verbose)
+                else:
+                    post_normalize_payload["enabled"] = True
+                    _log(
+                        "      Applied batch post-normalization "
+                        f"across {len(post_normalize_payload.get('groups') or [])} group(s).",
+                        verbose,
+                    )
+            except Exception as exc:
+                post_normalize_payload["enabled"] = False
+                post_normalize_payload["skipped_reason"] = "error"
+                post_normalize_payload["error"] = str(exc)
+                items_original = None
+                _log(f"      [post-normalize] Warning: {exc}", verbose)
+        if debug_data is not None:
+            _debug_step_done("5_post_normalize", post_normalize_payload, t_step_5)
+
         # Human-in-the-loop: low text OCR confidence (optional metadata block in JSON)
         human_review_block: dict[str, Any] | None = None
         if build_human_review_block is not None:
@@ -1693,8 +1487,8 @@ def _run_workflow(
                 items, output_stem, cfg, text_ocr_queue=text_review_queue
             )
 
-        # Step 5: Output
-        t_step_5 = _debug_step_begin("5_output")
+        # Step 6: Output
+        t_step_6 = _debug_step_begin("6_output")
         out_file = _write_output(
             pdf_path,
             output_stem,
@@ -1703,36 +1497,44 @@ def _run_workflow(
             write_json,
             verbose,
             human_review=human_review_block,
+            original_items=items_original,
+            post_normalize=post_normalize_payload,
         )
         if debug_data is not None:
             pending = (human_review_block or {}).get("pending")
             _debug_step_done(
-                "5_output",
+                "6_output",
                 {
                     "output_path": str(out_file) if out_file else None,
                     "item_count": len(items),
+                    "original_item_count": len(items_original) if items_original is not None else 0,
                     "human_review_pending_count": (
                         len(pending) if isinstance(pending, list) else 0
                     ),
                 },
-                t_step_5,
+                t_step_6,
             )
 
-        # Step 6: XLSX data entry — group items by form_type, fill templates, merge
-        _log("[6/6] Filling Excel data-entry workbook...", verbose)
-        t_step_6 = _debug_step_begin("6_xlsx")
+        # Step 7: XLSX data entry — group items by form_type, fill templates, merge
+        _log("[7/7] Filling Excel data-entry workbook...", verbose)
+        t_step_7 = _debug_step_begin("7_xlsx")
         xlsx_payload: dict[str, Any] = {"output_path": None}
         try:
             from xlsx_data_entry import fill_from_pipeline
 
-            xlsx_path = fill_from_pipeline(items, pdf_stem=output_stem, verbose=verbose)
+            xlsx_path = fill_from_pipeline(
+                items,
+                pdf_stem=output_stem,
+                verbose=verbose,
+                original_items=items_original,
+            )
             if xlsx_path:
                 xlsx_payload["output_path"] = str(xlsx_path)
         except Exception as exc:
             _log(f"      [xlsx] Warning: {exc}", verbose)
             xlsx_payload["warning"] = str(exc)
         if debug_data is not None:
-            _debug_step_done("6_xlsx", xlsx_payload, t_step_6)
+            _debug_step_done("7_xlsx", xlsx_payload, t_step_7)
 
         if debug_data is not None and dbg_path is not None:
             debug_data["status"] = "completed"

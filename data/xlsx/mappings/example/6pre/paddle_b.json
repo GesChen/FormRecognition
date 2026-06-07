@@ -1,0 +1,487 @@
+{
+  "line_count": 60,
+  "min_score": 0.304707,
+  "mean_score": 0.947231,
+  "lines": [
+    {
+      "text": "AP101100:01",
+      "score": 0.757041,
+      "x": 54,
+      "y": 120,
+      "w": 309,
+      "h": 44
+    },
+    {
+      "text": "10.Self-awareness can help someone make healthy decisions.",
+      "score": 0.984534,
+      "x": 40,
+      "y": 161,
+      "w": 682,
+      "h": 27
+    },
+    {
+      "text": "a.True",
+      "score": 0.998327,
+      "x": 73,
+      "y": 188,
+      "w": 84,
+      "h": 33
+    },
+    {
+      "text": "b.False",
+      "score": 0.999066,
+      "x": 301,
+      "y": 189,
+      "w": 93,
+      "h": 32
+    },
+    {
+      "text": "11.Everyone has the same values about sex.",
+      "score": 0.956512,
+      "x": 40,
+      "y": 246,
+      "w": 483,
+      "h": 29
+    },
+    {
+      "text": "a.True",
+      "score": 0.998307,
+      "x": 72,
+      "y": 274,
+      "w": 87,
+      "h": 34
+    },
+    {
+      "text": "b.False",
+      "score": 0.999029,
+      "x": 303,
+      "y": 277,
+      "w": 91,
+      "h": 28
+    },
+    {
+      "text": "12.Drinking alcohol can lead to risky sexual activity.",
+      "score": 0.980577,
+      "x": 42,
+      "y": 336,
+      "w": 558,
+      "h": 24
+    },
+    {
+      "text": "b.False",
+      "score": 0.997114,
+      "x": 301,
+      "y": 363,
+      "w": 93,
+      "h": 30
+    },
+    {
+      "text": "a.True",
+      "score": 0.99855,
+      "x": 76,
+      "y": 364,
+      "w": 80,
+      "h": 28
+    },
+    {
+      "text": "Part C. Matching Questions: Match the following terms with their definitions. Terms can only be",
+      "score": 0.961998,
+      "x": 38,
+      "y": 420,
+      "w": 1090,
+      "h": 29
+    },
+    {
+      "text": "used once; not all options will be used.",
+      "score": 0.953281,
+      "x": 39,
+      "y": 452,
+      "w": 446,
+      "h": 25
+    },
+    {
+      "text": "a. Ejaculation",
+      "score": 0.981522,
+      "x": 39,
+      "y": 507,
+      "w": 161,
+      "h": 26
+    },
+    {
+      "text": "b.Labia",
+      "score": 0.997975,
+      "x": 276,
+      "y": 506,
+      "w": 97,
+      "h": 27
+    },
+    {
+      "text": "c. Testicles (Testes)",
+      "score": 0.97471,
+      "x": 490,
+      "y": 505,
+      "w": 226,
+      "h": 29
+    },
+    {
+      "text": "Uterus",
+      "score": 0.995085,
+      "x": 947,
+      "y": 502,
+      "w": 120,
+      "h": 34
+    },
+    {
+      "text": "d.Menstruation",
+      "score": 0.990201,
+      "x": 738,
+      "y": 508,
+      "w": 188,
+      "h": 26
+    },
+    {
+      "text": "f. Urethra",
+      "score": 0.968976,
+      "x": 37,
+      "y": 537,
+      "w": 113,
+      "h": 25
+    },
+    {
+      "text": "gPre-ejaculate",
+      "score": 0.97823,
+      "x": 274,
+      "y": 533,
+      "w": 187,
+      "h": 35
+    },
+    {
+      "text": "h.Cervix",
+      "score": 0.997044,
+      "x": 494,
+      "y": 538,
+      "w": 107,
+      "h": 24
+    },
+    {
+      "text": "i. Fertilization",
+      "score": 0.971558,
+      "x": 732,
+      "y": 536,
+      "w": 163,
+      "h": 30
+    },
+    {
+      "text": "J. Foreskin",
+      "score": 0.950245,
+      "x": 956,
+      "y": 536,
+      "w": 128,
+      "h": 28
+    },
+    {
+      "text": "e",
+      "score": 0.304707,
+      "x": 587,
+      "y": 577,
+      "w": 41,
+      "h": 42
+    },
+    {
+      "text": "13.The tube that carries urine out of the body.",
+      "score": 0.988641,
+      "x": 40,
+      "y": 593,
+      "w": 494,
+      "h": 26
+    },
+    {
+      "text": "blank",
+      "score": 0.890885,
+      "x": 892,
+      "y": 632,
+      "w": 129,
+      "h": 42
+    },
+    {
+      "text": "14.The two folds of the skin that surround the opening to the vagina.",
+      "score": 0.969937,
+      "x": 42,
+      "y": 650,
+      "w": 733,
+      "h": 24
+    },
+    {
+      "text": "15.The part of the uterus that includes the opening between the uterus and the vagina.",
+      "score": 0.962407,
+      "x": 40,
+      "y": 703,
+      "w": 933,
+      "h": 29
+    },
+    {
+      "text": "blank",
+      "score": 0.945817,
+      "x": 117,
+      "y": 728,
+      "w": 137,
+      "h": 41
+    },
+    {
+      "text": "9",
+      "score": 0.822359,
+      "x": 858,
+      "y": 772,
+      "w": 38,
+      "h": 48
+    },
+    {
+      "text": "16.The pear-shaped reproductive organ where a pregnancy develops.",
+      "score": 0.975256,
+      "x": 49,
+      "y": 790,
+      "w": 752,
+      "h": 28
+    },
+    {
+      "text": "blank",
+      "score": 0.897364,
+      "x": 681,
+      "y": 888,
+      "w": 147,
+      "h": 43
+    },
+    {
+      "text": "18.The loose skin that covers the head of the penis.",
+      "score": 0.978113,
+      "x": 51,
+      "y": 902,
+      "w": 558,
+      "h": 24
+    },
+    {
+      "text": "blank",
+      "score": 0.922055,
+      "x": 854,
+      "y": 938,
+      "w": 148,
+      "h": 48
+    },
+    {
+      "text": "19.The fluid that gets the urethra ready for the passage of the sperm.",
+      "score": 0.958556,
+      "x": 49,
+      "y": 955,
+      "w": 749,
+      "h": 30
+    },
+    {
+      "text": "Part D. Demographic Information",
+      "score": 0.982705,
+      "x": 41,
+      "y": 1014,
+      "w": 376,
+      "h": 24
+    },
+    {
+      "text": "1.What grade are you in?",
+      "score": 0.977125,
+      "x": 42,
+      "y": 1070,
+      "w": 283,
+      "h": 24
+    },
+    {
+      "text": "a. 6th grade",
+      "score": 0.927494,
+      "x": 75,
+      "y": 1098,
+      "w": 133,
+      "h": 28
+    },
+    {
+      "text": "b. 7th grade",
+      "score": 0.965463,
+      "x": 429,
+      "y": 1099,
+      "w": 132,
+      "h": 27
+    },
+    {
+      "text": "c. 8th grade",
+      "score": 0.938977,
+      "x": 760,
+      "y": 1100,
+      "w": 131,
+      "h": 28
+    },
+    {
+      "text": "d.9th grade",
+      "score": 0.997789,
+      "x": 75,
+      "y": 1128,
+      "w": 134,
+      "h": 30
+    },
+    {
+      "text": "e. Other grade",
+      "score": 0.966111,
+      "x": 431,
+      "y": 1131,
+      "w": 155,
+      "h": 24
+    },
+    {
+      "text": "2. What is your age?",
+      "score": 0.950446,
+      "x": 38,
+      "y": 1183,
+      "w": 239,
+      "h": 31
+    },
+    {
+      "text": "3. What is your race/ethnicity? Please select all that apply.",
+      "score": 0.972954,
+      "x": 37,
+      "y": 1240,
+      "w": 641,
+      "h": 29
+    },
+    {
+      "text": "b.Asian",
+      "score": 0.99914,
+      "x": 590,
+      "y": 1268,
+      "w": 95,
+      "h": 32
+    },
+    {
+      "text": "a. American Indian or Alaska Native",
+      "score": 0.974437,
+      "x": 76,
+      "y": 1271,
+      "w": 386,
+      "h": 25
+    },
+    {
+      "text": "c.",
+      "score": 0.768169,
+      "x": 1147,
+      "y": 1274,
+      "w": 30,
+      "h": 27
+    },
+    {
+      "text": "Black or African American",
+      "score": 0.976235,
+      "x": 77,
+      "y": 1302,
+      "w": 282,
+      "h": 25
+    },
+    {
+      "text": "d. Hispanic or Latino",
+      "score": 0.959839,
+      "x": 567,
+      "y": 1303,
+      "w": 227,
+      "h": 27
+    },
+    {
+      "text": "e. Native Hawaiian or Pacific Islander",
+      "score": 0.959222,
+      "x": 76,
+      "y": 1333,
+      "w": 404,
+      "h": 25
+    },
+    {
+      "text": "f. White or Caucasian",
+      "score": 0.964257,
+      "x": 593,
+      "y": 1333,
+      "w": 236,
+      "h": 26
+    },
+    {
+      "text": "g. More than one race",
+      "score": 0.960797,
+      "x": 75,
+      "y": 1362,
+      "w": 240,
+      "h": 29
+    },
+    {
+      "text": "h. Prefer not to answer",
+      "score": 0.969736,
+      "x": 596,
+      "y": 1363,
+      "w": 248,
+      "h": 29
+    },
+    {
+      "text": "4. What is your gender?",
+      "score": 0.972727,
+      "x": 37,
+      "y": 1418,
+      "w": 272,
+      "h": 29
+    },
+    {
+      "text": "a.Boy/male",
+      "score": 0.998195,
+      "x": 74,
+      "y": 1449,
+      "w": 134,
+      "h": 27
+    },
+    {
+      "text": "b.Girl/female",
+      "score": 0.970746,
+      "x": 431,
+      "y": 1451,
+      "w": 150,
+      "h": 24
+    },
+    {
+      "text": "c. Other",
+      "score": 0.889516,
+      "x": 751,
+      "y": 1450,
+      "w": 94,
+      "h": 28
+    },
+    {
+      "text": "d. Prefer to self-describe: G",
+      "score": 0.948888,
+      "x": 73,
+      "y": 1473,
+      "w": 353,
+      "h": 37
+    },
+    {
+      "text": "e. Prefer not to answer",
+      "score": 0.969022,
+      "x": 751,
+      "y": 1481,
+      "w": 246,
+      "h": 27
+    },
+    {
+      "text": "Thank you for your participation!",
+      "score": 0.965819,
+      "x": 45,
+      "y": 1551,
+      "w": 368,
+      "h": 24
+    },
+    {
+      "text": "Page 2of 2",
+      "score": 0.902061,
+      "x": 1084,
+      "y": 1611,
+      "w": 92,
+      "h": 25
+    }
+  ]
+}

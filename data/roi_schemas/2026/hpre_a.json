@@ -5,694 +5,566 @@
   "image_height": 1650,
   "rois": [
     {
+      "h": 34,
       "id": "r2a6168ab2",
-      "name": "date",
-      "x": 194,
-      "y": 232,
-      "w": 225,
-      "h": 34,
       "llm_prompt_override": "You are a strict text normalizer for one OCR ROI field named \"date\".\nYou are NOT reading an image. You only receive OCR-extracted text.\nReturn ONE valid JSON object only, no markdown and no extra text.\n\nRequired schema:\n{\"detected_text\":\"string or null\"}\n\nTarget output format:\nMM/DD/YYYY\n\nRules:\n- Preserve meaning from OCR text; do not invent unseen digits.\n- If OCR contains structured JSON (for example keys like day/month/year), parse it first.\n- If year is 2 digits (YY), interpret as 20YY.\n- Zero-pad month and day to 2 digits.\n- Output only a valid calendar date in MM/DD/YYYY, or null.\n- If missing/unclear/invalid, set detected_text to null.\n- Forbid placeholders and artifacts (N/A, ---, string, markdown fences, explanations).\n\nOCR extracted text:\n<ocr_text>",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"month\":\"\", \"day\":\"\", \"year\":\"\" }\n```"
+      "name": "date",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"month\":\"\", \"day\":\"\", \"year\":\"\" }\n```",
+      "w": 355,
+      "x": 64,
+      "y": 232
     },
     {
-      "id": "r36b2211f7",
-      "name": "teacher",
-      "x": 648,
-      "y": 231,
-      "w": 250,
       "h": 34,
+      "id": "r36b2211f7",
       "llm_prompt_override": "You are a strict text normalizer for ROI 'teacher'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the teacher name text from OCR input.\n- Remove titles (Mr., Mrs., Ms., Dr.) when present.\n- Do not invent, infer, or explain.\n- If OCR text is empty/unreadable, return detected_text as null.\nTask:\n- Normalize teacher name text conservatively.",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"teacher_name\":\"\" }\n```"
+      "name": "teacher",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"teacher_name\":\"\" }\n```",
+      "w": 430,
+      "x": 468,
+      "y": 231,
+      "post_normalize": true,
+      "post_normalize_mode": "aggressive"
     },
     {
-      "id": "ra801c5430",
-      "name": "school",
-      "x": 228,
-      "y": 258,
-      "w": 220,
       "h": 30,
+      "id": "ra801c5430",
       "llm_prompt_override": "You are a strict text normalizer for ROI 'school'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the school name text from OCR input.\n- Do not invent, infer, or explain.\n- If OCR text is empty/unreadable, return detected_text as null.\nTask:\n- Normalize school name text conservatively.",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"school_name\":\"\" }\n```"
+      "name": "school",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"school_name\":\"\" }\n```",
+      "w": 463,
+      "x": 59,
+      "y": 258
     },
     {
-      "id": "r45cecacc2",
-      "name": "id",
-      "x": 58,
-      "y": 18,
-      "w": 245,
       "h": 32,
+      "id": "r45cecacc2",
       "llm_prompt_override": "You are a strict JSON mapper.\nYou are NOT reading an image. You only receive OCR-extracted text.\n\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string\"}\n\nTask:\nMap the OCR JSON field \"id\" into pipeline field \"detected_text\".\n\nRules:\n1. If OCR text contains JSON and key \"id\" exists with a non-empty value, output:\n   {\"detected_text\":\"<id value exactly as-is>\"}\n2. If key \"id\" is missing, null, or empty, output:\n   {\"detected_text\":null}\n3. Do not normalize, correct, trim, or transform the id value.\n4. Do not add any extra keys or text.\n\nOCR extracted text:",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"id\":\"\" }\n```"
+      "name": "id",
+      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"id\":\"\" }\n```",
+      "w": 245,
+      "x": 58,
+      "y": 18
     },
     {
+      "h": 61,
       "id": "r21a4d7f60",
       "name": "1",
-      "x": 61,
-      "y": 341,
       "w": 1125,
-      "h": 61,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 61,
+      "y": 341
     },
     {
+      "h": 34,
       "id": "re5e69005a",
       "name": "1a",
-      "x": 101,
-      "y": 368,
       "w": 176,
-      "h": 34,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 101,
+      "y": 368
     },
     {
+      "h": 32,
       "id": "rd833ed4a1",
       "name": "1b",
-      "x": 389,
-      "y": 368,
       "w": 192,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 389,
+      "y": 368
     },
     {
+      "h": 32,
       "id": "r473554e0f",
       "name": "1c",
-      "x": 675,
-      "y": 368,
       "w": 202,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 675,
+      "y": 368
     },
     {
+      "h": 32,
       "id": "rcea4915ec",
       "name": "1d",
-      "x": 959,
-      "y": 368,
       "w": 103,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 959,
+      "y": 368
     },
     {
+      "h": 58,
       "id": "r68f48c144",
       "name": "2",
-      "x": 61,
-      "y": 421,
       "w": 1065,
-      "h": 58,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 61,
+      "y": 421
     },
     {
+      "h": 32,
       "id": "r70deb2b6d",
       "name": "2a",
-      "x": 101,
-      "y": 447,
       "w": 98,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 101,
+      "y": 447
     },
     {
+      "h": 32,
       "id": "rbdd29d665",
       "name": "2b",
-      "x": 388,
-      "y": 447,
       "w": 88,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 388,
+      "y": 447
     },
     {
+      "h": 32,
       "id": "reb2fb752d",
       "name": "2c",
-      "x": 674,
-      "y": 448,
       "w": 86,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 674,
+      "y": 448
     },
     {
+      "h": 32,
       "id": "r9a42a74a6",
       "name": "2d",
-      "x": 960,
-      "y": 446,
       "w": 171,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 960,
+      "y": 446
     },
     {
+      "h": 58,
       "id": "r45656eb54",
       "name": "3",
-      "x": 61,
-      "y": 501,
       "w": 1127,
-      "h": 58,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 61,
+      "y": 501
     },
     {
+      "h": 31,
       "id": "ra0915c304",
       "name": "3a",
-      "x": 103,
-      "y": 528,
       "w": 119,
-      "h": 31,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 103,
+      "y": 528
     },
     {
+      "h": 31,
       "id": "rb62c578b9",
       "name": "3b",
-      "x": 389,
-      "y": 527,
       "w": 145,
-      "h": 31,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 389,
+      "y": 527
     },
     {
+      "h": 31,
       "id": "raf45e178d",
       "name": "3c",
-      "x": 675,
-      "y": 528,
       "w": 118,
-      "h": 31,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 675,
+      "y": 528
     },
     {
+      "h": 31,
       "id": "rc77d7d5d8",
       "name": "3d",
-      "x": 960,
-      "y": 527,
       "w": 227,
-      "h": 31,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 960,
+      "y": 527
     },
     {
+      "h": 111,
       "id": "rb4b99b9e4",
       "name": "4",
-      "x": 61,
-      "y": 580,
       "w": 1055,
-      "h": 111,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 61,
+      "y": 580
     },
     {
+      "h": 34,
       "id": "r02b4a4117",
       "name": "4a",
-      "x": 99,
-      "y": 605,
       "w": 123,
-      "h": 34,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 99,
+      "y": 605
     },
     {
+      "h": 28,
       "id": "r336d61053",
       "name": "4b",
-      "x": 676,
-      "y": 609,
       "w": 450,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 676,
+      "y": 609
     },
     {
+      "h": 30,
       "id": "rdd04345fd",
       "name": "4c",
-      "x": 103,
-      "y": 635,
       "w": 756,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 103,
+      "y": 635
     },
     {
+      "h": 30,
       "id": "rd5fe742f5",
       "name": "4d",
-      "x": 858,
-      "y": 635,
       "w": 179,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 858,
+      "y": 635
     },
     {
+      "h": 84,
       "id": "r6ccafb32e",
       "name": "5",
-      "x": 61,
-      "y": 713,
       "w": 1019,
-      "h": 84,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 61,
+      "y": 713
     },
     {
+      "h": 28,
       "id": "r1f704b452",
       "name": "5a",
-      "x": 104,
-      "y": 740,
       "w": 381,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 104,
+      "y": 740
     },
     {
+      "h": 28,
       "id": "r974f3a2d4",
       "name": "5b",
-      "x": 676,
-      "y": 739,
       "w": 360,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 676,
+      "y": 739
     },
     {
+      "h": 28,
       "id": "rf992ad787",
       "name": "5c",
-      "x": 104,
-      "y": 767,
       "w": 543,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 104,
+      "y": 767
     },
     {
+      "h": 30,
       "id": "rd0667d842",
       "name": "5d",
-      "x": 675,
-      "y": 765,
       "w": 406,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 675,
+      "y": 765
     },
     {
+      "h": 59,
       "id": "r58fe02c01",
       "name": "6",
-      "x": 61,
-      "y": 819,
       "w": 1043,
-      "h": 59,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 61,
+      "y": 819
     },
     {
+      "h": 32,
       "id": "r3ea4b5e24",
       "name": "6a",
-      "x": 102,
-      "y": 846,
       "w": 114,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 102,
+      "y": 846
     },
     {
+      "h": 30,
       "id": "r092c9a456",
       "name": "6b",
-      "x": 388,
-      "y": 847,
       "w": 139,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 388,
+      "y": 847
     },
     {
+      "h": 32,
       "id": "r7a4db8541",
       "name": "6c",
-      "x": 674,
-      "y": 846,
       "w": 111,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 674,
+      "y": 846
     },
     {
+      "h": 30,
       "id": "r792b8f939",
       "name": "6d",
-      "x": 961,
-      "y": 847,
       "w": 142,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 961,
+      "y": 847
     },
     {
+      "h": 58,
       "id": "rf2f3104e2",
       "name": "7",
-      "x": 61,
-      "y": 899,
       "w": 1055,
-      "h": 58,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 61,
+      "y": 899
     },
     {
+      "h": 30,
       "id": "r3ae70e0c4",
       "name": "7a",
-      "x": 102,
-      "y": 925,
       "w": 99,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 102,
+      "y": 925
     },
     {
+      "h": 30,
       "id": "rfee9c0091",
       "name": "7b",
-      "x": 388,
-      "y": 925,
       "w": 92,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 388,
+      "y": 925
     },
     {
+      "h": 32,
       "id": "r397f95559",
       "name": "7c",
-      "x": 674,
-      "y": 924,
       "w": 143,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 674,
+      "y": 924
     },
     {
+      "h": 30,
       "id": "r07904d27f",
       "name": "7d",
-      "x": 961,
-      "y": 926,
       "w": 145,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 961,
+      "y": 926
     },
     {
+      "h": 83,
       "id": "rf0a6627b0",
       "name": "8",
-      "x": 61,
-      "y": 979,
       "w": 1089,
-      "h": 83,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 61,
+      "y": 979
     },
     {
+      "h": 29,
       "id": "r73060db5d",
       "name": "8a",
-      "x": 103,
-      "y": 1030,
       "w": 161,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 103,
+      "y": 1030
     },
     {
+      "h": 29,
       "id": "rd0ea28edc",
       "name": "8b",
-      "x": 388,
-      "y": 1030,
       "w": 152,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 388,
+      "y": 1030
     },
     {
+      "h": 33,
       "id": "r78c71bcf1",
       "name": "8c",
-      "x": 674,
-      "y": 1029,
       "w": 105,
-      "h": 33,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 674,
+      "y": 1029
     },
     {
+      "h": 34,
       "id": "r9a4f63784",
       "name": "8d",
-      "x": 960,
-      "y": 1028,
       "w": 121,
-      "h": 34,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 960,
+      "y": 1028
     },
     {
+      "h": 83,
       "id": "rb84ac8b5f",
       "name": "9",
-      "x": 62,
-      "y": 1085,
       "w": 980,
-      "h": 83,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 62,
+      "y": 1085
     },
     {
+      "h": 27,
       "id": "r8314a1554",
       "name": "9a",
-      "x": 103,
-      "y": 1112,
       "w": 245,
-      "h": 27,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 103,
+      "y": 1112
     },
     {
+      "h": 27,
       "id": "r108930878",
       "name": "9b",
-      "x": 676,
-      "y": 1113,
       "w": 298,
-      "h": 27,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 676,
+      "y": 1113
     },
     {
+      "h": 30,
       "id": "r97a6a222e",
       "name": "9c",
-      "x": 102,
-      "y": 1138,
       "w": 270,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 102,
+      "y": 1138
     },
     {
+      "h": 30,
       "id": "r9d6024e41",
       "name": "9d",
-      "x": 675,
-      "y": 1138,
       "w": 367,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 675,
+      "y": 1138
     },
     {
+      "h": 58,
       "id": "r13c49c30d",
       "name": "10",
-      "x": 62,
-      "y": 1191,
       "w": 1135,
-      "h": 58,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 62,
+      "y": 1191
     },
     {
+      "h": 27,
       "id": "r130e16051",
       "name": "10a",
-      "x": 102,
-      "y": 1219,
       "w": 129,
-      "h": 27,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 102,
+      "y": 1219
     },
     {
+      "h": 27,
       "id": "r1c6f6498e",
       "name": "10b",
-      "x": 389,
-      "y": 1219,
       "w": 157,
-      "h": 27,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 389,
+      "y": 1219
     },
     {
+      "h": 30,
       "id": "r6a15568f0",
       "name": "10c",
-      "x": 674,
-      "y": 1218,
       "w": 129,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 674,
+      "y": 1218
     },
     {
+      "h": 27,
       "id": "r1dada9a4d",
       "name": "10d",
-      "x": 962,
-      "y": 1219,
       "w": 226,
-      "h": 27,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 962,
+      "y": 1219
     },
     {
+      "h": 86,
       "id": "r2071523d4",
       "name": "11",
-      "x": 61,
-      "y": 1269,
       "w": 1147,
-      "h": 86,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 61,
+      "y": 1269
     },
     {
+      "h": 34,
       "id": "r0e40bc91a",
       "name": "11a",
-      "x": 102,
-      "y": 1321,
       "w": 117,
-      "h": 34,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 102,
+      "y": 1321
     },
     {
+      "h": 36,
       "id": "r0574fc9e9",
       "name": "11b",
-      "x": 385,
-      "y": 1319,
       "w": 88,
-      "h": 36,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 385,
+      "y": 1319
     },
     {
+      "h": 32,
       "id": "rcd94d6d6a",
       "name": "11c",
-      "x": 675,
-      "y": 1323,
       "w": 111,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 675,
+      "y": 1323
     },
     {
+      "h": 32,
       "id": "r7921f7433",
       "name": "11d",
-      "x": 963,
-      "y": 1323,
       "w": 146,
-      "h": 32,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 963,
+      "y": 1323
     },
     {
+      "h": 83,
       "id": "r90e0e6455",
       "name": "12",
-      "x": 63,
-      "y": 1377,
       "w": 1009,
-      "h": 83,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 63,
+      "y": 1377
     },
     {
+      "h": 28,
       "id": "r1617c9ca8",
       "name": "12a",
-      "x": 103,
-      "y": 1402,
       "w": 191,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 103,
+      "y": 1402
     },
     {
+      "h": 30,
       "id": "r2a75d9423",
       "name": "12b",
-      "x": 674,
-      "y": 1401,
       "w": 84,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 674,
+      "y": 1401
     },
     {
+      "h": 28,
       "id": "rf56c442ab",
       "name": "12c",
-      "x": 103,
-      "y": 1431,
       "w": 260,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 103,
+      "y": 1431
     },
     {
+      "h": 28,
       "id": "r6d3d09fd5",
       "name": "12d",
-      "x": 675,
-      "y": 1430,
       "w": 131,
-      "h": 28,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 675,
+      "y": 1430
     },
     {
+      "h": 86,
       "id": "r7c022b172",
       "name": "13",
-      "x": 62,
-      "y": 1482,
       "w": 857,
-      "h": 86,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 62,
+      "y": 1482
     },
     {
+      "h": 30,
       "id": "rf8bc1e7a2",
       "name": "13a",
-      "x": 103,
-      "y": 1510,
       "w": 132,
-      "h": 30,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 103,
+      "y": 1510
     },
     {
+      "h": 29,
       "id": "r74f88e366",
       "name": "13b",
-      "x": 676,
-      "y": 1510,
       "w": 243,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 676,
+      "y": 1510
     },
     {
+      "h": 29,
       "id": "r530cd0e2c",
       "name": "13c",
-      "x": 104,
-      "y": 1538,
       "w": 263,
-      "h": 29,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 104,
+      "y": 1538
     },
     {
+      "h": 33,
       "id": "r5e60ae592",
       "name": "13d",
-      "x": 674,
-      "y": 1535,
       "w": 147,
-      "h": 33,
-      "llm_prompt_override": null,
-      "ocr_prompt_override": null
+      "x": 674,
+      "y": 1535
     }
   ]
 }

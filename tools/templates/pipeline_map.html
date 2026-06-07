@@ -1,0 +1,1140 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ROI to XLSX Visualizer</title>
+  <script src="/static/theme.js"></script>
+  <link rel="stylesheet" href="/static/theme.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 13px;
+    }
+    .toolbar {
+      min-height: 54px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .brand {
+      font-weight: 800;
+      color: var(--accent);
+      white-space: nowrap;
+      margin-right: 8px;
+    }
+    .field {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .field label {
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    select, input[type="text"] {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      color: var(--text);
+      padding: 7px 9px;
+      font: inherit;
+      min-height: 34px;
+    }
+    .btn {
+      padding: 7px 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--secondary-btn);
+      color: var(--text);
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--secondary-btn-hover); }
+    .btn.primary {
+      border-color: transparent;
+      background: var(--accent);
+      color: var(--on-accent);
+    }
+    .btn.primary:hover { background: var(--accent-hover); }
+    .status {
+      color: var(--muted);
+      margin-left: auto;
+      white-space: nowrap;
+    }
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--text);
+      font-weight: 700;
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle input {
+      position: absolute;
+      opacity: 0;
+      pointer-events: none;
+    }
+    .toggle-track {
+      width: 36px;
+      height: 20px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--secondary-btn);
+      position: relative;
+      transition: background 0.16s ease, border-color 0.16s ease;
+    }
+    .toggle-track::after {
+      content: "";
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      left: 2px;
+      top: 2px;
+      border-radius: 50%;
+      background: var(--muted);
+      transition: transform 0.16s ease, background 0.16s ease;
+    }
+    .toggle input:checked + .toggle-track {
+      border-color: transparent;
+      background: var(--accent);
+    }
+    .toggle input:checked + .toggle-track::after {
+      transform: translateX(16px);
+      background: var(--on-accent);
+    }
+    .path-chip {
+      max-width: 320px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--bg);
+      color: var(--muted);
+      padding: 6px 10px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--overlay);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      min-width: 380px;
+      max-width: 90vw;
+      max-height: 75vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-modal);
+    }
+    .modal-header {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .modal-header h3 { margin: 0; font-size: 1rem; }
+    .modal-breadcrumb {
+      margin-top: 4px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      word-break: break-all;
+    }
+    .modal-body {
+      padding: 8px;
+      overflow-y: auto;
+      min-height: 220px;
+      max-height: 58vh;
+    }
+    .modal-body .item {
+      padding: 8px 10px;
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+    }
+    .modal-body .item:hover { background: var(--surface-hover-strong); }
+    .modal-body .item.folder { color: var(--accent); }
+    .main {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 340px;
+    }
+    .canvas-wrap {
+      position: relative;
+      overflow: hidden;
+      background: var(--canvas-bg);
+    }
+    .canvas-wrap.panning { cursor: grabbing; }
+    .world {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 7600px;
+      min-height: 2600px;
+      transform-origin: 0 0;
+    }
+    #edgeLayer {
+      position: absolute;
+      inset: 0;
+      width: 7600px;
+      height: 2600px;
+      pointer-events: none;
+      overflow: visible;
+      z-index: 8;
+    }
+    .lane {
+      position: absolute;
+      top: 24px;
+      min-height: 400px;
+    }
+    .roi-lane { left: 24px; width: 760px; }
+    .col-lane { left: 24px; top: 820px; width: 7200px; }
+    .lane-title {
+      margin: 0 0 10px;
+      color: var(--muted);
+      font-size: 0.78rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .side-stack {
+      display: flex;
+      flex-direction: row;
+      gap: 18px;
+      align-items: flex-start;
+      justify-content: center;
+    }
+    .source-strip {
+      position: relative;
+      height: 66px;
+      margin-bottom: 8px;
+    }
+    .source-chip {
+      position: absolute;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--panel-bg);
+      color: var(--text);
+      padding: 6px 10px;
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      z-index: 2;
+      white-space: nowrap;
+      transform: translateX(-50%);
+    }
+    .source-chip.unmapped { opacity: 0.45; }
+    .side-card {
+      width: 360px;
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    .side-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--border);
+      color: var(--muted);
+      font-weight: 800;
+    }
+    .image-box {
+      position: relative;
+      width: 100%;
+      background: #fff;
+    }
+    .image-box img {
+      display: block;
+      width: 100%;
+      height: auto;
+    }
+    .roi-box {
+      position: absolute;
+      border: 2px solid #38bdf8;
+      background: rgba(56, 189, 248, 0.12);
+      cursor: pointer;
+      z-index: 2;
+    }
+    .roi-box.mcq { border-color: #f59e0b; background: rgba(245, 158, 11, 0.14); }
+    .roi-box.mcq_choice { border-color: #a78bfa; background: rgba(167, 139, 250, 0.10); }
+    .roi-box.unmapped { opacity: 0.38; }
+    .roi-box.hidden { display: none; }
+    .roi-label {
+      position: absolute;
+      left: 0;
+      top: -18px;
+      padding: 1px 4px;
+      background: rgba(0,0,0,0.72);
+      color: white;
+      font-size: 10px;
+      line-height: 14px;
+      border-radius: 3px;
+      white-space: nowrap;
+      pointer-events: none;
+    }
+    body.hide-labels .roi-label,
+    body.hide-labels .node-label-extra { display: none; }
+    .node-list {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+    .sheet-grid {
+      display: grid;
+      grid-template-columns: 44px;
+      grid-auto-rows: auto;
+      align-items: start;
+      border: 1px solid #b7b7b7;
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: #fff;
+      box-shadow: 0 1px 0 rgba(0,0,0,0.18);
+      max-width: none;
+    }
+    .sheet-corner,
+    .row-num {
+      min-height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #444;
+      background: #f3f3f3;
+      border-right: 1px solid #b7b7b7;
+      border-bottom: 1px solid #b7b7b7;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      user-select: none;
+    }
+    .col-letter {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 30px;
+      background: #f3f3f3;
+      color: #444;
+      font-family: var(--font-mono);
+      font-weight: 800;
+      border-right: 1px solid #b7b7b7;
+      border-bottom: 1px solid #b7b7b7;
+    }
+    .cell {
+      min-height: 46px;
+      padding: 7px 8px;
+      border-right: 1px solid #d9d9d9;
+      border-bottom: 1px solid #d9d9d9;
+      background: #fff;
+      color: #111;
+      cursor: pointer;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      line-height: 1.25;
+      z-index: 2;
+      font-family: Calibri, "Aptos", "Segoe UI", Arial, sans-serif;
+    }
+    .cell.header {
+      color: #111;
+      background: #fff;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .cell.data {
+      min-height: 54px;
+      background: #fff;
+      font-family: Calibri, "Aptos", "Segoe UI", Arial, sans-serif;
+    }
+    .cell.mapped {
+      background: #fff;
+      outline: 3px solid #4472c4;
+      outline-offset: -2px;
+    }
+    .cell.merged {
+      justify-content: center;
+      text-align: center;
+    }
+    .cell.hidden { display: none; }
+    .sheet-note {
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-bottom: 8px;
+      max-width: 800px;
+    }
+    .node {
+      position: relative;
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--accent);
+      border-radius: var(--radius-md);
+      background: var(--panel-bg);
+      padding: 8px 10px;
+      min-height: 44px;
+      cursor: pointer;
+      z-index: 2;
+      box-shadow: 0 1px 0 rgba(0,0,0,0.15);
+    }
+    .node.hidden { display: none; }
+    .node.direct { border-left-color: #38bdf8; }
+    .node.lookup { border-left-color: #22c55e; }
+    .node.multi_column { border-left-color: #f59e0b; }
+    .node.static { border-left-color: #a78bfa; }
+    .node.unmapped { opacity: 0.45; }
+    .node-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      font-weight: 800;
+    }
+    .node-meta {
+      margin-top: 3px;
+      color: var(--muted);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.35;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .badge {
+      color: var(--text);
+      background: var(--surface-hover-strong);
+      border-radius: 999px;
+      padding: 2px 7px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      flex-shrink: 0;
+    }
+    .edge {
+      stroke: var(--muted);
+      stroke-width: 1.6;
+      fill: none;
+      opacity: 0.42;
+      pointer-events: stroke;
+      cursor: pointer;
+    }
+    .edge.direct { stroke: #38bdf8; }
+    .edge.lookup { stroke: #22c55e; stroke-dasharray: 8 5; }
+    .edge.multi_column { stroke: #f59e0b; }
+    .edge.static { stroke: #a78bfa; }
+    .edge.hidden { display: none; }
+    .edge.active {
+      stroke-width: 4;
+      opacity: 1;
+    }
+    .edge-hit {
+      stroke: transparent;
+      stroke-width: 18;
+      fill: none;
+      opacity: 0;
+      pointer-events: stroke;
+      cursor: pointer;
+    }
+    .edge-hit.hidden { display: none; }
+    .active-node {
+      outline: 3px solid var(--accent);
+      outline-offset: 2px;
+      opacity: 1 !important;
+    }
+    .details {
+      min-height: 0;
+      border-left: 1px solid var(--border);
+      background: var(--panel-bg);
+      display: flex;
+      flex-direction: column;
+    }
+    .details-head {
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .details-head h2 {
+      margin: 0;
+      font-size: 1rem;
+    }
+    .details-body {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      padding: 12px;
+    }
+    .summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .metric {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 8px;
+      background: var(--bg);
+    }
+    .metric strong {
+      display: block;
+      font-size: 1.1rem;
+      color: var(--text);
+    }
+    .metric span { color: var(--muted); font-size: 0.75rem; }
+    .issue {
+      border: 1px solid var(--border);
+      border-left: 4px solid var(--warn);
+      border-radius: var(--radius-md);
+      padding: 8px;
+      margin-bottom: 7px;
+      background: var(--bg);
+      color: var(--muted);
+      font-size: 0.82rem;
+    }
+    .issue.error { border-left-color: var(--danger); }
+    pre {
+      margin: 0;
+      padding: 10px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      color: var(--text);
+      overflow: auto;
+      white-space: pre-wrap;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+    .empty {
+      color: var(--muted);
+      padding: 14px;
+      border: 1px dashed var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+    }
+    @media (max-width: 1050px) {
+      .main { grid-template-columns: minmax(0, 1fr); }
+      .details { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <div class="brand">ROI to XLSX</div>
+    <button class="btn" id="templatePickBtn" type="button">Select template...</button>
+    <div class="path-chip" id="templatePathChip">auto template</div>
+    <div class="path-chip" id="workbookPathChip">auto workbook</div>
+    <button class="btn primary" id="loadBtn" type="button">Load</button>
+    <button class="btn" id="fitBtn" type="button">Fit</button>
+    <label class="toggle" title="Show ROI labels">
+      <input id="labelsToggle" type="checkbox" checked />
+      <span class="toggle-track" aria-hidden="true"></span>
+      <span>Labels</span>
+    </label>
+    <div class="status" id="status">Starting...</div>
+  </div>
+  <div class="modal-overlay" id="browse-modal" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3 id="browse-title">Select file</h3>
+          <div class="modal-breadcrumb" id="browse-breadcrumb"></div>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button type="button" class="btn" id="browse-up">Up</button>
+          <button type="button" class="btn" id="browse-close">Close</button>
+        </div>
+      </div>
+      <div class="modal-body" id="browse-body"></div>
+    </div>
+  </div>
+  <div class="main">
+    <div class="canvas-wrap" id="canvasWrap">
+      <div class="world" id="world">
+        <svg id="edgeLayer"></svg>
+        <section class="lane roi-lane">
+          <h3 class="lane-title">Image pair sources</h3>
+          <div class="side-stack" id="sideStack"></div>
+        </section>
+        <section class="lane col-lane">
+          <h3 class="lane-title">Excel sheet target</h3>
+          <div class="source-strip" id="sourceStrip"></div>
+          <div class="sheet-note" id="sheetNote"></div>
+          <div class="node-list" id="columnList"></div>
+        </section>
+      </div>
+    </div>
+    <aside class="details">
+      <div class="details-head">
+        <h2 id="detailsTitle">Details</h2>
+      </div>
+      <div class="details-body" id="detailsBody">
+        <div class="empty">Load a form, then click a ROI, sheet cell, or arrow.</div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+  const state = {
+    options: null,
+    graph: null,
+    activeId: null,
+    scale: 0.72,
+    panX: 20,
+    panY: 20,
+    dragging: false,
+    dragStart: null,
+    selectedEdgeId: null
+  };
+  const els = {
+    templatePick: document.getElementById("templatePickBtn"),
+    templateChip: document.getElementById("templatePathChip"),
+    workbookChip: document.getElementById("workbookPathChip"),
+    load: document.getElementById("loadBtn"),
+    fit: document.getElementById("fitBtn"),
+    labels: document.getElementById("labelsToggle"),
+    status: document.getElementById("status"),
+    wrap: document.getElementById("canvasWrap"),
+    world: document.getElementById("world"),
+    sides: document.getElementById("sideStack"),
+    cols: document.getElementById("columnList"),
+    sources: document.getElementById("sourceStrip"),
+    sheetNote: document.getElementById("sheetNote"),
+    svg: document.getElementById("edgeLayer"),
+    detailsTitle: document.getElementById("detailsTitle"),
+    detailsBody: document.getElementById("detailsBody"),
+    browseModal: document.getElementById("browse-modal"),
+    browseTitle: document.getElementById("browse-title"),
+    browseBreadcrumb: document.getElementById("browse-breadcrumb"),
+    browseBody: document.getElementById("browse-body"),
+    browseUp: document.getElementById("browse-up"),
+    browseClose: document.getElementById("browse-close")
+  };
+  let selectedTemplatePath = "";
+  let selectedRelease = "";
+  let selectedForm = "";
+  let browseKind = "template";
+  let browseDir = "";
+  let browseRoot = "";
+
+  function esc(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, ch => ({
+      "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;"
+    }[ch]));
+  }
+  function parentDir(path) {
+    const parts = String(path || "").split("/").filter(Boolean);
+    parts.pop();
+    return parts.join("/");
+  }
+  function closeBrowseModal() {
+    els.browseModal.classList.remove("open");
+    els.browseModal.setAttribute("aria-hidden", "true");
+  }
+  async function openBrowseModal(kind) {
+    browseKind = kind;
+    const rootResp = await fetch(`/api/browse-root?kind=${encodeURIComponent(kind)}`);
+    const rootData = await rootResp.json();
+    if (!rootResp.ok || rootData.error) {
+      setStatus(rootData.error || "Browse root failed");
+      return;
+    }
+    browseRoot = rootData.root;
+    browseDir = browseRoot;
+    if (kind === "template" && selectedTemplatePath) browseDir = parentDir(selectedTemplatePath);
+    els.browseTitle.textContent = "Select page template";
+    els.browseModal.classList.add("open");
+    els.browseModal.setAttribute("aria-hidden", "false");
+    await refreshBrowse();
+  }
+  async function refreshBrowse() {
+    els.browseBreadcrumb.textContent = browseDir || browseRoot;
+    els.browseUp.disabled = (browseDir || browseRoot) === browseRoot;
+    els.browseBody.innerHTML = "";
+    const resp = await fetch(`/api/browse?kind=${encodeURIComponent(browseKind)}&dir=${encodeURIComponent(browseDir || browseRoot)}`);
+    const data = await resp.json();
+    if (!resp.ok || data.error) {
+      els.browseBody.innerHTML = `<div class="item">${esc(data.error || "Browse failed")}</div>`;
+      return;
+    }
+    if ((browseDir || browseRoot) !== browseRoot) {
+      const up = document.createElement("div");
+      up.className = "item folder";
+      up.textContent = "..";
+      up.addEventListener("click", () => { browseDir = parentDir(browseDir); if (!browseDir || !browseDir.startsWith(browseRoot)) browseDir = browseRoot; refreshBrowse(); });
+      els.browseBody.appendChild(up);
+    }
+    for (const d of data.dirs || []) {
+      const row = document.createElement("div");
+      row.className = "item folder";
+      row.textContent = d.split("/").pop() + "/";
+      row.title = d;
+      row.addEventListener("click", () => { browseDir = d; refreshBrowse(); });
+      els.browseBody.appendChild(row);
+    }
+    for (const f of data.files || []) {
+      const row = document.createElement("div");
+      row.className = "item";
+      row.textContent = f.split("/").pop();
+      row.title = f;
+      row.addEventListener("click", () => selectBrowseFile(f));
+      els.browseBody.appendChild(row);
+    }
+    if (!(data.dirs || []).length && !(data.files || []).length) {
+      els.browseBody.innerHTML += `<div class="item">No matching files here.</div>`;
+    }
+  }
+  async function selectBrowseFile(path) {
+    const resp = await fetch(`/api/template-info?path=${encodeURIComponent(path)}`);
+    const data = await resp.json();
+    if (!resp.ok || data.error) {
+      setStatus(data.error || "Template selection failed");
+      return;
+    }
+    selectedTemplatePath = path;
+    els.templateChip.textContent = path;
+    selectedRelease = data.release;
+    selectedForm = data.form;
+    await loadOptions();
+    closeBrowseModal();
+    await loadGraph();
+  }
+  function nodeById(id) {
+    if (!state.graph) return null;
+    const cell = cellById(id);
+    if (cell) return cell;
+    return []
+      .concat(state.graph.roi_nodes || [], state.graph.virtual_nodes || [], state.graph.static_nodes || [], state.graph.mapping_nodes || [], state.graph.column_nodes || [])
+      .find(n => n.id === id);
+  }
+  function cellById(id) {
+    if (!state.graph || !state.graph.sheet_grid) return null;
+    for (const col of state.graph.sheet_grid.columns || []) {
+      for (const cell of col.cells || []) {
+        if (cell.id === id) return Object.assign({ sheet_cell: true }, cell);
+      }
+    }
+    return null;
+  }
+  function edgeById(id) {
+    return ((state.graph && state.graph.direct_edges) || []).find(e => e.id === id) || null;
+  }
+  function connectedIds(id) {
+    const ids = new Set([id]);
+    if (!state.graph) return ids;
+    for (const e of state.graph.direct_edges || []) {
+      if (e.from === id || e.to === id) {
+        ids.add(e.from);
+        ids.add(e.to);
+      }
+    }
+    return ids;
+  }
+  function setStatus(text) { els.status.textContent = text; }
+  function applyTransform() {
+    els.world.style.transform = `translate(${state.panX}px, ${state.panY}px) scale(${state.scale})`;
+  }
+  function fitWorld() {
+    const w = els.wrap.clientWidth || 1;
+    state.scale = Math.min(0.82, Math.max(0.34, (w - 28) / 1900));
+    state.panX = 14;
+    state.panY = 12;
+    applyTransform();
+  }
+  function updateWorldBounds() {
+    const sheet = document.querySelector(".sheet-grid");
+    const colLane = document.querySelector(".col-lane");
+    const roiLane = document.querySelector(".roi-lane");
+    if (!sheet || !colLane) return;
+    const left = 24;
+    const roiTop = 24;
+    const top = roiLane ? Math.max(760, roiTop + roiLane.offsetHeight + 84) : 820;
+    colLane.style.top = top + "px";
+    if (roiLane) {
+      const centeredLeft = Math.max(24, Math.round(left + sheet.offsetWidth / 2 - roiLane.offsetWidth / 2));
+      roiLane.style.left = centeredLeft + "px";
+    }
+    const width = Math.max(7600, left + sheet.offsetWidth + 360);
+    const height = Math.max(2600, top + sheet.offsetHeight + 360);
+    els.world.style.width = width + "px";
+    els.world.style.minHeight = height + "px";
+    els.svg.setAttribute("width", String(width));
+    els.svg.setAttribute("height", String(height));
+    els.svg.style.width = width + "px";
+    els.svg.style.height = height + "px";
+  }
+  function applyFilters() {
+    document.querySelectorAll("[data-node-id]").forEach(el => {
+      el.classList.remove("hidden");
+    });
+    document.querySelectorAll(".edge, .edge-hit").forEach(path => {
+      const e = edgeById(path.dataset.edgeId);
+      path.classList.toggle("hidden", !e);
+    });
+  }
+  function clearSelection() {
+    state.selectedEdgeId = null;
+    document.querySelectorAll(".active-node").forEach(el => el.classList.remove("active-node"));
+    document.querySelectorAll(".edge").forEach(path => path.classList.remove("active"));
+    renderDetailsSummary();
+  }
+  function setActive(id) {
+    if (state.selectedEdgeId) return;
+    state.activeId = id;
+    const connected = connectedIds(id);
+    document.querySelectorAll(".active-node").forEach(el => el.classList.remove("active-node"));
+    document.querySelectorAll("[data-node-id]").forEach(el => {
+      if (connected.has(el.dataset.nodeId)) el.classList.add("active-node");
+    });
+    document.querySelectorAll(".edge").forEach(path => {
+      const e = edgeById(path.dataset.edgeId);
+      path.classList.toggle("active", !!e && (connected.has(e.from) && connected.has(e.to)));
+    });
+    showDetails(id);
+  }
+  function highlightEdge(edgeId) {
+    const edge = edgeById(edgeId);
+    if (!edge) return;
+    document.querySelectorAll(".active-node").forEach(el => el.classList.remove("active-node"));
+    [edge.from, edge.to].forEach(id => {
+      const el = document.querySelector(`[data-node-id="${CSS.escape(id)}"]`);
+      if (el) el.classList.add("active-node");
+    });
+    document.querySelectorAll(".edge").forEach(path => path.classList.toggle("active", path.dataset.edgeId === edgeId));
+    showEdgeDetails(edge);
+  }
+  function setActiveEdge(edgeId, persistent) {
+    if (persistent) {
+      if (state.selectedEdgeId === edgeId) {
+        clearSelection();
+        return;
+      }
+      state.selectedEdgeId = edgeId;
+      highlightEdge(edgeId);
+      return;
+    }
+    if (state.selectedEdgeId) return;
+    highlightEdge(edgeId);
+  }
+  function showDetails(id) {
+    const node = nodeById(id);
+    if (!node) {
+      els.detailsTitle.textContent = "Details";
+      els.detailsBody.innerHTML = `<div class="empty">Nothing selected.</div>`;
+      return;
+    }
+    const title = node.sheet_cell ? `Cell ${node.column}${node.row}` : (node.row ? `Mapping row ${node.row}` : (node.column ? `Column ${node.column}` : (node.side ? `ROI ${node.name}` : node.name || node.id)));
+    els.detailsTitle.textContent = title;
+    const relatedIssues = (state.graph.issues || []).filter(i => !i.row || i.row === node.row);
+    let html = "";
+    html += `<pre>${esc(JSON.stringify(node, null, 2))}</pre>`;
+    if (relatedIssues.length) {
+      html += `<h3 class="lane-title" style="margin-top:12px;">Related issues</h3>`;
+      html += relatedIssues.map(i => `<div class="issue ${esc(i.severity)}">${esc(i.message)}</div>`).join("");
+    }
+    els.detailsBody.innerHTML = html;
+  }
+  function showEdgeDetails(edge) {
+    els.detailsTitle.textContent = `Mapping row ${edge.mapping_row}`;
+    const relatedIssues = (state.graph.issues || []).filter(i => !i.row || i.row === edge.mapping_row);
+    let html = `<pre>${esc(JSON.stringify(edge, null, 2))}</pre>`;
+    if (relatedIssues.length) {
+      html += `<h3 class="lane-title" style="margin-top:12px;">Related issues</h3>`;
+      html += relatedIssues.map(i => `<div class="issue ${esc(i.severity)}">${esc(i.message)}</div>`).join("");
+    }
+    els.detailsBody.innerHTML = html;
+  }
+  function roiScale(node) {
+    const iw = Number(node.image_width || 1) || 1;
+    return 360 / iw;
+  }
+  function renderSides() {
+    const sides = ["a", "b"];
+    els.sides.innerHTML = sides.map(side => {
+      const nodes = (state.graph.roi_nodes || []).filter(n => n.side === side);
+      const imgUrl = `/api/template-image?release=${encodeURIComponent(state.graph.release)}&form=${encodeURIComponent(state.graph.form)}&side=${side}`;
+      const imageHeight = nodes[0] && nodes[0].image_height && nodes[0].image_width ? 360 * Number(nodes[0].image_height) / Number(nodes[0].image_width) : 480;
+      const boxes = nodes.map(n => {
+        const s = roiScale(n);
+        const b = n.bbox || {};
+        return `<div class="roi-box ${esc(n.kind)} ${n.mapped ? "" : "unmapped"}"
+          data-node-id="${esc(n.id)}"
+          style="left:${Number(b.x || 0) * s}px;top:${Number(b.y || 0) * s}px;width:${Math.max(2, Number(b.w || 0) * s)}px;height:${Math.max(2, Number(b.h || 0) * s)}px">
+          <span class="roi-label">${esc(n.name)}</span>
+        </div>`;
+      }).join("");
+      return `<div class="side-card">
+        <div class="side-head"><span>Side ${side.toUpperCase()}</span><span>${nodes.length} ROIs</span></div>
+        <div class="image-box" style="height:${imageHeight}px">
+          <img src="${imgUrl}" alt="Side ${side} template" onerror="this.style.display='none';this.parentElement.style.background='var(--bg)'" />
+          ${boxes}
+        </div>
+      </div>`;
+    }).join("");
+  }
+  function renderSourceNodes() {
+    const nodes = [].concat(state.graph.virtual_nodes || [], state.graph.static_nodes || []);
+    els.sources.innerHTML = nodes.map(n => `<div class="source-chip ${n.mapped ? "" : "unmapped"}" data-node-id="${esc(n.id)}">${esc(n.name)}${n.kind === "static" ? ": " + esc(n.value) : ""}</div>`).join("");
+    layoutSourceNodes(nodes);
+  }
+  function layoutSourceNodes(nodes) {
+    const stripRect = els.sources.getBoundingClientRect();
+    const edges = state.graph.direct_edges || [];
+    const placed = [];
+    nodes.forEach((node, idx) => {
+      const chip = document.querySelector(`[data-node-id="${CSS.escape(node.id)}"]`);
+      if (!chip) return;
+      const targets = edges
+        .filter(e => e.from === node.id)
+        .map(e => document.querySelector(`[data-node-id="${CSS.escape(e.to)}"]`))
+        .filter(Boolean);
+      let x = 70 + idx * 122;
+      if (targets.length) {
+        const centers = targets.map(el => {
+          const rect = el.getBoundingClientRect();
+          return (rect.left + rect.width / 2 - stripRect.left) / state.scale;
+        });
+        x = centers.reduce((sum, val) => sum + val, 0) / centers.length;
+      }
+      let y = targets.length ? 9 : 37;
+      for (const pos of placed) {
+        if (Math.abs(pos.x - x) < 86 && Math.abs(pos.y - y) < 24) {
+          y = y === 9 ? 37 : 9;
+        }
+      }
+      const half = Math.max(24, chip.offsetWidth / 2);
+      const maxX = Math.max(half, els.sources.clientWidth - half);
+      x = Math.min(maxX, Math.max(half, x));
+      chip.style.left = `${x}px`;
+      chip.style.top = `${y}px`;
+      placed.push({ x, y });
+    });
+  }
+  function renderMappings() {
+    return;
+  }
+  function renderColumns() {
+    const grid = state.graph.sheet_grid || {};
+    const rows = grid.visible_rows || [];
+    const cols = grid.columns || [];
+    const colTrack = "118px";
+    const rowTracks = ["30px"].concat(rows.map(r => r === grid.start_row ? "54px" : "46px")).join(" ");
+    const colTracks = ["44px"].concat(cols.map(() => colTrack)).join(" ");
+    const rowHeads = [`<div class="sheet-corner" style="grid-column:1;grid-row:1;"></div>`]
+      .concat(rows.map((r, idx) => `<div class="row-num" style="grid-column:1;grid-row:${idx + 2};">${esc(r)}</div>`))
+      .join("");
+    const colLetters = cols.map((col, idx) => `<div class="col-letter" style="grid-column:${idx + 2};grid-row:1;">${esc(col.column)}</div>`).join("");
+    const cells = cols.map((col, colIdx) => {
+      return (col.cells || []).map(cell => {
+        const rowIdx = rows.indexOf(cell.row);
+        if (rowIdx < 0) return "";
+        const merged = cell.merged || {};
+        if (merged.hidden) return "";
+        const colspan = Math.max(1, Number(merged.colspan || 1));
+        const rowspan = Math.max(1, Number(merged.rowspan || 1));
+        const gridCol = colIdx + 2;
+        const gridRow = rowIdx + 2;
+        const classes = ["cell", cell.kind, cell.mapped ? "mapped" : "", colspan > 1 || rowspan > 1 ? "merged" : ""].filter(Boolean).join(" ");
+        const value = cell.value || "";
+        return `<div class="${esc(classes)}" data-node-id="${esc(cell.id)}" style="grid-column:${gridCol} / span ${colspan};grid-row:${gridRow} / span ${rowspan};">${esc(value)}</div>`;
+      }).join("");
+    }).join("");
+    els.sheetNote.textContent = `${grid.sheet_name || "(sheet)"} · data row ${grid.start_row || ""}${grid.workbook_backed ? "" : " · workbook headers unavailable"}`;
+    els.cols.innerHTML = cols.length
+      ? `<div class="sheet-grid" style="grid-template-columns:${colTracks};grid-template-rows:${rowTracks};">${rowHeads}${colLetters}${cells}</div>`
+      : `<div class="empty">No target cells found.</div>`;
+  }
+  function anchorFor(id, side) {
+    const el = document.querySelector(`[data-node-id="${CSS.escape(id)}"]`);
+    if (!el || el.classList.contains("hidden")) return null;
+    const worldRect = els.world.getBoundingClientRect();
+    const rect = el.getBoundingClientRect();
+    let x = rect.left + rect.width / 2 - worldRect.left;
+    let y = rect.top + rect.height / 2 - worldRect.top;
+    if (side === "right") {
+      x = rect.right - worldRect.left;
+    } else if (side === "left") {
+      x = rect.left - worldRect.left;
+    } else if (side === "bottom") {
+      y = rect.bottom - worldRect.top;
+    } else if (side === "top") {
+      y = rect.top - worldRect.top;
+    }
+    return { x: x / state.scale, y: y / state.scale };
+  }
+  function renderEdges() {
+    const edges = state.graph.direct_edges || [];
+    els.svg.innerHTML = edges.map(e => {
+      const from = anchorFor(e.from, "bottom");
+      const to = anchorFor(e.to, "top");
+      if (!from || !to) return "";
+      const mid = Math.max(70, Math.abs(to.y - from.y) * 0.42);
+      const d = `M ${from.x} ${from.y} C ${from.x} ${from.y + mid}, ${to.x} ${to.y - mid}, ${to.x} ${to.y}`;
+      return `<path class="edge ${esc(e.mapping_type)}" data-edge-id="${esc(e.id)}" d="${d}"></path><path class="edge-hit" data-edge-id="${esc(e.id)}" d="${d}"></path>`;
+    }).join("");
+    document.querySelectorAll(".edge, .edge-hit").forEach(path => {
+      path.addEventListener("mouseenter", () => setActiveEdge(path.dataset.edgeId));
+      path.addEventListener("click", ev => {
+        ev.stopPropagation();
+        setActiveEdge(path.dataset.edgeId, true);
+      });
+    });
+    if (state.selectedEdgeId) highlightEdge(state.selectedEdgeId);
+    applyFilters();
+  }
+  function renderDetailsSummary() {
+    const g = state.graph;
+    const issueHtml = (g.issues || []).slice(0, 8).map(i => `<div class="issue ${esc(i.severity)}">${esc(i.message)}</div>`).join("");
+    els.detailsTitle.textContent = `${g.release} ${g.form}`;
+    els.detailsBody.innerHTML = `<div class="summary">
+      <div class="metric"><strong>${g.stats.roi_count}</strong><span>ROIs</span></div>
+      <div class="metric"><strong>${g.stats.mapping_count}</strong><span>Mappings</span></div>
+      <div class="metric"><strong>${g.stats.column_count}</strong><span>Columns</span></div>
+      <div class="metric"><strong>${g.issues.length}</strong><span>Issues</span></div>
+    </div>${issueHtml || `<div class="empty">No validation issues for the loaded graph.</div>`}`;
+  }
+  function bindNodeEvents() {
+    document.querySelectorAll("[data-node-id]").forEach(el => {
+      el.addEventListener("mouseenter", () => setActive(el.dataset.nodeId));
+      el.addEventListener("click", ev => {
+        ev.stopPropagation();
+        state.selectedEdgeId = null;
+        setActive(el.dataset.nodeId);
+      });
+    });
+  }
+  function renderGraph() {
+    renderSides();
+    renderColumns();
+    updateWorldBounds();
+    renderSourceNodes();
+    bindNodeEvents();
+    applyFilters();
+    setTimeout(renderEdges, 50);
+    renderDetailsSummary();
+    setStatus(`${state.graph.stats.mapping_count} mappings, ${state.graph.issues.length} issues`);
+  }
+  async function loadOptions() {
+    const release = selectedRelease;
+    const form = selectedForm;
+    const url = `/api/options${release ? `?release=${encodeURIComponent(release)}&form=${encodeURIComponent(form)}` : ""}`;
+    const res = await fetch(url);
+    state.options = await res.json();
+    if (selectedTemplatePath) {
+      selectedRelease = state.options.selected_release || selectedRelease;
+      selectedForm = state.options.selected_form || selectedForm;
+    } else {
+      selectedRelease = "";
+      selectedForm = "";
+      els.templateChip.textContent = "choose template";
+    }
+  }
+  async function loadGraph() {
+    if (!selectedRelease || !selectedForm) {
+      state.graph = null;
+      els.sources.innerHTML = "";
+      els.sides.innerHTML = "";
+      els.cols.innerHTML = "";
+      els.svg.innerHTML = "";
+      els.detailsTitle.textContent = "Details";
+      els.detailsBody.innerHTML = `<div class="empty">Select a page template PNG to load the visualizer.</div>`;
+      setStatus("Select a template to begin");
+      return;
+    }
+    const qs = new URLSearchParams({ release: selectedRelease, form: selectedForm });
+    setStatus("Loading...");
+    const res = await fetch(`/api/visualization?${qs.toString()}`);
+    const data = await res.json();
+    if (!res.ok || data.error) {
+      setStatus(data.error || "Load failed");
+      return;
+    }
+    state.graph = data;
+    els.workbookChip.textContent = data.workbook_path || "auto workbook unavailable";
+    renderGraph();
+    fitWorld();
+  }
+  els.templatePick.addEventListener("click", () => openBrowseModal("template"));
+  els.load.addEventListener("click", loadGraph);
+  els.fit.addEventListener("click", fitWorld);
+  els.labels.addEventListener("change", () => document.body.classList.toggle("hide-labels", !els.labels.checked));
+  els.wrap.addEventListener("wheel", ev => {
+    ev.preventDefault();
+    const old = state.scale;
+    const factor = ev.deltaY < 0 ? 1.08 : 0.92;
+    state.scale = Math.min(1.8, Math.max(0.25, state.scale * factor));
+    const rect = els.wrap.getBoundingClientRect();
+    const wx = (ev.clientX - rect.left - state.panX) / old;
+    const wy = (ev.clientY - rect.top - state.panY) / old;
+    state.panX = ev.clientX - rect.left - wx * state.scale;
+    state.panY = ev.clientY - rect.top - wy * state.scale;
+    applyTransform();
+    setTimeout(renderEdges, 20);
+  }, { passive: false });
+  els.wrap.addEventListener("mousedown", ev => {
+    if (ev.button === 2) {
+      ev.preventDefault();
+      state.dragging = true;
+      state.dragStart = { x: ev.clientX, y: ev.clientY, panX: state.panX, panY: state.panY };
+      els.wrap.classList.add("panning");
+      return;
+    }
+    if (ev.button !== 0) return;
+    if (ev.target.closest("[data-node-id]")) return;
+    if (ev.target.closest(".edge-hit") || ev.target.closest(".edge")) return;
+    clearSelection();
+  });
+  window.addEventListener("mousemove", ev => {
+    if (!state.dragging || !state.dragStart) return;
+    state.panX = state.dragStart.panX + ev.clientX - state.dragStart.x;
+    state.panY = state.dragStart.panY + ev.clientY - state.dragStart.y;
+    applyTransform();
+    renderEdges();
+  });
+  window.addEventListener("mouseup", () => {
+    state.dragging = false;
+    state.dragStart = null;
+    els.wrap.classList.remove("panning");
+  });
+  els.wrap.addEventListener("contextmenu", ev => ev.preventDefault());
+  window.addEventListener("resize", () => setTimeout(renderEdges, 40));
+  els.browseUp.addEventListener("click", () => { browseDir = parentDir(browseDir); if (!browseDir || !browseDir.startsWith(browseRoot)) browseDir = browseRoot; refreshBrowse(); });
+  els.browseClose.addEventListener("click", closeBrowseModal);
+  els.browseModal.addEventListener("click", ev => { if (ev.target === els.browseModal) closeBrowseModal(); });
+
+  (async function init() {
+    try {
+      await loadOptions();
+      await loadGraph();
+    } catch (err) {
+      setStatus(String(err));
+    }
+  })();
+  </script>
+</body>
+</html>

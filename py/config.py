@@ -4,18 +4,22 @@ from pathlib import Path
 
 # Root directory containing data/, output/, py/, docs/.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-DATA_RELEASE = "2025"
+DATA_RELEASE = "2026"
 DATA_DIR = PROJECT_ROOT / "data"
+DATA_XLSX_ROOT = DATA_DIR / "xlsx"
 DATA_TEMPLATES_ROOT = DATA_DIR / "templates" / DATA_RELEASE
 DATA_ROI_SCHEMAS_ROOT = DATA_DIR / "roi_schemas" / DATA_RELEASE
-DATA_XLSX_MAPPINGS_ROOT = DATA_DIR / "xlsx_mappings" / DATA_RELEASE
+DATA_XLSX_MAPPINGS_ROOT = DATA_XLSX_ROOT / "mappings" / DATA_RELEASE
+DATA_XLSX_WORKBOOK_TEMPLATES_ROOT = DATA_XLSX_ROOT / "workbook_templates" / DATA_RELEASE
 
 # Canonical project paths (absolute).
 PATHS = {
     "data": DATA_DIR,  # Input assets root.
+    "xlsx_root": DATA_XLSX_ROOT,  # XLSX-related assets root.
     "templates_root": DATA_TEMPLATES_ROOT,  # Active template root for current data release.
     "roi_schemas_root": DATA_ROI_SCHEMAS_ROOT,  # Active ROI schema root for current data release.
     "xlsx_mappings_root": DATA_XLSX_MAPPINGS_ROOT,  # Active XLSX mapping root for current data release.
+    "xlsx_workbook_templates_root": DATA_XLSX_WORKBOOK_TEMPLATES_ROOT,  # Active workbook templates root.
     "output": PROJECT_ROOT / "output",  # Pipeline outputs (json/xlsx/debug).
     "docs": PROJECT_ROOT / "docs",  # Documentation.
     "cache": PROJECT_ROOT / "output" / "cache",  # Intermediate cache root.
@@ -45,12 +49,40 @@ ROI_AUTO_DETECT = {
     "local_reasoning": False,  # Enable local model reasoning/thinking mode when supported.
 }
 
+XLSX_MAPPING_AUTO_GENERATE = {
+    "use_openai": True,  # True => OpenAI Responses API, False => local Ollama model.
+    "openai_model": "gpt-5.5",  # Optional explicit OpenAI model override. None/"" => use profile.
+    "openai_model_profile": "max_quality",  # Used only when openai_model is empty.
+    "openai_reasoning": True,  # True => omit reasoning arg (model default). False => reasoning={"effort":"none"}.
+    "max_output_tokens": 24000,
+    "local_model": "qwen3.5:9b",
+    "local_reasoning": False,
+    "local_timeout_sec": 600,
+    "default_start_row": 4,
+    "xlsx_context_rows": 6,
+    "max_validation_attempts": 2,
+    "example_form": "6pre",
+    "example_dir": DATA_XLSX_ROOT / "mappings" / "example" / "6pre",
+    "example_mapping_path": DATA_XLSX_ROOT / "mappings" / "example" / "6pre" / "mapping.json",
+    "example_paddle_a_path": DATA_XLSX_ROOT / "mappings" / "example" / "6pre" / "paddle_a.json",
+    "example_paddle_b_path": DATA_XLSX_ROOT / "mappings" / "example" / "6pre" / "paddle_b.json",
+    "example_template_workbook": DATA_XLSX_ROOT / "mappings" / "example" / "6pre" / "template.xlsx",
+}
+
 TEXT_ROI_LLM = {
     "enabled": True,  # LLM post-step for non-header text ROIs (after default OCR extraction).
     "model": None,  # None => use LLM["model"].
     "timeout_sec": 120,  # Timeout per ROI post-step call.
     "max_reruns": 3,  # Retry count when model output does not conform to {"detected_text": string|null}.
     "extra_params": {"think": False},  # Prefer concise deterministic outputs.
+}
+
+POST_NORMALIZE = {
+    "enabled": True,  # Batch LLM normalization pass for ROI fields marked post_normalize=true.
+    "model": "qwen3.5:9b",  # Dedicated model for batch post-normalization.
+    "timeout_sec": 180,
+    "max_retries": 3,  # Retry when output is not a JSON object mapping observed values.
+    "extra_params": {"think": False, "options": {"temperature": 0}},
 }
 
 # ---------------------------------------------------------------------------
@@ -235,22 +267,8 @@ ROI_PAGE_RECOGNITION = {
     "ocr_regex_retry_fsrcnn_fallback_resize": True,
 }
 
-# Shared master workbook used for all form types.
-_XLSX_MASTER = PATHS["data"] / "2025 EVMS NPS Data Entry tool (Blank Template, Do not write on) .xlsx"
-
 XLSX_DATA_ENTRY = {
     "mapping_dir": PATHS["xlsx_mappings_root"],  # Directory with <form_type>.json mapping files.
-    "master_template_workbook": _XLSX_MASTER,  # Multi-sheet template workbook.
     "output_dir": PATHS["output"] / "xlsx",  # Final XLSX output directory.
-    "form_type_sheet_map": {
-        "6pre": "6th Grade Pre-Assessment Data",
-        "7pre": "7th Grade Pre-Assessment Data",
-        "8pre": "8th Grade Pre-Assessment Data",
-        "6post": "6th Grade Post-Assessment Data",
-        "7post": "7th Grade Post-Assessment Data",
-        "8post": "8th Grade Post-Assessment Data",
-        "hpre": "HS Pre-Assessment Data",
-        "hpost": "HS Post-Assessment Data",
-    },
     "staging_dir": PATHS["cache"] / "xlsx_staging",  # Temporary filled workbook staging area.
 }

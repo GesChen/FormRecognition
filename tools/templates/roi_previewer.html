@@ -172,6 +172,26 @@
       font-size: 0.75rem;
       color: var(--muted);
     }
+    #roi-list li .name-wrap {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--muted);
+      font-size: 0.68rem;
+      line-height: 1;
+      padding: 2px 4px;
+      white-space: nowrap;
+    }
+    .badge.active {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-muted-bg);
+    }
     .prompt-viewer {
       margin-top: 10px;
       border: 1px solid var(--border);
@@ -220,6 +240,41 @@
       color: var(--muted);
       min-width: 40px;
       text-align: right;
+    }
+    .meta-viewer {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .meta-viewer input[type=text] {
+      width: 100%;
+      background: var(--panel-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 6px 8px;
+      font: 0.8rem var(--font-mono);
+    }
+    .meta-value {
+      width: 100%;
+      min-height: 31px;
+      background: var(--panel-bg);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 6px 8px;
+      font: 0.8rem var(--font-mono);
+    }
+    .meta-check {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text);
+      font-size: 0.82rem;
+    }
+    .meta-check input {
+      margin: 0;
+      accent-color: var(--accent);
     }
     .prompt-viewer textarea {
       width: 100%;
@@ -277,6 +332,20 @@
       <h2 id="panel-title">ROIs</h2>
       <ul id="roi-list"></ul>
       <div class="prompt-viewer">
+        <div class="meta-viewer">
+          <div>
+            <span class="label">Strict OCR Output Regex</span>
+            <input type="text" id="ocr-regex" readonly placeholder="Select an ROI to view its regex." />
+          </div>
+          <label class="meta-check" for="post-normalize">
+            <input type="checkbox" id="post-normalize" disabled />
+            <span>Post normalize</span>
+          </label>
+          <div>
+            <span class="label">Post Normalize Mode</span>
+            <div class="meta-value" id="post-normalize-mode">Select an ROI.</div>
+          </div>
+        </div>
         <div>
           <div class="prompt-header">
             <span class="label">LLM Prompt</span>
@@ -332,6 +401,9 @@
   const chkBoxes = document.getElementById("chk-boxes");
   const chkFill  = document.getElementById("chk-fill");
   const tooltip  = document.getElementById("tooltip");
+  const ocrRegexEl = document.getElementById("ocr-regex");
+  const postNormalizeEl = document.getElementById("post-normalize");
+  const postNormalizeModeEl = document.getElementById("post-normalize-mode");
   const llmPromptEl = document.getElementById("llm-prompt");
   const ocrPromptEl = document.getElementById("ocr-prompt");
   const btnCopyLlm = document.getElementById("btn-copy-llm");
@@ -352,6 +424,19 @@
   let zoomFactor = 1, panX = 0, panY = 0;
   let canvasW = 0, canvasH = 0;
   let panStart = null;
+
+  const POST_NORMALIZE_MODES = new Set(["casual", "aggressive", "consensus"]);
+  const POST_NORMALIZE_MODE_ALIASES = {
+    strict: "casual",
+    conservative: "casual",
+    balanced: "aggressive"
+  };
+
+  function normalizedPostNormalizeMode(value) {
+    let mode = String(value || "").trim().toLowerCase();
+    mode = POST_NORMALIZE_MODE_ALIASES[mode] || mode;
+    return POST_NORMALIZE_MODES.has(mode) ? mode : "aggressive";
+  }
 
   const COLORS_BASE = [
     "#f59e0b", "#10b981", "#f43f5e",
@@ -454,13 +539,28 @@
     roiList.innerHTML = "";
     rois.forEach((roi, i) => {
       const li = document.createElement("li");
+      const nameWrap = document.createElement("span");
+      nameWrap.className = "name-wrap";
       const nameSpan = document.createElement("span");
       nameSpan.textContent = roi.name;
       nameSpan.style.color = roiColor(i);
+      nameWrap.appendChild(nameSpan);
+      if (typeof roi.ocr_output_regex === "string" && roi.ocr_output_regex.trim()) {
+        const rxBadge = document.createElement("span");
+        rxBadge.className = "badge active";
+        rxBadge.textContent = "regex";
+        nameWrap.appendChild(rxBadge);
+      }
+      if (roi.post_normalize === true) {
+        const pnBadge = document.createElement("span");
+        pnBadge.className = "badge active";
+        pnBadge.textContent = `post:${normalizedPostNormalizeMode(roi.post_normalize_mode)}`;
+        nameWrap.appendChild(pnBadge);
+      }
       const coordSpan = document.createElement("span");
       coordSpan.className = "coords";
       coordSpan.textContent = `${roi.w}x${roi.h}`;
-      li.appendChild(nameSpan);
+      li.appendChild(nameWrap);
       li.appendChild(coordSpan);
       if (roi.id === selectedId || roi.id === highlightId) li.classList.add("selected");
       li.addEventListener("click", () => {
@@ -480,10 +580,18 @@
   function syncPromptViewer() {
     const roi = rois.find(r => r.id === selectedId) || null;
     if (!roi) {
+      ocrRegexEl.value = "";
+      postNormalizeEl.checked = false;
+      postNormalizeModeEl.textContent = "Select an ROI.";
       llmPromptEl.value = "";
       ocrPromptEl.value = "";
       return;
     }
+    ocrRegexEl.value = typeof roi.ocr_output_regex === "string" ? roi.ocr_output_regex : "";
+    postNormalizeEl.checked = roi.post_normalize === true;
+    postNormalizeModeEl.textContent = roi.post_normalize === true
+      ? normalizedPostNormalizeMode(roi.post_normalize_mode)
+      : "(off)";
     llmPromptEl.value = typeof roi.llm_prompt_override === "string" ? roi.llm_prompt_override : "";
     ocrPromptEl.value = typeof roi.ocr_prompt_override === "string" ? roi.ocr_prompt_override : "";
   }

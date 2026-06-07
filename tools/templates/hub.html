@@ -357,7 +357,7 @@
       <nav class="sidebar-nav" id="sidebar-nav"></nav>
       <div class="server-start-note" id="sidebar-server-note">
         <strong>Other tools offline?</strong>
-        Each app uses its own port (5000–5004). This hub is 4999 only. From the project root run:
+        Each app uses its own port (5000–5006). This hub is 4999 only. From the project root run:
         <code>python3 tools/start_web_tools.py --watch</code>
         <span style="font-size:10px;display:block;margin-top:6px;">Background: <code style="display:inline;padding:2px 4px;">python3 tools/start_web_tools.py</code> · logs in <code style="display:inline;padding:2px 4px;">testing/output/web_tools/</code></span>
       </div>
@@ -443,7 +443,7 @@
 
     <div class="server-start-note server-start-note--mobile-bottom" id="mobile-server-note" aria-label="Starting web servers">
       <strong>Other tools offline?</strong>
-      Each app uses its own port (5000–5004). This hub is 4999 only. From the project root run:
+      Each app uses its own port (5000–5006). This hub is 4999 only. From the project root run:
       <code>python3 tools/start_web_tools.py --watch</code>
       <span style="font-size:10px;display:block;margin-top:6px;">Background: <code style="display:inline;padding:2px 4px;">python3 tools/start_web_tools.py</code> · logs in <code style="display:inline;padding:2px 4px;">testing/output/web_tools/</code></span>
     </div>
@@ -459,6 +459,8 @@
     { name: "Pipeline debug viewer", port: 5002, desc: "Inspect *_debug.json" },
     { name: "Human review", port: 5003, desc: "Correct human_review.pending" },
     { name: "XLSX compare (temp)", port: 5004, desc: "Truth vs test workbook comparer" },
+    { name: "XLSX mapping editor", port: 5005, desc: "Edit, validate, and preview mapping JSON" },
+    { name: "ROI to XLSX visualizer", port: 5006, desc: "Trace schemas through mapping columns" },
   ];
   const host = window.location.hostname || "127.0.0.1";
   const nav = document.getElementById("sidebar-nav");

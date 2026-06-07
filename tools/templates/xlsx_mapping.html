@@ -1,0 +1,1345 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>XLSX Mapping Editor</title>
+  <script src="/static/theme.js"></script>
+  <link rel="stylesheet" href="/static/theme.css" />
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+    }
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: var(--panel-bg);
+      border-bottom: 1px solid var(--border);
+      min-height: 50px;
+    }
+    .brand {
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      white-space: nowrap;
+    }
+    .status {
+      padding: 4px 10px;
+      color: var(--muted);
+      font-size: 0.8rem;
+      white-space: nowrap;
+    }
+    .path-chip {
+      max-width: 40vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--bg);
+      font-family: var(--font-mono);
+    }
+    .spacer { flex: 1; }
+    .btn {
+      padding: 7px 11px;
+      border: none;
+      border-radius: var(--radius-md);
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      background: var(--accent);
+      color: var(--on-accent);
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn.secondary {
+      background: var(--secondary-btn);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn.secondary:hover { background: var(--secondary-btn-hover); }
+    .btn.save { background: var(--success); }
+    .btn.save:hover { background: var(--success-hover); }
+    .btn.danger { background: var(--danger); }
+    .btn.danger:hover { background: var(--danger-hover); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    @keyframes btn-spin { to { transform: rotate(360deg); } }
+    .btn.working::before {
+      content: "";
+      display: inline-block;
+      width: 9px;
+      height: 9px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: btn-spin 0.65s linear infinite;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .mapping-nav {
+      width: auto;
+      min-width: 34px;
+      padding: 5px 9px;
+      flex: 0 0 auto;
+    }
+    .mapping-nav:disabled { cursor: not-allowed; opacity: 0.45; }
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: var(--overlay);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      min-width: 380px;
+      max-width: 90vw;
+      max-height: 75vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-modal);
+    }
+    .modal-header {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .modal-header h3 { margin: 0; font-size: 1rem; }
+    .modal-breadcrumb {
+      margin-top: 4px;
+      font-size: 0.82rem;
+      color: var(--muted);
+      word-break: break-all;
+    }
+
+    .coverage-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+    .coverage-bar strong { color: var(--text); }
+    .coverage-bar.ok strong { color: var(--success); }
+    .coverage-bar.missing strong { color: #f59e0b; }
+    .coverage-message {
+      min-width: 0;
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .modal-body {
+      padding: 8px;
+      overflow-y: auto;
+      min-height: 220px;
+      max-height: 58vh;
+    }
+    .modal-body .item {
+      padding: 8px 10px;
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      font-size: 0.9rem;
+    }
+    .modal-body .item:hover { background: var(--surface-hover-strong); }
+    .modal-body .item.folder { color: var(--accent); }
+
+    .main {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: minmax(520px, 1fr) 360px;
+    }
+    .right-panel {
+      min-height: 0;
+      background: var(--panel-bg);
+      border-color: var(--border);
+      overflow: auto;
+    }
+    .right-panel {
+      border-left: 1px solid var(--border);
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .section-title {
+      margin: 0 0 8px;
+      font-size: 0.76rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 800;
+    }
+    .field input, .field select, textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      color: var(--text);
+      padding: 7px 9px;
+      font: inherit;
+      font-size: 0.84rem;
+    }
+    .form-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      margin-top: 12px;
+    }
+    .form-btn {
+      width: 100%;
+      text-align: left;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      color: var(--text);
+      padding: 9px 10px;
+      cursor: pointer;
+    }
+    .form-btn:hover { background: var(--surface-hover); }
+    .form-btn.active {
+      border-color: var(--accent);
+      background: var(--accent-muted-bg);
+      color: var(--accent);
+      font-weight: 800;
+    }
+    .form-btn .sub {
+      display: block;
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 0.72rem;
+      font-weight: 500;
+    }
+    .content {
+      min-width: 0;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .meta {
+      display: grid;
+      grid-template-columns: 1fr 1.5fr 110px minmax(260px, 1.2fr);
+      gap: 10px;
+      padding: 12px;
+      border-bottom: 1px solid var(--border);
+      background: linear-gradient(180deg, var(--panel-bg), var(--bg));
+    }
+    .field label {
+      display: block;
+      margin-bottom: 4px;
+      color: var(--muted);
+      font-size: 0.74rem;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .reference-field-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .reference-field-row .btn {
+      white-space: nowrap;
+    }
+    .reference-field-row .path-chip {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .reference-path-display {
+      margin-top: 5px;
+      font-family: var(--font-mono);
+      font-size: 0.72rem;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .table-tools {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel-bg);
+    }
+    .table-tools input {
+      flex: 1;
+      min-width: 160px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--bg);
+      color: var(--text);
+      padding: 7px 12px;
+      font-size: 0.82rem;
+    }
+    .table-wrap {
+      flex: 1;
+      min-height: 0;
+      overflow: auto;
+      background: var(--bg);
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 980px;
+    }
+    th, td {
+      border-bottom: 1px solid var(--border);
+      padding: 7px;
+      vertical-align: top;
+      font-size: 0.8rem;
+    }
+    th {
+      position: sticky;
+      top: 0;
+      z-index: 2;
+      background: var(--panel-bg);
+      color: var(--muted);
+      text-align: left;
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    td input, td select, td textarea {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--panel-bg);
+      color: var(--text);
+      padding: 6px 7px;
+      font: inherit;
+      font-size: 0.78rem;
+    }
+    td textarea {
+      min-height: 54px;
+      resize: vertical;
+      font-family: var(--font-mono);
+      line-height: 1.3;
+    }
+    tr.dirty-row td { background: color-mix(in srgb, var(--accent-muted-bg) 35%, transparent); }
+    .row-actions {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .mini {
+      padding: 4px 7px;
+      font-size: 0.7rem;
+      border-radius: var(--radius-sm);
+    }
+    .panel-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      background: var(--bg);
+      overflow: hidden;
+    }
+    .panel-card h3 {
+      margin: 0;
+      padding: 10px 12px;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.9rem;
+    }
+    .panel-body { padding: 10px 12px; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+    .stat {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 8px;
+      background: var(--panel-bg);
+    }
+    .stat b { display: block; font-size: 1.05rem; }
+    .stat span { color: var(--muted); font-size: 0.68rem; text-transform: uppercase; }
+    .issue-list, .preview-list {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      max-height: 250px;
+      overflow: auto;
+    }
+    .issue, .preview-row {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 8px;
+      background: var(--panel-bg);
+      font-size: 0.78rem;
+    }
+    .issue.error { border-color: var(--danger); }
+    .issue.warning { border-color: #f59e0b; }
+    .issue.info { opacity: 0.82; }
+    .issue .sev {
+      font-weight: 900;
+      text-transform: uppercase;
+      font-size: 0.66rem;
+      letter-spacing: 0.06em;
+      margin-right: 6px;
+    }
+    .issue.error .sev { color: var(--danger); }
+    .issue.warning .sev { color: #f59e0b; }
+    .issue.info .sev { color: var(--muted); }
+    .preview-row code {
+      display: inline-block;
+      padding: 1px 5px;
+      border-radius: 999px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+    }
+    .raw-json {
+      flex: 1;
+      min-height: 170px;
+      font-family: var(--font-mono);
+      line-height: 1.4;
+      resize: none;
+    }
+    .hidden { display: none !important; }
+    @media (max-width: 1100px) {
+      .main { grid-template-columns: 1fr; }
+      .right-panel { display: none; }
+      .meta { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="toolbar">
+    <button type="button" class="btn" id="btn-select-mapping">Select mapping...</button>
+    <div class="brand">XLSX Mapping Editor</div>
+    <span class="status path-chip" id="path-chip">Mapping: (none)</span>
+    <button type="button" class="btn secondary mapping-nav" id="btn-prev-mapping" title="Previous mapping" aria-label="Previous mapping" disabled>&larr;</button>
+    <button type="button" class="btn secondary mapping-nav" id="btn-next-mapping" title="Next mapping" aria-label="Next mapping" disabled>&rarr;</button>
+    <span class="status" id="status">Choose a mapping JSON.</span>
+    <div class="spacer"></div>
+    <button type="button" class="btn" id="btn-auto-generate" disabled>Auto-generate</button>
+    <button type="button" class="btn secondary" id="btn-validate">Validate</button>
+    <button type="button" class="btn secondary" id="btn-raw">Raw JSON</button>
+    <button type="button" class="btn save" id="btn-save" disabled>Save now</button>
+  </div>
+  <div class="modal-overlay" id="browse-modal" aria-hidden="true">
+    <div class="modal">
+      <div class="modal-header">
+        <div>
+          <h3>Select XLSX Mapping</h3>
+          <div class="modal-breadcrumb" id="browse-breadcrumb">data/xlsx/mappings</div>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn secondary" id="browse-up">Up</button>
+          <button type="button" class="btn" id="browse-close">Close</button>
+        </div>
+      </div>
+      <div class="coverage-bar" id="coverage-bar">
+        <div class="coverage-message" id="coverage-message">Checking mapping coverage...</div>
+        <button type="button" class="btn secondary" id="btn-generate-missing" disabled>Generate missing blank mappings</button>
+      </div>
+      <div class="modal-body" id="browse-body"></div>
+    </div>
+  </div>
+
+
+<div class="main">
+    <main class="content">
+      <div class="meta">
+        <div class="field">
+          <label for="form-type">Form type</label>
+          <input id="form-type" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="sheet-name">Sheet</label>
+          <input id="sheet-name" autocomplete="off" />
+        </div>
+        <div class="field">
+          <label for="start-row">Start row</label>
+          <input id="start-row" type="number" min="1" />
+        </div>
+      </div>
+      <div class="table-tools">
+        <input id="filter" placeholder="Filter source, column, type, map text..." />
+        <button type="button" class="btn secondary" id="btn-add">Add row</button>
+        <button type="button" class="btn secondary" id="btn-duplicate">Duplicate selected</button>
+        <button type="button" class="btn danger" id="btn-delete">Delete selected</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:34px;"><input type="checkbox" id="select-all" /></th>
+              <th style="width:54px;">#</th>
+              <th style="width:120px;">source</th>
+              <th style="width:120px;">type</th>
+              <th style="width:110px;">column</th>
+              <th style="width:120px;">transform</th>
+              <th>map / choices / extras</th>
+              <th style="width:150px;">actions</th>
+            </tr>
+          </thead>
+          <tbody id="mapping-body"></tbody>
+        </table>
+      </div>
+    </main>
+
+    <aside class="right-panel">
+      <section class="panel-card">
+        <h3>Validation</h3>
+        <div class="panel-body">
+          <div class="stats">
+            <div class="stat"><b id="stat-rows">0</b><span>rows</span></div>
+            <div class="stat"><b id="stat-errors">0</b><span>errors</span></div>
+            <div class="stat"><b id="stat-warnings">0</b><span>warnings</span></div>
+          </div>
+          <div class="issue-list" id="issue-list" style="margin-top:10px;"></div>
+        </div>
+      </section>
+      <section class="panel-card">
+        <h3>Preview</h3>
+        <div class="panel-body">
+          <div class="preview-list" id="preview-list"></div>
+        </div>
+      </section>
+      <section class="panel-card">
+        <h3>ROI Sources</h3>
+        <div class="panel-body" id="source-panel" style="font-size:0.78rem;color:var(--muted);"></div>
+      </section>
+    </aside>
+  </div>
+
+  <div class="modal-overlay hidden" id="raw-modal" style="position:fixed;inset:0;z-index:1000;background:var(--overlay);align-items:center;justify-content:center;">
+    <div class="modal" style="width:min(920px,94vw);height:min(720px,88vh);background:var(--panel-bg);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-modal);display:flex;flex-direction:column;">
+      <div style="display:flex;align-items:center;gap:8px;padding:12px;border-bottom:1px solid var(--border);">
+        <strong>Raw JSON</strong>
+        <span class="status">Advanced escape hatch. Table will sync from this JSON when applied.</span>
+        <div class="spacer"></div>
+        <button class="btn secondary" id="btn-apply-raw">Apply JSON</button>
+        <button class="btn" id="btn-close-raw">Close</button>
+      </div>
+      <textarea class="raw-json" id="raw-json"></textarea>
+    </div>
+  </div>
+
+<script>
+(function () {
+  const btnSelectMapping = document.getElementById("btn-select-mapping");
+  const btnPrevMapping = document.getElementById("btn-prev-mapping");
+  const btnNextMapping = document.getElementById("btn-next-mapping");
+  const btnAutoGenerate = document.getElementById("btn-auto-generate");
+  const browseModal = document.getElementById("browse-modal");
+  const browseBody = document.getElementById("browse-body");
+  const browseBreadcrumb = document.getElementById("browse-breadcrumb");
+  const browseUpBtn = document.getElementById("browse-up");
+  const browseCloseBtn = document.getElementById("browse-close");
+  const coverageBar = document.getElementById("coverage-bar");
+  const coverageMessage = document.getElementById("coverage-message");
+  const btnGenerateMissing = document.getElementById("btn-generate-missing");
+  const pathChip = document.getElementById("path-chip");
+  const statusEl = document.getElementById("status");
+  const formTypeEl = document.getElementById("form-type");
+  const sheetNameEl = document.getElementById("sheet-name");
+  const startRowEl = document.getElementById("start-row");
+  const tbody = document.getElementById("mapping-body");
+  const filterEl = document.getElementById("filter");
+  const btnSave = document.getElementById("btn-save");
+  const btnValidate = document.getElementById("btn-validate");
+  const btnAdd = document.getElementById("btn-add");
+  const btnDuplicate = document.getElementById("btn-duplicate");
+  const btnDelete = document.getElementById("btn-delete");
+  const selectAllEl = document.getElementById("select-all");
+  const issueList = document.getElementById("issue-list");
+  const previewList = document.getElementById("preview-list");
+  const sourcePanel = document.getElementById("source-panel");
+  const rawModal = document.getElementById("raw-modal");
+  const rawJsonEl = document.getElementById("raw-json");
+
+  let MAPPINGS_ROOT = "data/xlsx/mappings";
+  let browseDir = MAPPINGS_ROOT;
+  let currentRelease = "";
+  let currentForm = "";
+  let currentPath = "";
+  let mapping = null;
+  let validation = null;
+  let preview = [];
+  let dirty = false;
+  let selectedRows = new Set();
+  let validateTimer = null;
+  let autosaveTimer = null;
+  let saveInFlight = false;
+  let saveAgainAfterCurrent = false;
+  let changeVersion = 0;
+  let autoGenerateConfig = null;
+  const TAB_ID = "xlsx_mapping_editor_" + Math.random().toString(36).slice(2, 10);
+  const SINGLETON_KEY = "xlsx_mapping_editor.singleton.lock";
+  const SINGLETON_HEARTBEAT_MS = 2000;
+  const SINGLETON_STALE_MS = 8000;
+  let singletonHeartbeatTimer = null;
+  let isPrimaryEditorTab = true;
+
+  function setStatus(text) { statusEl.textContent = text; }
+  function _nowMs() { return Date.now(); }
+  function _readLock() {
+    try {
+      const raw = localStorage.getItem(SINGLETON_KEY);
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (!obj || typeof obj !== "object") return null;
+      return obj;
+    } catch (e) {
+      return null;
+    }
+  }
+  function _writeLock(ownerId) {
+    localStorage.setItem(SINGLETON_KEY, JSON.stringify({ owner: ownerId, ts: _nowMs() }));
+  }
+  function _acquireSingletonLock() {
+    const lock = _readLock();
+    const now = _nowMs();
+    const stale = !lock || !lock.ts || (now - Number(lock.ts) > SINGLETON_STALE_MS);
+    if (stale || lock.owner === TAB_ID) {
+      _writeLock(TAB_ID);
+      isPrimaryEditorTab = true;
+      return true;
+    }
+    isPrimaryEditorTab = false;
+    return false;
+  }
+  function _startSingletonHeartbeat() {
+    if (singletonHeartbeatTimer) clearInterval(singletonHeartbeatTimer);
+    singletonHeartbeatTimer = setInterval(() => {
+      if (!isPrimaryEditorTab) return;
+      try { _writeLock(TAB_ID); } catch (e) {}
+    }, SINGLETON_HEARTBEAT_MS);
+  }
+  function _releaseSingletonLock() {
+    try {
+      const lock = _readLock();
+      if (lock && lock.owner === TAB_ID) {
+        localStorage.removeItem(SINGLETON_KEY);
+      }
+    } catch (e) {}
+  }
+  function _closeDuplicateTab() {
+    document.title = "Closing duplicate XLSX mapping editor tab...";
+    const canCloseByScript = !!window.opener || window.history.length <= 1;
+    setStatus("Duplicate XLSX mapping editor tab detected. Closing this tab...");
+    if (canCloseByScript) {
+      window.close();
+    }
+    setTimeout(() => {
+      if (document.body) {
+        document.body.innerHTML = "<main style=\"font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; max-width: 720px; margin: 64px auto; padding: 0 20px; color: #111;\"><h2 style=\"margin-bottom: 8px;\">Duplicate XLSX mapping editor tab</h2><p style=\"margin-top: 0; line-height: 1.5;\">This tab was opened while another XLSX mapping editor tab is active. To avoid accidental overwrite, this tab is disabled. You can close it now.</p></main>";
+      }
+      try { window.close(); } catch (e) {}
+    }, 50);
+  }
+  function ensurePrimaryEditor() {
+    if (isPrimaryEditorTab) return true;
+    setStatus("Read-only tab: another XLSX mapping editor tab is active.");
+    return false;
+  }
+function setDirty(on) {
+    dirty = !!on;
+    btnSave.disabled = !isPrimaryEditorTab || !mapping || !dirty || (validation && validation.stats && validation.stats.errors > 0);
+    if (dirty) setStatus("Unsaved changes");
+  }
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[c]));
+  }
+  function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
+  function rowExtras(row) {
+    const copy = clone(row || {});
+    delete copy.source; delete copy.type; delete copy.column; delete copy.transform;
+    return copy;
+  }
+  function applyExtras(row, raw) {
+    for (const k of Object.keys(row)) {
+      if (!["source", "type", "column", "transform"].includes(k)) delete row[k];
+    }
+    const text = String(raw || "").trim();
+    if (!text) return true;
+    try {
+      const obj = JSON.parse(text);
+      if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new Error("Extras must be an object.");
+      Object.assign(row, obj);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+  function rowMatches(row, idx, q) {
+    if (!q) return true;
+    const hay = [idx + 1, row.source, row.type, row.column, row.transform, JSON.stringify(rowExtras(row))].join(" ").toLowerCase();
+    return hay.includes(q.toLowerCase());
+  }
+  function currentMappingFromUi() {
+    if (!mapping) return null;
+    mapping.form_type = formTypeEl.value.trim();
+    mapping.sheet = sheetNameEl.value.trim();
+    mapping.start_row = parseInt(startRowEl.value, 10) || 1;
+    return mapping;
+  }
+  function scheduleValidate() {
+    if (validateTimer) clearTimeout(validateTimer);
+    validateTimer = setTimeout(validateCurrent, 350);
+  }
+  function scheduleAutosave() {
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    if (!isPrimaryEditorTab || !mapping || !currentPath) return;
+    autosaveTimer = setTimeout(() => {
+      autosaveTimer = null;
+      autosaveCurrent();
+    }, 1100);
+  }
+  function markChanged() {
+    if (!ensurePrimaryEditor()) {
+      renderMeta(); renderRows();
+      return;
+    }
+    changeVersion += 1;
+    currentMappingFromUi();
+    setDirty(true);
+    scheduleValidate();
+    scheduleAutosave();
+  }
+  function isUnderMappings(path) {
+    const p = String(path || "").trim().replace(/\/+$/, "");
+    return p === MAPPINGS_ROOT || p.startsWith(MAPPINGS_ROOT + "/");
+  }
+  function parentDir(path) {
+    const p = String(path || "").replace(/\/+$/, "");
+    const i = p.lastIndexOf("/");
+    if (i <= 0) return MAPPINGS_ROOT;
+    return p.slice(0, i);
+  }
+  function mappingLabel(path) {
+    const parts = String(path || "").split("/").filter(Boolean);
+    const file = parts.length ? parts[parts.length - 1] : "";
+    const stem = file.replace(/\.[^.]+$/, "");
+    const parent = parts.length >= 2 ? parts[parts.length - 2] : "";
+    return parent && stem ? `${parent}/${stem}` : (stem || "Mapping: (none)");
+  }
+  function updateNavButtons() {
+    const enabled = !!currentPath;
+    btnPrevMapping.disabled = !enabled;
+    btnNextMapping.disabled = !enabled;
+    btnAutoGenerate.disabled = !enabled || !isPrimaryEditorTab;
+  }
+  function closeBrowseModal() {
+    browseModal.classList.remove("open");
+    browseModal.setAttribute("aria-hidden", "true");
+  }
+  async function loadBrowseRoot() {
+    try {
+      const r = await fetch("/api/browse-root");
+      const data = await r.json();
+      if (r.ok && data && typeof data.root === "string" && data.root.trim()) {
+        MAPPINGS_ROOT = data.root.trim().replace(/\/+$/, "");
+        browseDir = MAPPINGS_ROOT;
+      }
+    } catch (e) {
+    }
+  }
+  async function loadAutoGenerateConfig() {
+    try {
+      const r = await fetch("/api/mapping/auto-generate-config");
+      const data = await readJsonResponse(r, "Auto-generate config failed.");
+      if (!r.ok || !data || !data.ok) return;
+      autoGenerateConfig = data;
+      const provider = data.provider ? data.provider : "model";
+      const model = data.model ? ` ${data.model}` : "";
+      btnAutoGenerate.title = `Generate full mapping with ${provider}${model}`;
+    } catch (err) {
+      autoGenerateConfig = null;
+      btnAutoGenerate.title = "Auto-generate config unavailable";
+    }
+  }
+  function renderCoverage(data) {
+    if (!coverageBar || !coverageMessage || !btnGenerateMissing) return;
+    const releases = Array.isArray(data && data.releases) ? data.releases : [];
+    const missingTotal = parseInt(data && data.missing_total, 10) || 0;
+    coverageBar.classList.toggle("ok", missingTotal === 0);
+    coverageBar.classList.toggle("missing", missingTotal > 0);
+    btnGenerateMissing.disabled = missingTotal === 0;
+    if (!releases.length) {
+      coverageMessage.innerHTML = "<strong>No template releases found.</strong>";
+      btnGenerateMissing.disabled = true;
+      return;
+    }
+    if (missingTotal === 0) {
+      coverageMessage.innerHTML = "<strong>Coverage OK.</strong> Mapping files match available template forms.";
+      return;
+    }
+    const parts = releases
+      .filter(r => Array.isArray(r.missing) && r.missing.length)
+      .map(r => `${r.release}: ${r.missing.join(", ")}`);
+    coverageMessage.innerHTML = `<strong>${missingTotal} missing mapping${missingTotal === 1 ? "" : "s"}.</strong> ${escapeHtml(parts.join(" | "))}`;
+  }
+  async function readJsonResponse(response, fallbackMessage) {
+    const raw = await response.text();
+    try {
+      return JSON.parse(raw);
+    } catch (err) {
+      const detail = raw && raw.trim()
+        ? raw.trim().slice(0, 180)
+        : "empty response";
+      throw new Error(`${fallbackMessage} The server returned non-JSON (${response.status}). Restart the web tools if this page was just updated. ${detail}`);
+    }
+  }
+  async function refreshCoverage() {
+    if (!coverageMessage || !btnGenerateMissing) return;
+    coverageMessage.textContent = "Checking mapping coverage...";
+    btnGenerateMissing.disabled = true;
+    try {
+      const r = await fetch("/api/coverage?dir=" + encodeURIComponent(browseDir));
+      const data = await readJsonResponse(r, "Coverage check failed.");
+      if (!r.ok) throw new Error((data && data.error) ? data.error : "Coverage check failed.");
+      renderCoverage(data);
+    } catch (err) {
+      coverageMessage.innerHTML = `<strong>Coverage check failed.</strong> ${escapeHtml(String(err))}`;
+      btnGenerateMissing.disabled = true;
+    }
+  }
+  async function generateMissingMappings() {
+    if (!ensurePrimaryEditor()) return;
+    if (!btnGenerateMissing || btnGenerateMissing.disabled) return;
+    const ok = confirm("Generate blank XLSX mapping JSON files for all missing template form mappings in this scope?");
+    if (!ok) return;
+    btnGenerateMissing.disabled = true;
+    coverageMessage.textContent = "Generating missing blank mappings...";
+    try {
+      const r = await fetch("/api/coverage/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ dir: browseDir })
+      });
+      const data = await readJsonResponse(r, "Generation failed.");
+      if (!r.ok || !data || !data.ok) {
+        throw new Error((data && data.error) ? data.error : "Generation failed.");
+      }
+      setStatus(`Generated ${data.created_count || 0} blank mapping(s).`);
+      renderCoverage(data.coverage);
+      await refreshBrowse();
+    } catch (err) {
+      coverageMessage.innerHTML = `<strong>Generation failed.</strong> ${escapeHtml(String(err))}`;
+      btnGenerateMissing.disabled = false;
+    }
+  }
+  async function refreshBrowse() {
+    browseBreadcrumb.textContent = browseDir;
+    browseUpBtn.disabled = browseDir === MAPPINGS_ROOT;
+    browseBody.innerHTML = "";
+    refreshCoverage();
+    try {
+      const r = await fetch("/api/browse?dir=" + encodeURIComponent(browseDir));
+      const data = await r.json();
+      if (!r.ok) throw new Error((data && data.error) ? data.error : "Browse failed.");
+      const dirs = Array.isArray(data.dirs) ? data.dirs : [];
+      const files = Array.isArray(data.files) ? data.files : [];
+      if (!dirs.length && !files.length) {
+        const row = document.createElement("div");
+        row.className = "item";
+        row.textContent = "(empty)";
+        browseBody.appendChild(row);
+        return;
+      }
+      dirs.forEach((d) => {
+        if (!isUnderMappings(d)) return;
+        const row = document.createElement("div");
+        row.className = "item folder";
+        row.textContent = "[DIR] " + d.split("/").pop();
+        row.addEventListener("click", () => { browseDir = d; refreshBrowse(); });
+        browseBody.appendChild(row);
+      });
+      files.forEach((f) => {
+        if (!isUnderMappings(f)) return;
+        if (!String(f).toLowerCase().endsWith(".json")) return;
+        const row = document.createElement("div");
+        row.className = "item file";
+        row.textContent = f.split("/").pop();
+        row.addEventListener("click", async () => {
+          closeBrowseModal();
+          await loadMappingByPath(f);
+        });
+        browseBody.appendChild(row);
+      });
+    } catch (err) {
+      const row = document.createElement("div");
+      row.className = "item";
+      row.textContent = "Failed to load directory: " + String(err);
+      browseBody.appendChild(row);
+    }
+  }
+  function openBrowseModal() {
+    browseDir = currentPath ? parentDir(currentPath) : MAPPINGS_ROOT;
+    browseModal.classList.add("open");
+    browseModal.setAttribute("aria-hidden", "false");
+    refreshBrowse();
+  }
+  async function navigateMapping(direction) {
+    if (!currentPath) return;
+    if (dirty && !confirm("Discard unsaved changes and load another mapping?")) return;
+    const dir = parentDir(currentPath);
+    try {
+      const r = await fetch("/api/browse?dir=" + encodeURIComponent(dir));
+      const raw = await r.text();
+      let data = null;
+      try { data = JSON.parse(raw); }
+      catch (e) { throw new Error(raw ? raw.slice(0, 180) : "Browse endpoint returned non-JSON."); }
+      if (!r.ok || !data) throw new Error((data && data.error) ? data.error : "Mapping navigation failed.");
+      const files = (Array.isArray(data.files) ? data.files : [])
+        .filter((p) => String(p).toLowerCase().endsWith(".json"))
+        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+      if (!files.length) throw new Error("No mapping JSON files found in this directory.");
+      const index = files.indexOf(currentPath);
+      const safeIndex = index >= 0 ? index : 0;
+      const step = direction === "prev" ? -1 : 1;
+      const target = files[(safeIndex + step + files.length) % files.length];
+      if (target === currentPath) { setStatus("Only one mapping in this directory."); return; }
+      await loadMappingByPath(target);
+    } catch (err) {
+      setStatus("Mapping navigation failed.");
+      alert(err instanceof Error ? err.message : String(err));
+    }
+  }
+
+  function renderMeta() {
+    formTypeEl.value = mapping ? (mapping.form_type || "") : "";
+    sheetNameEl.value = mapping ? (mapping.sheet || "") : "";
+    startRowEl.value = mapping ? (mapping.start_row || 4) : 4;
+    pathChip.textContent = currentPath ? `Mapping: ${mappingLabel(currentPath)}` : "Mapping: (none)";
+    pathChip.title = currentPath || "";
+    updateNavButtons();
+  }
+  function renderRows() {
+    tbody.innerHTML = "";
+    selectAllEl.checked = false;
+    if (!mapping || !Array.isArray(mapping.mappings)) return;
+    const q = filterEl.value.trim();
+    mapping.mappings.forEach((row, idx) => {
+      if (!rowMatches(row, idx, q)) return;
+      const tr = document.createElement("tr");
+      tr.dataset.idx = String(idx);
+      if (selectedRows.has(idx)) tr.classList.add("dirty-row");
+      tr.innerHTML = `
+        <td><input type="checkbox" class="row-select" ${selectedRows.has(idx) ? "checked" : ""}></td>
+        <td>${idx + 1}</td>
+        <td><input class="row-source" value="${escapeHtml(row.source || "")}" list="source-options"></td>
+        <td><select class="row-type">
+          ${["direct", "lookup", "multi_column", "static"].map(t => `<option value="${t}" ${row.type === t ? "selected" : ""}>${t}</option>`).join("")}
+        </select></td>
+        <td><input class="row-column" value="${escapeHtml(row.column || "")}"></td>
+        <td><select class="row-transform">
+          ${["", "upper", "lower", "number", "date"].map(t => `<option value="${t}" ${(row.transform || "") === t ? "selected" : ""}>${t || "(none)"}</option>`).join("")}
+        </select></td>
+        <td><textarea class="row-extra">${escapeHtml(JSON.stringify(rowExtras(row), null, 2))}</textarea></td>
+        <td><div class="row-actions">
+          <button type="button" class="btn secondary mini row-up">Up</button>
+          <button type="button" class="btn secondary mini row-down">Down</button>
+          <button type="button" class="btn secondary mini row-copy">Copy</button>
+        </div></td>`;
+      tbody.appendChild(tr);
+    });
+    attachRowEvents();
+  }
+  function attachRowEvents() {
+    tbody.querySelectorAll("tr").forEach(tr => {
+      const idx = parseInt(tr.dataset.idx, 10);
+      const row = mapping.mappings[idx];
+      tr.querySelector(".row-select").addEventListener("change", e => {
+        if (e.target.checked) selectedRows.add(idx); else selectedRows.delete(idx);
+        renderRows();
+      });
+      tr.querySelector(".row-source").addEventListener("input", e => {
+        if (!ensurePrimaryEditor()) { renderRows(); return; }
+        row.source = e.target.value.trim(); markChanged();
+      });
+      tr.querySelector(".row-type").addEventListener("change", e => {
+        if (!ensurePrimaryEditor()) { renderRows(); return; }
+        row.type = e.target.value; normalizeRow(row); markChanged(); renderRows();
+      });
+      tr.querySelector(".row-column").addEventListener("input", e => {
+        if (!ensurePrimaryEditor()) { renderRows(); return; }
+        row.column = e.target.value.trim().toUpperCase(); markChanged();
+      });
+      tr.querySelector(".row-transform").addEventListener("change", e => {
+        if (!ensurePrimaryEditor()) { renderRows(); return; }
+        if (e.target.value) row.transform = e.target.value; else delete row.transform; markChanged();
+      });
+      tr.querySelector(".row-extra").addEventListener("change", e => {
+        if (!ensurePrimaryEditor()) { renderRows(); return; }
+        if (!applyExtras(row, e.target.value)) {
+          alert("Extras must be a JSON object.");
+          e.target.value = JSON.stringify(rowExtras(row), null, 2);
+          return;
+        }
+        markChanged(); renderRows();
+      });
+      tr.querySelector(".row-up").addEventListener("click", () => moveRow(idx, -1));
+      tr.querySelector(".row-down").addEventListener("click", () => moveRow(idx, 1));
+      tr.querySelector(".row-copy").addEventListener("click", () => duplicateRow(idx));
+    });
+  }
+  function normalizeRow(row) {
+    row.type = row.type || "direct";
+    if (row.type === "lookup" && (!row.map || typeof row.map !== "object")) row.map = { a: "" };
+    if (row.type === "multi_column") {
+      delete row.column;
+      delete row.transform;
+      if (!row.mark) row.mark = "Yes";
+      if (!row.choices || typeof row.choices !== "object") row.choices = { a: "" };
+    }
+    if (row.type === "static") {
+      delete row.source;
+      delete row.transform;
+      if (row.value == null) row.value = "";
+    }
+  }
+  function moveRow(idx, delta) {
+    if (!ensurePrimaryEditor()) return;
+    const next = idx + delta;
+    if (!mapping || next < 0 || next >= mapping.mappings.length) return;
+    const rows = mapping.mappings;
+    [rows[idx], rows[next]] = [rows[next], rows[idx]];
+    selectedRows = new Set([next]);
+    markChanged(); renderRows();
+  }
+  function duplicateRow(idx) {
+    if (!ensurePrimaryEditor()) return;
+    if (!mapping) return;
+    mapping.mappings.splice(idx + 1, 0, clone(mapping.mappings[idx]));
+    selectedRows = new Set([idx + 1]);
+    markChanged(); renderRows();
+  }
+  function addRow() {
+    if (!ensurePrimaryEditor()) return;
+    if (!mapping) return;
+    mapping.mappings.push({ source: "", column: "", type: "direct" });
+    selectedRows = new Set([mapping.mappings.length - 1]);
+    markChanged(); renderRows();
+  }
+  function deleteSelected() {
+    if (!ensurePrimaryEditor()) return;
+    if (!mapping || !selectedRows.size) return;
+    if (!confirm(`Delete ${selectedRows.size} selected row(s)?`)) return;
+    mapping.mappings = mapping.mappings.filter((_, idx) => !selectedRows.has(idx));
+    selectedRows.clear();
+    markChanged(); renderRows();
+  }
+  function duplicateSelected() {
+    if (!ensurePrimaryEditor()) return;
+    if (!mapping || !selectedRows.size) return;
+    const selected = Array.from(selectedRows).sort((a,b) => a-b);
+    const copies = selected.map(idx => clone(mapping.mappings[idx]));
+    mapping.mappings.splice(selected[selected.length - 1] + 1, 0, ...copies);
+    selectedRows.clear();
+    markChanged(); renderRows();
+  }
+  function renderValidation() {
+    const stats = validation && validation.stats ? validation.stats : {};
+    document.getElementById("stat-rows").textContent = stats.rows || 0;
+    document.getElementById("stat-errors").textContent = stats.errors || 0;
+    document.getElementById("stat-warnings").textContent = stats.warnings || 0;
+    btnSave.disabled = !isPrimaryEditorTab || !mapping || !dirty || (stats.errors || 0) > 0;
+    issueList.innerHTML = "";
+    const issues = validation && Array.isArray(validation.issues) ? validation.issues : [];
+    if (!issues.length) {
+      issueList.innerHTML = '<div class="issue info"><span class="sev">ok</span>No validation issues.</div>';
+    } else {
+      issues.slice(0, 80).forEach(issue => {
+        const div = document.createElement("div");
+        div.className = "issue " + issue.severity;
+        div.innerHTML = `<span class="sev">${escapeHtml(issue.severity)}</span>${issue.row ? `Row ${issue.row}: ` : ""}${escapeHtml(issue.message)}`;
+        issueList.appendChild(div);
+      });
+    }
+    const roi = validation && validation.roi_sources ? validation.roi_sources : null;
+    if (roi) {
+      sourcePanel.innerHTML = `
+        <div><b>${roi.all.length}</b> known sources</div>
+        <div style="margin-top:8px;"><b>Side A:</b> ${escapeHtml((roi.by_side.a || []).slice(0, 30).join(", "))}${(roi.by_side.a || []).length > 30 ? "..." : ""}</div>
+        <div style="margin-top:8px;"><b>Side B:</b> ${escapeHtml((roi.by_side.b || []).slice(0, 30).join(", "))}${(roi.by_side.b || []).length > 30 ? "..." : ""}</div>
+        <datalist id="source-options">${roi.all.map(s => `<option value="${escapeHtml(s)}"></option>`).join("")}</datalist>`;
+    }
+  }
+  function renderPreview() {
+    previewList.innerHTML = "";
+    if (!preview || !preview.length) {
+      previewList.innerHTML = '<div class="preview-row">No preview rows.</div>';
+      return;
+    }
+    preview.slice(0, 80).forEach(p => {
+      const div = document.createElement("div");
+      div.className = "preview-row";
+      div.innerHTML = `<code>${escapeHtml(p.column || "?")}</code> ${escapeHtml(p.source)}: ${escapeHtml(p.raw)} → <b>${escapeHtml(p.value)}</b>`;
+      previewList.appendChild(div);
+    });
+  }
+  async function loadMappingByPath(path) {
+    setStatus("Loading...");
+    const r = await fetch(`/api/mapping?path=${encodeURIComponent(path)}`);
+    const data = await r.json();
+    if (!r.ok) { alert(data.error || "Failed to load mapping."); setStatus("Load failed."); return; }
+    currentRelease = data.release;
+    currentForm = data.form;
+    currentPath = data.path;
+    mapping = data.mapping;
+    validation = data.validation;
+    preview = data.preview || [];
+    dirty = false;
+    changeVersion = 0;
+    saveAgainAfterCurrent = false;
+    if (autosaveTimer) clearTimeout(autosaveTimer);
+    autosaveTimer = null;
+    selectedRows.clear();
+    filterEl.value = "";
+    renderMeta(); renderRows(); renderValidation(); renderPreview();
+    setStatus("Loaded.");
+    btnSave.disabled = true;
+  }
+  async function loadInitialMapping() {
+    await loadBrowseRoot();
+    await loadAutoGenerateConfig();
+    const params = new URLSearchParams(window.location.search);
+    const path = params.get("path");
+    if (path) {
+      await loadMappingByPath(path);
+      return;
+    }
+    setStatus("Choose a mapping JSON.");
+    renderMeta();
+  }
+  async function validateCurrent() {
+    if (!mapping) return;
+    currentMappingFromUi();
+    const r = await fetch("/api/validate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ release: currentRelease, form: currentForm, mapping })
+    });
+    const data = await r.json();
+    if (!r.ok) { setStatus(data.error || "Validation failed."); return; }
+    validation = data.validation;
+    preview = data.preview || [];
+    renderValidation(); renderPreview();
+  }
+  async function autosaveCurrent() {
+    if (!isPrimaryEditorTab) return;
+    if (!mapping || !dirty) return;
+    await saveCurrent({ autosave: true });
+  }
+  async function saveCurrent(options = {}) {
+    if (!ensurePrimaryEditor()) return;
+    if (!mapping) return;
+    const autosave = !!options.autosave;
+    if (saveInFlight) {
+      saveAgainAfterCurrent = true;
+      return;
+    }
+    const saveVersion = changeVersion;
+    saveInFlight = true;
+    if (autosave) setStatus("Autosaving...");
+    currentMappingFromUi();
+    try {
+      await validateCurrent();
+      const stats = validation && validation.stats ? validation.stats : {};
+      if ((stats.errors || 0) > 0) {
+        setStatus(autosave ? "Autosave paused: fix validation errors." : "Fix validation errors before saving.");
+        if (!autosave) alert("Fix validation errors before saving.");
+        return;
+      }
+      const r = await fetch("/api/mapping", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ path: currentPath, mapping })
+      });
+      const data = await r.json();
+      if (!r.ok) {
+        setStatus(autosave ? "Autosave failed." : "Save failed.");
+        if (!autosave) alert(data.error || "Save failed.");
+        if (data.validation) { validation = data.validation; renderValidation(); }
+        return;
+      }
+      currentPath = data.path;
+      validation = data.validation;
+      preview = data.preview || [];
+      if (changeVersion === saveVersion) dirty = false;
+      renderMeta(); renderValidation(); renderPreview();
+      setStatus(data.backup_path ? `${autosave ? "Autosaved" : "Saved"}. Backup: ${data.backup_path}` : (autosave ? "Autosaved." : "Saved."));
+      btnSave.disabled = !isPrimaryEditorTab || !mapping || !dirty || (validation && validation.stats && validation.stats.errors > 0);
+    } finally {
+      saveInFlight = false;
+      if (saveAgainAfterCurrent || changeVersion !== saveVersion) {
+        saveAgainAfterCurrent = false;
+        if (dirty) scheduleAutosave();
+      }
+    }
+  }
+  async function autoGenerateMapping() {
+    if (!ensurePrimaryEditor()) return;
+    if (!currentPath || !mapping) {
+      alert("Choose a mapping JSON first.");
+      return;
+    }
+    const ok = confirm("Auto-generate and replace this entire mapping? The existing JSON will be backed up before saving.");
+    if (!ok) return;
+    const previousText = btnAutoGenerate.textContent;
+    btnAutoGenerate.disabled = true;
+    btnAutoGenerate.classList.add("working");
+    btnAutoGenerate.textContent = "Generating...";
+    setStatus("Auto-generating mapping with PaddleOCR + workbook structure + model...");
+    try {
+      const r = await fetch("/api/mapping/auto-generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          path: currentPath,
+          sheet: sheetNameEl.value.trim(),
+          start_row: startRowEl.value
+        })
+      });
+      const data = await readJsonResponse(r, "Auto-generation failed.");
+      if (!r.ok || !data || !data.ok) {
+        if (data && data.mapping && data.validation) {
+          mapping = data.mapping;
+          validation = data.validation;
+          preview = data.preview || [];
+          dirty = true;
+          selectedRows.clear();
+          renderMeta(); renderRows(); renderValidation(); renderPreview();
+        }
+        throw new Error((data && data.error) ? data.error : "Auto-generation failed.");
+      }
+      currentPath = data.path || currentPath;
+      mapping = data.mapping;
+      validation = data.validation;
+      preview = data.preview || [];
+      dirty = false;
+      changeVersion = 0;
+      saveAgainAfterCurrent = false;
+      if (autosaveTimer) clearTimeout(autosaveTimer);
+      autosaveTimer = null;
+      selectedRows.clear();
+      filterEl.value = "";
+      renderMeta(); renderRows(); renderValidation(); renderPreview();
+      const meta = data.metadata || {};
+      const provider = meta.provider ? ` provider=${meta.provider}` : "";
+      const model = meta.model ? ` model=${meta.model}` : "";
+      const paddle = meta.target_paddle_line_count ? ` paddle_lines=${meta.target_paddle_line_count}` : "";
+      setStatus(`Auto-generated ${mapping.mappings.length} row(s).${provider}${model}${paddle}`);
+      btnSave.disabled = true;
+    } catch (err) {
+      setStatus("Auto-generation failed.");
+      alert(err instanceof Error ? err.message : String(err));
+    } finally {
+      btnAutoGenerate.classList.remove("working");
+      btnAutoGenerate.textContent = previousText;
+      updateNavButtons();
+    }
+  }
+
+  [formTypeEl, sheetNameEl, startRowEl].forEach(el => el.addEventListener("input", markChanged));
+  filterEl.addEventListener("input", renderRows);
+  btnValidate.addEventListener("click", validateCurrent);
+  btnSave.addEventListener("click", () => saveCurrent({ autosave: false }));
+  btnAutoGenerate.addEventListener("click", autoGenerateMapping);
+  btnAdd.addEventListener("click", addRow);
+  btnDelete.addEventListener("click", deleteSelected);
+  btnDuplicate.addEventListener("click", duplicateSelected);
+  selectAllEl.addEventListener("change", e => {
+    selectedRows.clear();
+    if (e.target.checked && mapping) mapping.mappings.forEach((_, idx) => selectedRows.add(idx));
+    renderRows();
+  });
+  document.getElementById("btn-raw").addEventListener("click", () => {
+    currentMappingFromUi();
+    rawJsonEl.value = JSON.stringify(mapping, null, 2);
+    rawModal.classList.remove("hidden");
+    rawModal.style.display = "flex";
+  });
+  document.getElementById("btn-close-raw").addEventListener("click", () => {
+    rawModal.classList.add("hidden"); rawModal.style.display = "none";
+  });
+  rawModal.addEventListener("click", e => {
+    if (e.target === rawModal) { rawModal.classList.add("hidden"); rawModal.style.display = "none"; }
+  });
+  document.getElementById("btn-apply-raw").addEventListener("click", () => {
+    if (!ensurePrimaryEditor()) return;
+    try {
+      const obj = JSON.parse(rawJsonEl.value);
+      if (!obj || typeof obj !== "object" || Array.isArray(obj)) throw new Error("Root must be an object.");
+      mapping = obj;
+      selectedRows.clear();
+      renderMeta(); renderRows(); markChanged();
+      rawModal.classList.add("hidden"); rawModal.style.display = "none";
+    } catch (e) {
+      alert(e.message || String(e));
+    }
+  });
+  window.addEventListener("beforeunload", e => {
+    _releaseSingletonLock();
+    if (!isPrimaryEditorTab || !dirty) return;
+    e.preventDefault();
+    e.returnValue = "";
+  });
+
+  window.addEventListener("storage", e => {
+    if (e.key !== SINGLETON_KEY) return;
+    const lock = _readLock();
+    if (lock && lock.owner && lock.owner !== TAB_ID) {
+      isPrimaryEditorTab = false;
+      btnSave.disabled = true;
+      btnAutoGenerate.disabled = true;
+      setStatus("Read-only tab: another XLSX mapping editor tab is active.");
+    } else if (!lock || lock.owner === TAB_ID) {
+      isPrimaryEditorTab = true;
+      updateNavButtons();
+      renderValidation();
+    }
+  });
+
+  btnSelectMapping.addEventListener("click", openBrowseModal);
+  btnPrevMapping.addEventListener("click", () => navigateMapping("prev"));
+  btnNextMapping.addEventListener("click", () => navigateMapping("next"));
+  browseUpBtn.addEventListener("click", () => {
+    browseDir = parentDir(browseDir);
+    if (!isUnderMappings(browseDir)) browseDir = MAPPINGS_ROOT;
+    refreshBrowse();
+  });
+  browseCloseBtn.addEventListener("click", closeBrowseModal);
+  browseModal.addEventListener("click", e => { if (e.target === browseModal) closeBrowseModal(); });
+  btnGenerateMissing.addEventListener("click", generateMissingMappings);
+
+  if (!_acquireSingletonLock()) {
+    _closeDuplicateTab();
+    return;
+  }
+  _startSingletonHeartbeat();
+
+  loadInitialMapping().catch(err => { console.error(err); setStatus("Failed to load."); alert(String(err)); });
+})();
+</script>
+</body>
+</html>

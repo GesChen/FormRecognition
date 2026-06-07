@@ -59,6 +59,25 @@ DEFAULT_IMAGE = PATHS["cache_normalized"] / "maury_1" / "page_0001_bin.png"
 
 HANDLE_SIZE = 8
 MIN_ROI_SIZE = 5
+POST_NORMALIZE_MODES = {"casual", "aggressive", "consensus"}
+POST_NORMALIZE_MODE_ALIASES = {
+    "strict": "casual",
+    "conservative": "casual",
+    "balanced": "aggressive",
+}
+
+
+def _clean_roi_for_save(roi: dict) -> dict:
+    out = dict(roi)
+    if out.get("post_normalize") is True:
+        out["post_normalize"] = True
+        mode = str(out.get("post_normalize_mode", "") or "").strip().lower()
+        mode = POST_NORMALIZE_MODE_ALIASES.get(mode, mode)
+        out["post_normalize_mode"] = mode if mode in POST_NORMALIZE_MODES else "aggressive"
+    else:
+        out.pop("post_normalize", None)
+        out.pop("post_normalize_mode", None)
+    return out
 
 
 def schema_path_for_image(image_path: Path) -> Path:
@@ -183,12 +202,13 @@ def save_schema(image_path: Path, rois: list[dict], image_width: int, image_heig
     """Write schema JSON for the image."""
     path = schema_path_for_image(image_path)
     path.parent.mkdir(parents=True, exist_ok=True)
+    clean_rois = [_clean_roi_for_save(r) if isinstance(r, dict) else r for r in rois]
     data = {
         "image_path": str(image_path),
         "image_name": image_path.name,
         "image_width": image_width,
         "image_height": image_height,
-        "rois": rois,
+        "rois": clean_rois,
     }
     path.write_text(json.dumps(data, indent=2))
 

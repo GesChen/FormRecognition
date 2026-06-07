@@ -30,7 +30,7 @@
       "llm_prompt_override": "You are a strict text normalizer for ROI 'school'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the school name text from OCR input.\n- Do not invent, infer, or explain.\n- If OCR text is empty/unreadable, return detected_text as null.\nTask:\n- Normalize school name text conservatively.",
       "name": "school",
       "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"school_name\":\"\" }\n```",
-      "w": 468,
+      "w": 583,
       "x": 62,
       "y": 274
     },
