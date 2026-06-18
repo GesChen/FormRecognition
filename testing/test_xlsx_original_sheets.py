@@ -70,6 +70,7 @@ def test_fill_from_pipeline_keeps_single_sheet_without_original_items(tmp_path):
         ws = wb["6th Grade Post-Assessment Data"]
         assert ws["A2"].value == "123"
         assert ws["B2"].value == "Peterson"
+        assert ws.freeze_panes == "A2"
     finally:
         wb.close()
 
@@ -91,7 +92,9 @@ def test_fill_from_pipeline_writes_original_sheet_pair(tmp_path):
         assert "(" in original_name and ")" in original_name
         assert len(original_name) <= 31
         assert wb["6th Grade Post-Assessment Data"]["B2"].value == "Peterson"
+        assert wb["6th Grade Post-Assessment Data"].freeze_panes == "A2"
         assert wb[original_name]["B2"].value == "Ms Petterson"
         assert wb[original_name].row_dimensions[2].height == 33
+        assert wb[original_name].freeze_panes == "A2"
     finally:
         wb.close()

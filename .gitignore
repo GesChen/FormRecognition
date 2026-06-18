@@ -1,3 +1,4 @@
 output
 testing/output
 input data/
+__pycache__/

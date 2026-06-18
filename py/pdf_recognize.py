@@ -120,6 +120,17 @@ def _sanitize_output_suffix(value: str | None) -> str:
     return f"_{safe}"
 
 
+def _sanitize_output_filename(value: str | None) -> str:
+    """Safe custom output filename stem, or "" when unset/invalid."""
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    name = Path(raw.replace("\\", "/")).name
+    stem = Path(name).stem
+    safe = re.sub(r"[^\w\-.]", "_", stem).strip("_")
+    return safe or ""
+
+
 def _rel_from_project_root(full: Path) -> str:
     """Path relative to project root for JSON portability."""
     root = Path(__file__).resolve().parent.parent
@@ -237,6 +248,48 @@ def _load_pdf_pages(pdf_path: Path, verbose: bool, max_pages: int | None = None)
         return []
     _log(f"      Cached {len(page_paths)} page(s).", verbose)
     return page_paths
+
+
+def _page_count_required_multiple() -> int:
+    raw_cfg = PDF_RECOGNITION.get("page_count") if isinstance(PDF_RECOGNITION, dict) else {}
+    cfg = raw_cfg if isinstance(raw_cfg, dict) else {}
+    try:
+        n = int(cfg.get("required_multiple", 1) or 1)
+    except (TypeError, ValueError):
+        n = 1
+    return max(1, n)
+
+
+def _page_count_validation(page_count: int, *, max_pages: int | None = None) -> dict[str, Any]:
+    """
+    Validate that the processed page count is a complete packet.
+
+    Current schemas use 2-page packets (side a/b). Keeping this as a config value
+    lets future packet layouts require 4, 6, etc. without changing the workflow.
+    """
+    required = _page_count_required_multiple()
+    valid = page_count == 0 or page_count % required == 0
+    payload: dict[str, Any] = {
+        "required_multiple": required,
+        "valid": valid,
+    }
+    if not valid:
+        payload["remainder"] = page_count % required
+    return payload
+
+
+def _raise_for_invalid_page_count(page_count: int, validation: dict[str, Any], *, max_pages: int | None = None) -> None:
+    if bool(validation.get("valid", True)):
+        return
+    required = int(validation.get("required_multiple", 1) or 1)
+    max_pages_note = ""
+    if max_pages is not None and max_pages > 0:
+        max_pages_note = f" after applying --max-pages={max_pages}"
+    raise ValueError(
+        f"Processed PDF page count{max_pages_note} is {page_count}, which is not divisible by "
+        f"PDF_RECOGNITION['page_count']['required_multiple']={required}. "
+        "This run may have an incomplete packet or a merged multi-file boundary that would pair pages incorrectly."
+    )
 
 
 def _detect_ids_and_form_types(
@@ -1223,6 +1276,7 @@ def _run_workflow(
     debug: bool = False,
     debug_path: Path | str | None = None,
     output_suffix: str | None = None,
+    output_filename: str | None = None,
 ) -> list[dict[str, Any]]:
     """
     Run full workflow: PDF → images → ID/form-type check → form-based normalization →
@@ -1257,7 +1311,8 @@ def _run_workflow(
         cfg.get("output_dir", Path(__file__).resolve().parent.parent / "output" / "recognition")
     )
     stem = _sanitize_pdf_stem(pdf_path.name)
-    output_stem = f"{stem}{_sanitize_output_suffix(output_suffix)}"
+    custom_output_stem = _sanitize_output_filename(output_filename)
+    output_stem = custom_output_stem or f"{stem}{_sanitize_output_suffix(output_suffix)}"
 
     debug_data: dict[str, Any] | None = None
     dbg_path: Path | None = None
@@ -1321,15 +1376,18 @@ def _run_workflow(
         page_paths = _load_pdf_pages(pdf_path, verbose, max_pages=max_pages)
         if max_pages is not None and max_pages > 0:
             _log(f"      Limited to first {len(page_paths)} page(s) (--max-pages={max_pages}).", verbose)
+        page_count_validation = _page_count_validation(len(page_paths), max_pages=max_pages)
         _debug_step_done(
             "1_pdf_to_images",
             {
                 "page_paths": [str(p) for p in page_paths],
                 "count": len(page_paths),
                 "max_pages": max_pages,
+                "page_count_validation": page_count_validation,
             },
             t_step_1,
         )
+        _raise_for_invalid_page_count(len(page_paths), page_count_validation, max_pages=max_pages)
         if not page_paths:
             if debug_data is not None and dbg_path is not None:
                 debug_data["status"] = "completed"
@@ -1574,6 +1632,7 @@ def run_workflow(
     debug: bool = False,
     debug_path: Path | str | None = None,
     output_suffix: str | None = None,
+    output_filename: str | None = None,
 ) -> list[dict[str, Any]]:
     """
     Run full PDF recognition workflow and return list of items (one per page pair).
@@ -1593,6 +1652,7 @@ def run_workflow(
         debug=debug,
         debug_path=debug_path,
         output_suffix=output_suffix,
+        output_filename=output_filename,
     )
 
 
@@ -1638,6 +1698,12 @@ if __name__ == "__main__":
         default=None,
         help="Optional suffix appended to output stem for JSON/XLSX/debug filenames.",
     )
+    parser.add_argument(
+        "--output-filename",
+        type=str,
+        default=None,
+        help="Optional custom output filename/stem for JSON/XLSX/debug filenames. Overrides --output-suffix.",
+    )
     args = parser.parse_args()
 
     items = run_workflow(
@@ -1649,6 +1715,7 @@ if __name__ == "__main__":
         debug=args.debug,
         debug_path=args.debug_path,
         output_suffix=args.output_suffix,
+        output_filename=args.output_filename,
     )
     if args.verbose:
         for i, item in enumerate(items):

@@ -404,7 +404,7 @@
               <input type="number" id="opt_max_pages" min="1" placeholder="(no limit)" />
             </div>
             <div class="field">
-              <label for="opt_output_suffix"><code>--output-suffix</code></label>
+              <label for="opt_output_suffix" id="opt_output_name_label"><code>--output-suffix</code></label>
               <input type="text" id="opt_output_suffix" placeholder="e.g. run1" />
             </div>
             <div class="field" style="flex:1; min-width:220px;">
@@ -429,7 +429,7 @@
 
     <div class="xlsx-banner" id="xlsx-banner" aria-live="polite">
       <h3>Final data-entry workbook (XLSX)</h3>
-      <p style="margin:0;color:var(--muted);font-size:13px;">Written by <code>fill_from_pipeline</code> when the run finishes (PDF stem + optional output suffix):</p>
+      <p style="margin:0;color:var(--muted);font-size:13px;">Written by <code>fill_from_pipeline</code> when the run finishes (PDF stem + optional suffix, or custom filename for merged PDFs):</p>
       <div class="path" id="xlsx-path"></div>
       <p style="margin:12px 0 4px;color:var(--muted);font-size:12px;">Recognition JSON (human review / pipeline output):</p>
       <div class="path" id="json-path" style="font-size:12px;"></div>
@@ -528,16 +528,35 @@
       fileLabel.style.display = "none";
       fileLabel.textContent = "";
     }
+    updateOutputNameMode();
+  }
+
+  function updateOutputNameMode() {
+    const label = document.getElementById("opt_output_name_label");
+    const input = document.getElementById("opt_output_suffix");
+    const multi = selectedFiles.length > 1;
+    if (multi) {
+      label.innerHTML = "Custom output filename";
+      input.placeholder = "e.g. june_merged_forms";
+      input.setAttribute("aria-label", "Custom output filename for merged PDFs");
+    } else {
+      label.innerHTML = "<code>--output-suffix</code>";
+      input.placeholder = "e.g. run1";
+      input.setAttribute("aria-label", "Output suffix");
+    }
   }
 
   function getCurrentOptions() {
+    const outputNameValue = document.getElementById("opt_output_suffix").value.trim();
+    const useCustomFilename = selectedFiles.length > 1;
     return {
       verbose: document.getElementById("opt_verbose").checked,
       no_json: document.getElementById("opt_no_json").checked,
       recache: document.getElementById("opt_recache").checked,
       debug: document.getElementById("opt_debug").checked,
       max_pages: document.getElementById("opt_max_pages").value.trim(),
-      output_suffix: document.getElementById("opt_output_suffix").value.trim(),
+      output_suffix: useCustomFilename ? "" : outputNameValue,
+      output_filename: useCustomFilename ? outputNameValue : "",
       debug_path: document.getElementById("opt_debug_path").value.trim(),
     };
   }
@@ -771,6 +790,7 @@
     if (job.options.debug) fd.append("debug", "1");
     if (job.options.max_pages) fd.append("max_pages", job.options.max_pages);
     if (job.options.output_suffix) fd.append("output_suffix", job.options.output_suffix);
+    if (job.options.output_filename) fd.append("output_filename", job.options.output_filename);
     if (job.options.debug_path) fd.append("debug_path", job.options.debug_path);
 
     btnRun.disabled = true;

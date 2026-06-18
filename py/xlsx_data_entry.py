@@ -349,6 +349,14 @@ def _stamp_data_rows(dst_ws: Worksheet, src_ws: Worksheet, start_row: int, count
                 dst_cell.alignment = copy(src_cell.alignment)
 
 
+def _freeze_header_rows(ws: Worksheet, start_row: int) -> None:
+    """Freeze rows above the first data row so headers stay visible in Excel."""
+    if start_row > 1:
+        ws.freeze_panes = f"A{start_row}"
+    else:
+        ws.freeze_panes = None
+
+
 def original_sheet_name(form_type: str) -> str:
     """
     Concise original/raw sheet name. Excel sheet titles are limited to 31 chars.
@@ -397,6 +405,7 @@ def _copy_sheet_structure(
         dst_ws.row_dimensions[i].height = dim.height
 
     _stamp_data_rows(dst_ws, src_ws, start_row, row_count)
+    _freeze_header_rows(dst_ws, start_row)
 
 
 def fill_template(
@@ -584,6 +593,7 @@ def merge_workbooks(
                     dst_ws.column_dimensions[i].width = dim.width
                 for i, dim in src_ws.row_dimensions.items():
                     dst_ws.row_dimensions[i].height = dim.height
+                dst_ws.freeze_panes = src_ws.freeze_panes
         finally:
             src_wb.close()
 

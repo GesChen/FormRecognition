@@ -1,0 +1,17 @@
+{
+  "form_type": "hpre",
+  "sheet": "HS Pre-Assessment Data",
+  "start_row": 4,
+  "mappings": [
+    {
+      "type": "direct",
+      "source": "id",
+      "column": "A"
+    },
+    {
+      "type": "direct",
+      "source": "teacher",
+      "column": "K"
+    }
+  ]
+}

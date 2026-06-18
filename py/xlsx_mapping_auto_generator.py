@@ -263,6 +263,7 @@ def collect_target_paddle_pair(release: str, form: str) -> dict[str, Any]:
     release = _safe_name(release, "release")
     form = _safe_name(form, "form")
     sides: dict[str, Any] = {}
+    warnings: list[dict[str, Any]] = []
     for side in ("a", "b"):
         image_path = TEMPLATES_ROOT / release / f"{form}_{side}.png"
         if not image_path.is_file():
@@ -270,15 +271,29 @@ def collect_target_paddle_pair(release: str, form: str) -> dict[str, Any]:
         try:
             document_structure = _collect_document_structure(image_path)
         except Exception as exc:
-            raise _phase_error(
-                f"Paddle/template OCR for {form}_{side} ({_project_rel(image_path)})",
-                exc,
-            ) from exc
+            warning = {
+                "side": side,
+                "template_image_path": _project_rel(image_path),
+                "phase": f"Paddle/template OCR for {form}_{side}",
+                "error_type": type(exc).__name__,
+                "error": str(exc) or type(exc).__name__,
+            }
+            warnings.append(warning)
+            document_structure = {
+                "line_count": 0,
+                "min_score": 0.0,
+                "mean_score": 0.0,
+                "lines": [],
+                "ocr_error": warning,
+            }
         sides[side] = {
             "template_image_path": _project_rel(image_path),
             "document_structure_from_paddleocr": document_structure,
         }
-    return {"release": release, "form": form, "sides": sides}
+    out: dict[str, Any] = {"release": release, "form": form, "sides": sides}
+    if warnings:
+        out["ocr_warnings"] = warnings
+    return out
 
 
 def _example_dir() -> Path:
@@ -407,6 +422,7 @@ def _instructions() -> str:
         "- Do not invent a source that is absent from target ROI schemas.\n\n"
         "Workbook rules:\n"
         "- Use target_xlsx_sheet_structure as the source of truth for sheet name, start row, and target columns.\n"
+        "- target_required_output_columns lists workbook columns that must receive a mapping; every listed column must be covered exactly once unless the workbook clearly requires multi-column choices.\n"
         "- Do not output columns outside target_xlsx_sheet_structure.columns.\n"
         "- Cover every target workbook data column that should be filled by recognition output for this form; do not create placeholder mappings.\n"
         "- Preserve workbook-specific answer labels exactly where headers imply specific text (TRUE/FALSE, Boy/Girl, grade names, Yes marks, etc.).\n\n"
@@ -421,6 +437,7 @@ def _instructions() -> str:
         "- direct/lookup/static rows have a single valid column.\n"
         "- lookup rows include non-empty map_entries.\n"
         "- multi_column rows include non-empty choices with valid columns and a non-empty mark.\n"
+        "- Every column in target_required_output_columns is covered by at least one mapping destination.\n"
         "- All source names exist in target_roi_schemas.all_sources unless row type is static.\n"
         "- The form_type equals target.form and sheet equals the resolved target sheet.\n"
         "- confidence_notes should list any uncertainty; do not hide uncertainty by inventing.\n"
@@ -513,6 +530,39 @@ def _mapping_destinations(row: dict[str, Any]) -> list[str]:
     return cols
 
 
+def _column_header_text(col: dict[str, Any]) -> str:
+    values = []
+    for item in col.get("header_values") or []:
+        if not isinstance(item, dict):
+            continue
+        text = str(item.get("value", "") or "").strip()
+        if text:
+            values.append(text)
+    return " ".join(values)
+
+
+def _is_optional_output_column(col: dict[str, Any]) -> bool:
+    header = _column_header_text(col).lower()
+    optional_markers = (
+        "if other, please describe",
+        "if other please describe",
+    )
+    return any(marker in header for marker in optional_markers)
+
+
+def _required_output_columns(target_xlsx: dict[str, Any]) -> list[str]:
+    out: list[str] = []
+    for col in target_xlsx.get("columns") or []:
+        if not isinstance(col, dict):
+            continue
+        letter = str(col.get("column", "") or "").strip().upper()
+        if not letter or _is_optional_output_column(col):
+            continue
+        if _column_header_text(col):
+            out.append(letter)
+    return out
+
+
 def _workbook_mapping_issues(mapping: dict[str, Any], target_xlsx: dict[str, Any]) -> list[dict[str, Any]]:
     issues: list[dict[str, Any]] = []
     allowed_cols = {
@@ -554,6 +604,27 @@ def _workbook_mapping_issues(mapping: dict[str, Any], target_xlsx: dict[str, Any
                         "message": f"Column {col!r} is outside target workbook sheet columns.",
                     }
                 )
+    required_cols = _required_output_columns(target_xlsx)
+    mapped_cols: set[str] = set()
+    for row in mapping.get("mappings") or []:
+        if not isinstance(row, dict):
+            continue
+        mapped_cols.update(_mapping_destinations(row))
+    missing_cols = [col for col in required_cols if col not in mapped_cols]
+    if missing_cols:
+        preview = ", ".join(missing_cols[:25])
+        if len(missing_cols) > 25:
+            preview += f", ... (+{len(missing_cols) - 25} more)"
+        issues.append(
+            {
+                "severity": "error",
+                "row": None,
+                "message": (
+                    f"Generated mapping covers {len(mapped_cols)} of {len(required_cols)} required workbook columns; "
+                    f"missing: {preview}. Add direct, lookup, multi_column, or static mappings for these columns."
+                ),
+            }
+        )
     return issues
 
 
@@ -645,6 +716,7 @@ def generate_xlsx_mapping(
         "target_paddle_ocr_from_both_template_images": target_paddle,
         "target_roi_schemas": target_roi,
         "target_xlsx_sheet_structure": target_xlsx,
+        "target_required_output_columns": _required_output_columns(target_xlsx),
         "example_package": example,
         "previous_validation_feedback": validation_feedback or [],
     }
@@ -702,6 +774,7 @@ def generate_xlsx_mapping(
             int((side.get("document_structure_from_paddleocr") or {}).get("line_count", 0) or 0)
             for side in target_paddle.get("sides", {}).values()
         ),
+        "target_required_output_column_count": len(_required_output_columns(target_xlsx)),
         "target_roi_source_count": len(target_roi.get("all_sources", [])),
         "example_mapping_path": example.get("mapping_path"),
         "confidence_notes": raw_obj.get("confidence_notes", []),

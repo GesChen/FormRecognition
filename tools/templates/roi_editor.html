@@ -291,6 +291,17 @@
       border-radius: var(--radius-md);
       background: var(--bg);
     }
+    .panel-section.inspector-section {
+      flex: 1 0 auto;
+    }
+    .post-normalize-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
     .panel-section h3 {
       margin: 0;
       font-size: 0.82rem;
@@ -766,7 +777,7 @@
         <h2>Inspector</h2>
       </div>
 
-      <div class="panel-section">
+      <div class="panel-section inspector-section">
         <div class="field-row">
           <h3>Selected ROI</h3>
         </div>
@@ -793,21 +804,23 @@
           <input type="text" id="roi-ocr-output-regex" placeholder="Example: ^[0-9]{7}[AB]$" />
           <div class="field-hint">Optional. Saved as <code>ocr_output_regex</code> and used for end-of-ROI retry flow.</div>
         </div>
-        <div class="field-group" style="margin-top:10px;">
-          <label class="check-row" for="roi-post-normalize">
-            <input type="checkbox" id="roi-post-normalize" />
-            <span>Post normalize</span>
-          </label>
-          <div class="field-hint">Optional. Saved as <code>post_normalize</code> for batch normalization after ROI extraction.</div>
-        </div>
-        <div class="field-group" style="margin-top:10px;">
-          <label for="roi-post-normalize-mode">Post normalize mode</label>
-          <select id="roi-post-normalize-mode">
-            <option value="casual">Casual</option>
-            <option value="aggressive">Aggressive</option>
-            <option value="consensus">Consensus</option>
-          </select>
-          <div class="field-hint">Saved as <code>post_normalize_mode</code> only when post normalization is enabled.</div>
+        <div class="post-normalize-fields">
+          <div class="field-group">
+            <label class="check-row" for="roi-post-normalize">
+              <input type="checkbox" id="roi-post-normalize" />
+              <span>Post normalize</span>
+            </label>
+            <div class="field-hint">Optional. Saved as <code>post_normalize</code> for batch normalization after ROI extraction.</div>
+          </div>
+          <div class="field-group">
+            <label for="roi-post-normalize-mode">Post normalize mode</label>
+            <select id="roi-post-normalize-mode">
+              <option value="casual">Casual</option>
+              <option value="aggressive">Aggressive</option>
+              <option value="consensus">Consensus</option>
+            </select>
+            <div class="field-hint">Saved as <code>post_normalize_mode</code> only when post normalization is enabled.</div>
+          </div>
         </div>
       </div>
     </div>

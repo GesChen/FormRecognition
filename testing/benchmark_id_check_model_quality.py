@@ -89,7 +89,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--workflow",
         default=DEFAULT_WORKFLOW,
-        choices=["vision_only", "paddle_then_vision"],
+        choices=["vision_only", "paddle_only", "paddle_then_vision"],
         help="OCR workflow for benchmark (default: vision_only).",
     )
     p.add_argument("--timeout", type=int, default=None, help="Optional OCR call timeout override (seconds).")

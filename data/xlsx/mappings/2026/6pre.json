@@ -4,9 +4,238 @@
   "start_row": 4,
   "mappings": [
     {
+      "type": "static",
+      "column": "C",
+      "value": "NPS"
+    },
+    {
+      "type": "static",
+      "column": "D",
+      "value": "In-Person"
+    },
+    {
+      "type": "static",
+      "column": "F",
+      "value": "EVMS"
+    },
+    {
+      "type": "static",
+      "column": "G",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "H",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "I",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "J",
+      "value": "Yes"
+    },
+    {
+      "type": "static",
+      "column": "AP",
+      "value": "Unknown/Not Reported"
+    },
+    {
       "type": "direct",
       "source": "id",
       "column": "A"
+    },
+    {
+      "type": "direct",
+      "source": "date",
+      "column": "B",
+      "transform": "date"
+    },
+    {
+      "type": "direct",
+      "source": "teacher",
+      "column": "K"
+    },
+    {
+      "type": "direct",
+      "source": "1",
+      "column": "L",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "2",
+      "column": "M",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "3",
+      "column": "N",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "4",
+      "column": "O",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "5",
+      "column": "P",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "6",
+      "column": "Q",
+      "transform": "upper"
+    },
+    {
+      "type": "lookup",
+      "source": "7",
+      "column": "R",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "8",
+      "column": "S",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "9",
+      "column": "T",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "10",
+      "column": "U",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "11",
+      "column": "V",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "12",
+      "column": "W",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "13",
+      "column": "X",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "14",
+      "column": "Y",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "15",
+      "column": "Z",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "16",
+      "column": "AA",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "17",
+      "column": "AB",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "18",
+      "column": "AC",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "19",
+      "column": "AD",
+      "transform": "upper"
+    },
+    {
+      "type": "lookup",
+      "source": "20",
+      "column": "AE",
+      "map": {
+        "a": "6th Grade",
+        "b": "7th Grade",
+        "c": "8th Grade",
+        "d": "9th Grade",
+        "e": "Other Grade"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "21",
+      "column": "AF",
+      "transform": "number"
+    },
+    {
+      "type": "multi_column",
+      "source": "22",
+      "choices": {
+        "a": "AG",
+        "b": "AH",
+        "c": "AI",
+        "d": "AJ",
+        "e": "AK",
+        "f": "AL",
+        "g": "AM",
+        "h": "AN"
+      },
+      "mark": "Yes",
+      "no_answer": "AN"
+    },
+    {
+      "type": "lookup",
+      "source": "23",
+      "column": "AO",
+      "map": {
+        "a": "Boy",
+        "b": "Girl",
+        "c": "Other",
+        "d": "Other",
+        "e": "Unknown/Not Reported"
+      }
     }
   ]
 }

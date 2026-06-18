@@ -3,6 +3,7 @@ Unified OCR module: image path in, text out.
 
 Workflows:
 - ocr_raw_vision_only: direct local vision OCR call.
+- ocr_raw_paddle_only: Paddle OCR only, no vision fallback.
 - ocr_raw_paddle_then_vision: Paddle first (min-confidence gate), then local vision fallback.
 
 Default ocr_raw() uses the configured default workflow.
@@ -745,6 +746,41 @@ def ocr_raw_paddle_then_vision(
     return out
 
 
+def ocr_raw_paddle_only(
+    image_path: str | Path,
+    *,
+    timeout: int | None = None,
+    verbose: bool = False,
+    force_paddle_failure: bool = False,
+    prompt_override: str | None = None,
+) -> dict[str, Any]:
+    path = Path(image_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Image not found: {path}")
+
+    min_conf = _cfg_float("min_confidence_for_accept", 0.82)
+    _vprint(verbose, f"start OCR paddle_only image={Path(path).resolve()}")
+
+    paddle_stage, paddle_full = _run_paddle_stage(
+        path,
+        verbose=verbose,
+        force_failure=force_paddle_failure,
+    )
+    out = _build_output(
+        chosen=paddle_stage,
+        stages=[paddle_stage],
+        min_conf=min_conf,
+        image_encode_meta={},
+        paddle_full_out=paddle_full,
+    )
+    _vprint(
+        verbose,
+        f"final selected_model={out.get('selected_model')} selected_stage_index={out.get('selected_stage_index')} "
+        f"needs_human_review={out.get('needs_human_review')}",
+    )
+    return out
+
+
 def ocr_raw(
     image_path: str | Path,
     *,
@@ -759,6 +795,14 @@ def ocr_raw(
             image_path,
             timeout=timeout,
             verbose=verbose,
+            prompt_override=prompt_override,
+        )
+    if workflow in {"paddle_only", "paddle"}:
+        return ocr_raw_paddle_only(
+            image_path,
+            timeout=timeout,
+            verbose=verbose,
+            force_paddle_failure=force_paddle_failure,
             prompt_override=prompt_override,
         )
     return ocr_raw_paddle_then_vision(

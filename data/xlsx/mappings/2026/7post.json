@@ -10,8 +10,334 @@
     },
     {
       "type": "direct",
+      "source": "date",
+      "column": "B",
+      "transform": "date"
+    },
+    {
+      "type": "static",
+      "column": "C",
+      "value": "NPS"
+    },
+    {
+      "type": "static",
+      "column": "D",
+      "value": "In-Person"
+    },
+    {
+      "type": "static",
+      "column": "F",
+      "value": "EVMS"
+    },
+    {
+      "type": "static",
+      "column": "G",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "H",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "I",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "J",
+      "value": "Yes"
+    },
+    {
+      "type": "direct",
       "source": "teacher",
       "column": "K"
+    },
+    {
+      "type": "direct",
+      "source": "1",
+      "column": "L",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "2",
+      "column": "M",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "3",
+      "column": "N",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "4",
+      "column": "O",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "5",
+      "column": "P",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "6",
+      "column": "Q",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "7",
+      "column": "R",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "8",
+      "column": "S",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "9",
+      "column": "T",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "10",
+      "column": "U",
+      "transform": "upper"
+    },
+    {
+      "type": "lookup",
+      "source": "11",
+      "column": "V",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "12",
+      "column": "W",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "13",
+      "column": "X",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "14",
+      "column": "Y",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "15",
+      "column": "Z",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "16",
+      "column": "AA",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "17",
+      "column": "AB",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "18",
+      "column": "AC",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "19",
+      "column": "AD",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "20",
+      "column": "AE",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "21",
+      "column": "AF",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "22",
+      "column": "AG",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "23",
+      "column": "AH",
+      "transform": "upper"
+    },
+    {
+      "type": "lookup",
+      "source": "24",
+      "column": "AI",
+      "map": {
+        "a": "Strongly Agree",
+        "b": "Agree",
+        "c": "Neither Agree nor Disagree",
+        "d": "Disagree",
+        "e": "Strongly Disagree"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "25",
+      "column": "AJ",
+      "map": {
+        "a": "Strongly Agree",
+        "b": "Agree",
+        "c": "Neither Agree nor Disagree",
+        "d": "Disagree",
+        "e": "Strongly Disagree"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "26",
+      "column": "AK",
+      "map": {
+        "a": "Strongly Agree",
+        "b": "Agree",
+        "c": "Neither Agree nor Disagree",
+        "d": "Disagree",
+        "e": "Strongly Disagree"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "27",
+      "column": "AL",
+      "map": {
+        "a": "Strongly Agree",
+        "b": "Agree",
+        "c": "Neither Agree nor Disagree",
+        "d": "Disagree",
+        "e": "Strongly Disagree"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "28",
+      "column": "AM",
+      "map": {
+        "a": "Strongly Agree",
+        "b": "Agree",
+        "c": "Neither Agree nor Disagree",
+        "d": "Disagree",
+        "e": "Strongly Disagree"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "29",
+      "column": "AN"
+    },
+    {
+      "type": "lookup",
+      "source": "30",
+      "column": "AO",
+      "map": {
+        "a": "6th Grade",
+        "b": "7th Grade",
+        "c": "8th Grade",
+        "d": "9th Grade",
+        "e": "Other Grade"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "31",
+      "column": "AP",
+      "transform": "number"
+    },
+    {
+      "type": "multi_column",
+      "source": "32",
+      "choices": {
+        "a": "AQ",
+        "b": "AR",
+        "c": "AS",
+        "d": "AT",
+        "e": "AU",
+        "f": "AV",
+        "g": "AW",
+        "h": "AX"
+      },
+      "mark": "Yes",
+      "no_answer": "AX"
+    },
+    {
+      "type": "lookup",
+      "source": "33",
+      "column": "AY",
+      "map": {
+        "a": "Boy",
+        "b": "Girl",
+        "c": "Other",
+        "d": "Other",
+        "e": "Unknown/Not Reported"
+      },
+      "default": "Unknown/Not Reported"
+    },
+    {
+      "type": "static",
+      "column": "AZ",
+      "value": "Unknown/Not Reported"
     }
   ]
 }

@@ -118,6 +118,16 @@ def _sanitize_output_suffix(value: str | None) -> str:
     return f"_{safe}"
 
 
+def _sanitize_output_filename(value: str | None) -> str:
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    name = Path(raw.replace("\\", "/")).name
+    stem = Path(name).stem
+    safe = re.sub(r"[^\w\-.]", "_", stem).strip("_")
+    return safe or ""
+
+
 def _resolve_pdf_under_project(rel: str) -> Path | None:
     rel = (rel or "").strip().replace("\\", "/")
     if not rel or ".." in rel or rel.startswith("/"):
@@ -283,8 +293,18 @@ def create_app() -> Flask:
         if output_suffix_raw:
             cmd.extend(["--output-suffix", output_suffix_raw])
 
+        output_filename_raw = (request.form.get("output_filename") or "").strip()
+        output_filename_stem = ""
+        if output_filename_raw:
+            if len(uploads) <= 1:
+                return jsonify({"error": "Custom output filename is only available for merged PDF uploads."}), 400
+            output_filename_stem = _sanitize_output_filename(output_filename_raw)
+            if not output_filename_stem:
+                return jsonify({"error": "Custom output filename must include at least one valid filename character."}), 400
+            cmd.extend(["--output-filename", output_filename_raw])
+
         stem = _pdf_stem_from_name(used_name_for_stem)
-        output_stem = f"{stem}{_sanitize_output_suffix(output_suffix_raw)}"
+        output_stem = output_filename_stem or f"{stem}{_sanitize_output_suffix(output_suffix_raw)}"
         out_dir = Path(PDF_RECOGNITION.get("output_dir", ROOT / "output" / "recognition"))
         xlsx_dir = Path(XLSX_DATA_ENTRY.get("output_dir", ROOT / "output" / "xlsx"))
         json_rel = str((out_dir / f"{output_stem}.json").resolve().relative_to(PROJECT_ROOT.resolve()))
@@ -328,6 +348,7 @@ def create_app() -> Flask:
                     "exit_code": code,
                     "stem": output_stem,
                     "output_suffix": output_suffix_raw,
+                    "output_filename": output_filename_stem,
                     "json_rel": json_rel,
                     "xlsx_rel": xlsx_rel,
                     "upload_rel": upload_rel,

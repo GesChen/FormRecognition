@@ -98,6 +98,7 @@ PDF_TO_IMAGES = {
 OCR_ENGINE = {
     # Main OCR workflow mode.
     # - "paddle_then_vision": Paddle first, vision fallback.
+    # - "paddle_only": Paddle only, no vision fallback.
     # - "vision_only": vision only.
     "workflow_default": "vision_only",
 
@@ -174,6 +175,9 @@ PDF_RECOGNITION = {
     "mc_roi_names": [],  # Empty => infer from schema (all names matching \d+[a-h]).
     "debug_output": True,  # Write pipeline debug JSON snapshots.
     "sort_data_by_roi_name": True,  # Sort ROI rows numerically by name.
+    "page_count": {
+        "required_multiple": 2,  # Processed PDF page count must divide evenly by this packet size.
+    },
     # Keep current dual-channel behavior by default:
     # - text ROI OCR uses homography-only normalized images
     # - MCQ recognition uses postprocessed normalized images

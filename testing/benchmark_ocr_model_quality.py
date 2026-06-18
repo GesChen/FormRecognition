@@ -79,7 +79,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--workflow",
         default=DEFAULT_WORKFLOW,
-        choices=["vision_only", "paddle_then_vision"],
+        choices=["vision_only", "paddle_only", "paddle_then_vision"],
         help="OCR workflow to use during benchmark (default: vision_only).",
     )
     p.add_argument(

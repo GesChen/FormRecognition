@@ -202,8 +202,12 @@ Legacy helper: returns `"a"` for odd pages, `"b"` for even.
 
 ## py/ocr_engine.py
 
-Staged OCR module using a vision API. It escalates through model stages from `config.OCR_ENGINE`
-and accepts early when confidence is high.
+Staged OCR module using PaddleOCR and/or a vision API, selected by
+`config.OCR_ENGINE["workflow_default"]`:
+
+- `vision_only`: direct vision OCR.
+- `paddle_only`: PaddleOCR only, with no vision fallback.
+- `paddle_then_vision`: PaddleOCR first, then vision fallback when Paddle confidence is low.
 
 ### Public functions
 
