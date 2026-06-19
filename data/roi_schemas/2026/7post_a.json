@@ -9,7 +9,6 @@
       "id": "r5ff6947ee",
       "llm_prompt_override": "You are a strict JSON mapper.\nYou are NOT reading an image. You only receive OCR-extracted text.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string\"}\nTask:\nMap the OCR JSON field \"id\" into pipeline field \"detected_text\".\nRules:\n1. If OCR text contains JSON and key \"id\" exists with a non-empty value, output {\"detected_text\":\"<id value exactly as-is>\"}\n2. Otherwise, if a single id-like value is present, output it exactly as seen.\n3. If missing, null, empty, or unclear, output {\"detected_text\":null}\n4. Do not normalize, correct, trim, or transform the id value.",
       "name": "id",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"id\":\"\" }\n```",
       "w": 235,
       "x": 42,
       "y": 12
@@ -19,7 +18,6 @@
       "id": "ra708a04c3",
       "llm_prompt_override": "You are a strict text normalizer for one OCR ROI field named \"date\".\nYou are NOT reading an image. You only receive OCR-extracted text.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\"detected_text\":\"string or null\"}\nTarget output format:\nMM/DD/YYYY\nRules:\n- Preserve meaning from OCR text; do not invent unseen digits.\n- If OCR contains structured JSON, parse it first.\n- If year is 2 digits, interpret as 20YY.\n- Zero-pad month and day to 2 digits.\n- Output only a valid calendar date in MM/DD/YYYY, or null.\n- If missing, unclear, or invalid, set detected_text to null.",
       "name": "date",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"month\":\"\", \"day\":\"\", \"year\":\"\" }\n```",
       "w": 219,
       "x": 173,
       "y": 145
@@ -29,7 +27,6 @@
       "id": "r28b39dd73",
       "llm_prompt_override": "You are a strict text normalizer for ROI 'teacher'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\"detected_text\":\"string\"}\nRules:\n- Keep only the teacher name text from OCR input.\n- Remove labels and titles when present.\n- Do not invent, infer, or explain.\n- If OCR text is empty or unreadable, return detected_text as null.\nTask:\n- Normalize teacher name text conservatively.",
       "name": "teacher",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"teacher_name\":\"\" }\n```",
       "post_normalize": true,
       "post_normalize_mode": "aggressive",
       "w": 202,
@@ -41,7 +38,6 @@
       "id": "r89242ef80",
       "llm_prompt_override": "You are a strict text normalizer for ROI 'school'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\"detected_text\":\"string\"}\nRules:\n- Keep only the school name text from OCR input.\n- Remove labels when present.\n- Do not invent, infer, or explain.\n- If OCR text is empty or unreadable, return detected_text as null.\nTask:\n- Normalize school name text conservatively.",
       "name": "school",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"school_name\":\"\" }\n```",
       "w": 309,
       "x": 193,
       "y": 166

@@ -100,7 +100,8 @@ OCR_ENGINE = {
     # - "paddle_then_vision": Paddle first, vision fallback.
     # - "paddle_only": Paddle only, no vision fallback.
     # - "vision_only": vision only.
-    "workflow_default": "vision_only",
+    # - "vision_with_paddle_confidence": vision text with Paddle confidence.
+    "workflow_default": "vision_with_paddle_confidence",
 
     # Vision OCR model name.
     "model": "glm-ocr:latest",
@@ -109,6 +110,7 @@ OCR_ENGINE = {
     # Paddle stage settings.
     "paddle_model_name": "paddle-ppocrv5",
     "paddle_min_confidence_for_accept": 0.90,  # If Paddle min score <= this, use vision fallback.
+    "include_paddle_confidence_raw": True,  # Include Paddle raw_response in vision-with-Paddle-confidence debug output.
     "paddle_env_overrides": {
         "FLAGS_use_pir": "0",
         "FLAGS_use_mkldnn": "0",
@@ -122,15 +124,20 @@ OCR_ENGINE = {
     "call_timeout_sec": 90,  # Timeout per vision call.
     "vlm_max_call_ms": 2000,  # 0 disables slow-call drop; otherwise drop/retry VLM calls slower than this many ms.
     "vlm_slow_call_retries": 2,  # Extra retries after a slow-call drop.
+    "vlm_repeat_json_stop_enabled": True,  # Stop streamed VLM output if it starts emitting repeated JSON answers.
+    "vlm_repeat_json_min_blocks": 2,  # Number of completed JSON blocks that indicates a JSON-answer loop.
+    "vlm_repeat_tail_stop_enabled": True,  # Fallback: stop malformed streams with exact repeated text tails.
+    "vlm_repeat_tail_min_unit_chars": 24,  # Smallest repeated suffix unit considered a loop.
+    "vlm_repeat_tail_max_unit_chars": 240,  # Largest repeated suffix unit considered a loop.
+    "vlm_repeat_tail_repeats": 3,  # Required exact suffix repetitions before cutting off.
+    "vlm_repeat_tail_min_total_chars": 80,  # Minimum accumulated stream size before tail-loop detection.
     "jpeg_quality": 20,  # JPEG quality used for VLM image payload.
-    "stream": False,  # Stream responses from model server.
+    "stream": True,  # Stream VLM responses so completed JSON can be detected mid-call.
     "extra_params": 
     {
         "options": {"temperature": 0}
      },  # Extra model-server payload params.
 
-    # Global toggle: when False, ignore per-ROI OCR prompt overrides.
-    "use_ocr_prompts": True,
 }
 
 ID_FORM_LLM = {

@@ -149,21 +149,19 @@
       "y": 359
     },
     {
-      "h": 31,
+      "h": 29,
       "id": "r9d4d5513a",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: Pharmacy->A, IUD->B, Emergency contraception->C, Abstinence->D, The shot->E, The ring->F, The pill->G, Dental dam->H, Health center->I, Condoms->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "21",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\"\":\"\" }\n```",
       "w": 1060,
       "x": 80,
-      "y": 608
+      "y": 610
     },
     {
       "h": 31,
       "id": "r45a2d541f",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: Pharmacy->A, IUD->B, Emergency contraception->C, Abstinence->D, The shot->E, The ring->F, The pill->G, Dental dam->H, Health center->I, Condoms->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "22",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\"\":\"\" }\n```",
       "w": 1115,
       "x": 78,
       "y": 663
@@ -173,7 +171,6 @@
       "id": "r233dba0db",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: Pharmacy->A, IUD->B, Emergency contraception->C, Abstinence->D, The shot->E, The ring->F, The pill->G, Dental dam->H, Health center->I, Condoms->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "23",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\" }\n```",
       "w": 675,
       "x": 75,
       "y": 718
@@ -231,9 +228,8 @@
       "id": "r39b41a521",
       "llm_prompt_override": "You are a strict text normalizer for ROI age extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be digits only (0-9), or null.\n- Remove surrounding words or symbols if a clear numeric age exists.\n- Do not output units, explanations, or placeholders.\n- If unreadable or unclear, return detected_text as null.\nTask:\n- Normalize OCR text into age digits.",
       "name": "25",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"age\":\"\" }\n```",
-      "w": 360,
-      "x": 58,
+      "w": 156,
+      "x": 262,
       "y": 828
     },
     {

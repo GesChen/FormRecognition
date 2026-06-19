@@ -367,7 +367,6 @@ def _output_schema() -> dict[str, Any]:
                         "w": {"type": "integer", "minimum": ROI_MIN_SIZE},
                         "h": {"type": "integer", "minimum": ROI_MIN_SIZE},
                         "llm_prompt_override": {"type": ["string", "null"]},
-                        "ocr_prompt_override": {"type": ["string", "null"]},
                     },
                     "required": [
                         "name",
@@ -376,7 +375,6 @@ def _output_schema() -> dict[str, Any]:
                         "w",
                         "h",
                         "llm_prompt_override",
-                        "ocr_prompt_override",
                     ],
                 },
             }
@@ -431,13 +429,6 @@ def _validate_and_normalize_rois(raw_obj: dict[str, Any], image_w: int, image_h:
         else:
             out[-1]["llm_prompt_override"] = None
 
-        ocr_override = roi.get("ocr_prompt_override")
-        if isinstance(ocr_override, str):
-            ocr_clean = ocr_override.strip()
-            out[-1]["ocr_prompt_override"] = ocr_clean if ocr_clean else None
-        else:
-            out[-1]["ocr_prompt_override"] = None
-
     return out
 
 
@@ -468,7 +459,6 @@ def paddle_preview_rois(image_path: Path) -> dict[str, Any]:
                 "w": max(ROI_MIN_SIZE, int(_coerce_int(line.get("w"), ROI_MIN_SIZE))),
                 "h": max(ROI_MIN_SIZE, int(_coerce_int(line.get("h"), ROI_MIN_SIZE))),
                 "llm_prompt_override": None,
-                "ocr_prompt_override": None,
             }
         )
     return {
@@ -509,15 +499,12 @@ def detect_rois_with_openai(
         "3) For MCQ blocks, include both question ROI (numeric name) and choice ROIs (e.g., 1a, 1b...).\n"
         "4) Coordinates must be integer pixels in the target image coordinate space.\n"
         "5) Every ROI must stay fully inside the image bounds.\n"
-        "6) For free-response/text ROIs, generate concise, field-specific prompt overrides.\n"
+        "6) For free-response/text ROIs, generate concise, field-specific LLM prompt overrides.\n"
         "6a) Prompt overrides must closely model the reference style and wording patterns.\n"
-        "6b) ocr_prompt_override must follow the Chinese template style used in the reference, including a JSON object to fill.\n"
-        "6c) ocr_prompt_override should begin with: 请按下列JSON格式输出图中信息:\n"
-        "6d) ocr_prompt_override JSON keys must be specific to the ROI use case (e.g., date parts, school_name, teacher_name, id, answer_letter, age).\n"
-        "6e) llm_prompt_override must be strict-normalizer style, ROI-specific, and return a single normalized value (or null when appropriate).\n"
-        "7) Always include llm_prompt_override and ocr_prompt_override keys for every ROI.\n"
-        "8) For MCQ ROIs, set llm_prompt_override=null and ocr_prompt_override=null.\n"
-        "9) For free-response/text ROIs, set both prompt override values to non-empty strings.\n"
+        "6b) llm_prompt_override must be strict-normalizer style, ROI-specific, and return a single normalized value (or null when appropriate).\n"
+        "7) Always include llm_prompt_override for every ROI.\n"
+        "8) For MCQ ROIs, set llm_prompt_override=null.\n"
+        "9) For free-response/text ROIs, set llm_prompt_override to a non-empty string.\n"
         "10) Do not hallucinate fields not supported by the document structure.\n"
         "11) Keep prompt text compact and consistent across similar ROI types.\n"
         "12) For ROI named 'id', infer bounds from target OCR header evidence only; do not use reference 'id' geometry priors.\n"

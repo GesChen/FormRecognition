@@ -33,7 +33,6 @@
       "id": "r105a3f021",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "13",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\" }\n```",
       "w": 339,
       "x": 119,
       "y": 376
@@ -43,7 +42,6 @@
       "id": "rf0f3b33ab",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "14",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\" }\n```",
       "w": 293,
       "x": 121,
       "y": 426
@@ -53,7 +51,6 @@
       "id": "r412cbd2a0",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "15",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer_letter\":\"\" }\n```",
       "w": 356,
       "x": 119,
       "y": 485
@@ -63,7 +60,6 @@
       "id": "r3fbb19b59",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "16",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\" }\n```",
       "w": 289,
       "x": 124,
       "y": 541
@@ -73,7 +69,6 @@
       "id": "rc0bd39d23",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "17",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\" }\n```",
       "w": 428,
       "x": 120,
       "y": 597
@@ -83,7 +78,6 @@
       "id": "r8e9a99071",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "18",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\" }\n```",
       "w": 439,
       "x": 124,
       "y": 649
@@ -93,7 +87,6 @@
       "id": "r174d5ee85",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "19",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"answer\":\"\" }\n```",
       "w": 360,
       "x": 121,
       "y": 705
@@ -151,9 +144,8 @@
       "id": "rab17ed836",
       "llm_prompt_override": "You are a strict text normalizer for ROI age extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be digits only (0-9), or null.\n- Remove surrounding words/symbols if a clear numeric age exists.\n- Do not output units, explanations, or placeholders.\n- If unreadable/unclear, return detected_text as null.\nTask:\n- Normalize OCR text into age digits.",
       "name": "21",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"age\":\"\" }\n```",
-      "w": 317,
-      "x": 61,
+      "w": 113,
+      "x": 265,
       "y": 847
     },
     {
@@ -265,7 +257,6 @@
       "id": "r21854cb36",
       "llm_prompt_override": "You are a strict text normalizer for ROI 'gender_self_describe'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the self-described gender text from OCR input.\n- Remove leading option labels and prompt text such as d, prefer to self-describe, colon.\n- Do not invent, infer, or explain.\n- If no handwritten or typed self-description is present, return detected_text as null.\nTask:\n- Normalize self-described gender text conservatively.",
       "name": "23d",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{ \"gender_self_describe\":\"\" }\n```",
       "w": 244,
       "x": 678,
       "y": 1121

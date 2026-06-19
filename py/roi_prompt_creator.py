@@ -1,7 +1,5 @@
 """
-ROI prompt creator helpers for:
-1) LLM text postprocess prompts (llm_prompt_override)
-2) OCR vision prompts (ocr_prompt_override)
+ROI prompt creator helpers for LLM text postprocess prompts (llm_prompt_override).
 """
 
 from __future__ import annotations
@@ -36,15 +34,6 @@ def _field_contract(dtype: str) -> str:
         "text": "detected_text must be plain extracted text or null.",
         "json": "detected_text must be a single compact JSON string literal or null.",
     }.get(d, "detected_text must be plain extracted text or null.")
-
-
-def _base_ocr_prompt_template() -> str:
-    return (
-        "You are a strict OCR field extractor.\n"
-        "Return ONE valid JSON object only, no markdown and no extra text.\n"
-        'Required schema: {"detected_text":"string"}\n'
-        "Extract only visible text from the ROI image.\n"
-    )
 
 
 def _build_llm_generator_prompt(
@@ -90,57 +79,6 @@ def _build_llm_generator_prompt(
         "- Preserve core safety/faithfulness constraints from the base prompt.\n"
         "- Adapt wording to ROI-specific requirements while keeping the output contract.\n\n"
         f"Base text-ROI LLM prompt template:\n{base_prompt}\n\n"
-        f"ROI name: {roi_label}\n"
-        f"Field data type: {dtype}\n"
-        f"Validation rules:\n{rules_block}\n"
-        f"User instruction:\n{instruction.strip()}\n"
-        f"{existing_block}"
-    )
-
-
-def _build_ocr_generator_prompt(
-    *,
-    instruction: str,
-    roi_name: str | None = None,
-    field_data_type: str | None = None,
-    validation_rules: str | None = None,
-    existing_prompt: str | None = None,
-) -> str:
-    roi_label = (roi_name or "").strip() or "(unnamed ROI)"
-    dtype = (field_data_type or "").strip() or "text"
-    rules = (validation_rules or "").strip()
-    existing = str(existing_prompt or "").strip()
-    base_prompt = _base_ocr_prompt_template().strip()
-    rules_block = rules if rules else "(not provided)"
-    existing_block = (
-        f"\nExisting prompt to revise (if useful):\n{existing}\n"
-        if existing
-        else "\nNo existing prompt was provided.\n"
-    )
-    return (
-        "You are a prompt engineer for OCR vision extraction.\n"
-        "Create ONE high-quality prompt text that will be sent directly to a vision OCR model for a single ROI crop image.\n"
-        "Return only the final prompt text. Do not include markdown fences, explanations, or notes.\n\n"
-        "Requirements for the prompt you produce:\n"
-        "- It must demand a strict structured output compatible with OCR workflow.\n"
-        "- It must explicitly reference reading visible content from an image crop.\n"
-        "- It must instruct the model not to invent unseen text.\n"
-        "- It must be specific to the user instruction.\n"
-        "- Keep it concise and production-ready.\n"
-        '- Include: "Return ONE valid JSON object only, no markdown and no extra text."\n'
-        '- Include this required schema key exactly: {"detected_text": "..."}\n'
-        "- Do not require custom JSON keys outside the workflow schema.\n\n"
-        "Strictness requirements:\n"
-        "- Force a single final value only.\n"
-        "- Forbid placeholder/filler outputs (e.g., string, detected_text, ---, ____, N/A).\n"
-        "- Forbid markup/noise artifacts and explanations.\n"
-        "- Explicitly require null when value is not clearly readable.\n"
-        f"- Field-type contract: {_field_contract(dtype)}\n\n"
-        "Important:\n"
-        "- Model the final prompt after the provided base OCR ID-style prompt.\n"
-        "- Preserve strictness and faithfulness behavior from the base prompt.\n"
-        "- Adapt wording to ROI-specific requirements while keeping the output contract.\n\n"
-        f"Base OCR ID-style prompt template:\n{base_prompt}\n\n"
         f"ROI name: {roi_label}\n"
         f"Field data type: {dtype}\n"
         f"Validation rules:\n{rules_block}\n"
@@ -283,64 +221,8 @@ def generate_roi_llm_prompt_stream(
     yield from _generate_stream_common(ask, model=model, timeout=timeout)
 
 
-def generate_roi_ocr_prompt(
-    instruction: str,
-    *,
-    roi_name: str | None = None,
-    field_data_type: str | None = None,
-    validation_rules: str | None = None,
-    existing_prompt: str | None = None,
-    model: str | None = None,
-    timeout: int = 120,
-) -> dict[str, Any]:
-    ins = str(instruction or "").strip()
-    if not ins:
-        raise ValueError("instruction is required")
-    ask = _build_ocr_generator_prompt(
-        instruction=ins,
-        roi_name=roi_name,
-        field_data_type=field_data_type,
-        validation_rules=validation_rules,
-        existing_prompt=existing_prompt,
-    )
-    return _generate_common(ask, model=model, timeout=timeout)
-
-
-def generate_roi_ocr_prompt_stream(
-    instruction: str,
-    *,
-    roi_name: str | None = None,
-    field_data_type: str | None = None,
-    validation_rules: str | None = None,
-    existing_prompt: str | None = None,
-    model: str | None = None,
-    timeout: int = 600,
-) -> Iterator[dict[str, Any]]:
-    ins = str(instruction or "").strip()
-    if not ins:
-        raise ValueError("instruction is required")
-    ask = _build_ocr_generator_prompt(
-        instruction=ins,
-        roi_name=roi_name,
-        field_data_type=field_data_type,
-        validation_rules=validation_rules,
-        existing_prompt=existing_prompt,
-    )
-    yield from _generate_stream_common(ask, model=model, timeout=timeout)
-
-
 def llm_generator_prompt_template_preview() -> str:
     return _build_llm_generator_prompt(
-        instruction="<user_instruction>",
-        roi_name="<roi_name>",
-        field_data_type="<field_data_type>",
-        validation_rules="<validation_rules>",
-        existing_prompt=None,
-    )
-
-
-def ocr_generator_prompt_template_preview() -> str:
-    return _build_ocr_generator_prompt(
         instruction="<user_instruction>",
         roi_name="<roi_name>",
         field_data_type="<field_data_type>",

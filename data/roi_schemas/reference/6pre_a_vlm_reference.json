@@ -12,10 +12,6 @@
       "llm_prompt_override": "You are a strict text normalizer for one OCR ROI field named \"date\".\nYou are NOT reading an image. You only receive OCR-extracted text.\nReturn ONE valid JSON object only, no markdown and no extra text.\n\nRequired schema:\n{\"detected_text\":\"string or null\"}\n\nTarget output format:\nMM/DD/YYYY\n\nRules:\n- Preserve meaning from OCR text; do not invent unseen digits.\n- If OCR contains structured JSON (for example keys like day/month/year), parse it first.\n- If year is 2 digits (YY), interpret as 20YY.\n- Zero-pad month and day to 2 digits.\n- Output only a valid calendar date in MM/DD/YYYY, or null.\n- If missing/unclear/invalid, set detected_text to null.\n- Forbid placeholders and artifacts (N/A, ---, string, markdown fences, explanations).\n\nOCR extracted text:\n<ocr_text>",
       "llm_validation_rules": "Must be a date.",
       "name": "date",
-      "ocr_field_data_type": "date",
-      "ocr_prompt_instruction": "Extract the date in ISO format",
-      "ocr_prompt_override": "请按下列JSON格式输出图中信息:\n```json\n{ \"month\":\"\", \"day\":\"\", \"year\":\"\" }\n```",
-      "ocr_validation_rules": "Must be an ISO Date",
       "w": 309,
       "x": 87,
       "y": 367
@@ -28,7 +24,6 @@
       "llm_prompt_override": "You are a strict text normalizer for ROI 'school'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the school name text from OCR input.\n- Do not invent, infer, or explain.\n- If OCR text is empty/unreadable, return detected_text as null.\nTask:\n- Normalize school name text conservatively.",
       "llm_validation_rules": "Must be a valid word",
       "name": "school",
-      "ocr_prompt_override": "请按下列JSON格式输出图中信息:\n```json\n{ \"school_name\":\"\" }\n```",
       "w": 209,
       "x": 618,
       "y": 368
@@ -41,7 +36,6 @@
       "llm_prompt_override": "You are a strict text normalizer for ROI 'teacher'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the teacher name text from OCR input.\n- Remove titles (Mr., Mrs., Ms., Dr.) when present.\n- Do not invent, infer, or explain.\n- If OCR text is empty/unreadable, return detected_text as null.\nTask:\n- Normalize teacher name text conservatively.",
       "llm_validation_rules": "Must be a name.",
       "name": "teacher",
-      "ocr_prompt_override": "请按下列JSON格式输出图中信息:\n```json\n{ \"teacher_name\":\"\" }\n```",
       "w": 188,
       "x": 1024,
       "y": 364
@@ -366,9 +360,6 @@
       "llm_prompt_override": "You are a strict JSON mapper.\nYou are NOT reading an image. You only receive OCR-extracted text.\n\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string\"}\n\nTask:\nMap the OCR JSON field \"id\" into pipeline field \"detected_text\".\n\nRules:\n1. If OCR text contains JSON and key \"id\" exists with a non-empty value, output:\n   {\"detected_text\":\"<id value exactly as-is>\"}\n2. If key \"id\" is missing, null, or empty, output:\n   {\"detected_text\":null}\n3. Do not normalize, correct, trim, or transform the id value.\n4. Do not add any extra keys or text.\n\nOCR extracted text:",
       "llm_validation_rules": "Must match ^[0-9]{7}[AB]$ or null",
       "name": "id",
-      "ocr_field_data_type": "id",
-      "ocr_prompt_instruction": "Extract ID with the format ID:XXXXXXXX and return null when unclear",
-      "ocr_prompt_override": "请按下列JSON格式输出图中信息:\n```json\n{ \"id\":\"\" }\n```",
       "w": 1242,
       "x": 0,
       "y": 0

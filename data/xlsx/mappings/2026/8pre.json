@@ -6,7 +6,10 @@
     {
       "type": "direct",
       "source": "id",
-      "column": "A"
+      "column": "A",
+      "comment": {
+        "text": "Value: {value}\nRaw: {raw}\nSource: {source}\nMapping type: {type}\nOCR confidence: {ocr_confidence}\nOCR confidence score: {ocr_confidence_score}\nOCR confidence label: {ocr_confidence_label}\nFile name: {file_name}\nPDF stem: {pdf_stem}\nPDF pages: {pdf_pages}\nPage numbers: {page_numbers}\nOdd page: {page_odd}\nEven page: {page_even}"
+      }
     },
     {
       "type": "direct",

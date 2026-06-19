@@ -9,7 +9,6 @@
       "id": "rxr1tmhkf",
       "llm_prompt_override": "You are a strict text normalizer for one OCR ROI field named \"date\".\nYou are NOT reading an image. You only receive OCR-extracted text.\nReturn ONE valid JSON object only, no markdown and no extra text.\n\nRequired schema:\n{\"detected_text\":\"string or null\"}\n\nTarget output format:\nMM/DD/YYYY\n\nRules:\n- Preserve meaning from OCR text; do not invent unseen digits.\n- If OCR contains structured JSON (for example keys like day/month/year), parse it first.\n- If year is 2 digits (YY), interpret as 20YY.\n- Zero-pad month and day to 2 digits.\n- Output only a valid calendar date in MM/DD/YYYY, or null.\n- If missing/unclear/invalid, set detected_text to null.\n- Forbid placeholders and artifacts (N/A, ---, string, markdown fences, explanations).\n\nOCR extracted text:\n<ocr_text>",
       "name": "date",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{\n\"day\":\"\"\n\"month\":\"\"\n\"year\":\"\"\n}\n```",
       "w": 321,
       "x": 82,
       "y": 386
@@ -18,7 +17,6 @@
       "h": 64,
       "id": "r2fsge3f5",
       "name": "school",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{\n  \"name\":\"\"\n}\n```",
       "w": 421,
       "x": 385,
       "y": 388
@@ -27,7 +25,6 @@
       "h": 67,
       "id": "rcsmp4tlf",
       "name": "teacher",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{\n  \"name\":\"\"\n}\n```",
       "w": 428,
       "x": 790,
       "y": 386
@@ -485,7 +482,6 @@
       "id": "rf1aox0tl",
       "llm_prompt_override": "You are a strict JSON mapper.\nYou are NOT reading an image. You only receive OCR-extracted text.\n\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string\"}\n\nTask:\nMap the OCR JSON field \"id\" into pipeline field \"detected_text\".\n\nRules:\n1. If OCR text contains JSON and key \"id\" exists with a non-empty value, output:\n   {\"detected_text\":\"<id value exactly as-is>\"}\n2. If key \"id\" is missing, null, or empty, output:\n   {\"detected_text\":null}\n3. Do not normalize, correct, trim, or transform the id value.\n4. Do not add any extra keys or text.\n\nOCR extracted text:",
       "name": "id",
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{\n  \"id\":\"\"\n}\n```",
       "w": 1242,
       "x": 0,
       "y": 0

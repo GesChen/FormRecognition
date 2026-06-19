@@ -359,9 +359,14 @@ def create_app() -> Flask:
             original_items = None
 
         try:
+            source_file_name = ""
+            pdf_path_value = data.get("pdf_path")
+            if pdf_path_value:
+                source_file_name = Path(str(pdf_path_value)).name
             out = fill_from_pipeline(
                 merged,
                 pdf_stem=str(pdf_stem),
+                source_file_name=source_file_name,
                 verbose=False,
                 original_items=original_items,
             )

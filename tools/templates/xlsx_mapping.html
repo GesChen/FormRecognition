@@ -495,7 +495,7 @@
               <th style="width:120px;">type</th>
               <th style="width:110px;">column</th>
               <th style="width:120px;">transform</th>
-              <th>map / choices / extras</th>
+              <th>map / choices / extras (comment JSON)</th>
               <th style="width:150px;">actions</th>
             </tr>
           </thead>
@@ -1093,7 +1093,8 @@ function setDirty(on) {
     preview.slice(0, 80).forEach(p => {
       const div = document.createElement("div");
       div.className = "preview-row";
-      div.innerHTML = `<code>${escapeHtml(p.column || "?")}</code> ${escapeHtml(p.source)}: ${escapeHtml(p.raw)} → <b>${escapeHtml(p.value)}</b>`;
+      const comment = p.comment ? `<div style="margin-top:4px;color:var(--muted);">comment: ${escapeHtml(p.comment)}</div>` : "";
+      div.innerHTML = `<code>${escapeHtml(p.column || "?")}</code> ${escapeHtml(p.source)}: ${escapeHtml(p.raw)} → <b>${escapeHtml(p.value)}</b>${comment}`;
       previewList.appendChild(div);
     });
   }

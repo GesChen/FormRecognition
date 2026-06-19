@@ -298,8 +298,7 @@
       "name": "17",
       "w": 543,
       "x": 121,
-      "y": 1131,
-      "ocr_prompt_override": "\u8bf7\u6309\u4e0b\u5217JSON\u683c\u5f0f\u8f93\u51fa\u56fe\u4e2d\u4fe1\u606f:\n```json\n{\n  \"What is your age?\":\"\"\n}\n```"
+      "y": 1131
     },
     {
       "h": 138,

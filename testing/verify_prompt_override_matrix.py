@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """
-Quick verifier for prompt-override behavior matrix on a debug JSON file.
+Quick verifier for LLM prompt-override behavior on a debug JSON file.
 
-Checks non-header text rows for four combinations:
-1) none        : no ocr override, no llm override
-2) ocr_only    : ocr override only
-3) llm_only    : llm override only
-4) both        : both ocr + llm overrides
+Checks non-header text rows for:
+1) none        : no llm override
+2) llm_only    : llm override
 
 Usage:
   python3 testing/verify_prompt_override_matrix.py output/recognition/<run>_debug.json
@@ -47,9 +45,9 @@ def main() -> int:
         if uid:
             llm_by_uid[uid] = row
 
-    counts = {"none": 0, "ocr_only": 0, "llm_only": 0, "both": 0}
-    seen = {"none": 0, "ocr_only": 0, "llm_only": 0, "both": 0}
-    examples = {"none": None, "ocr_only": None, "llm_only": None, "both": None}
+    counts = {"none": 0, "llm_only": 0}
+    seen = {"none": 0, "llm_only": 0}
+    examples = {"none": None, "llm_only": None}
 
     for page_idx, pd in enumerate(pages):
         if not isinstance(pd, dict):
@@ -64,14 +62,8 @@ def main() -> int:
             if not lrow:
                 continue
 
-            # infer overrides from prompt/debug metadata
-            ocr_override_used = bool(trow.get("prompt_override_used"))
             llm_override_used = bool(lrow.get("used_prompt_override"))
-            if ocr_override_used and llm_override_used:
-                key = "both"
-            elif ocr_override_used:
-                key = "ocr_only"
-            elif llm_override_used:
+            if llm_override_used:
                 key = "llm_only"
             else:
                 key = "none"
@@ -87,7 +79,7 @@ def main() -> int:
                 examples[key] = (uid, ocr_path, raw_ocr[:80], final[:80])
 
     print("Prompt Matrix Coverage")
-    for key in ("none", "ocr_only", "llm_only", "both"):
+    for key in ("none", "llm_only"):
         print(f"- {key}: {counts[key]} row(s)")
         ex = examples[key]
         if ex:
@@ -96,10 +88,10 @@ def main() -> int:
 
     # pass if all present categories are processed by both OCR+deferred (they are by construction)
     print("Verification")
-    for key in ("none", "ocr_only", "llm_only", "both"):
+    for key in ("none", "llm_only"):
         if counts[key]:
             print(f"- {key}: OK ({seen[key]}/{counts[key]} processed)")
-    missing = [k for k in ("none", "ocr_only", "llm_only", "both") if counts[k] == 0]
+    missing = [k for k in ("none", "llm_only") if counts[k] == 0]
     if missing:
         print(f"- note: missing categories in this run: {', '.join(missing)}")
     return 0
@@ -107,4 +99,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

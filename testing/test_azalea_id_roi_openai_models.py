@@ -66,7 +66,7 @@ class Roi:
     h: float
 
 
-def _load_id_roi(schema_path: Path) -> tuple[Roi, int | None, int | None, str | None]:
+def _load_id_roi(schema_path: Path) -> tuple[Roi, int | None, int | None]:
     raw = _read_json(schema_path)
     rois = raw.get("rois", [])
     for r in rois:
@@ -80,20 +80,17 @@ def _load_id_roi(schema_path: Path) -> tuple[Roi, int | None, int | None, str | 
             )
             ref_w = raw.get("image_width")
             ref_h = raw.get("image_height")
-            ocr_prompt = r.get("ocr_prompt_override")
             return (
                 roi,
                 int(ref_w) if ref_w is not None else None,
                 int(ref_h) if ref_h is not None else None,
-                str(ocr_prompt) if ocr_prompt is not None else None,
             )
     raise ValueError(f"ROI named 'id' not found in schema: {schema_path}")
 
 
-def _prompt_from_schema_or_fallback(schema_prompt: str | None) -> str:
+def _id_prompt() -> str:
     # Accuracy-focused prompt for ID extraction from this ROI.
     # Keep output machine-parseable and normalized.
-    _ = schema_prompt  # keep signature stable
     return (
         "Read the handwritten ID from this image crop.\n"
         "Return exactly one JSON object with this schema:\n"
@@ -470,8 +467,8 @@ def main() -> None:
     if not schema_path.exists():
         raise SystemExit(f"Schema not found: {schema_path}")
 
-    roi, ref_w, ref_h, schema_prompt = _load_id_roi(schema_path)
-    prompt_en = _prompt_from_schema_or_fallback(schema_prompt)
+    roi, ref_w, ref_h = _load_id_roi(schema_path)
+    prompt_en = _id_prompt()
 
     images = _pick_images(cache_dir, args.pattern, max(1, int(args.count)))
     models = [str(m).strip() for m in args.models if str(m).strip()]

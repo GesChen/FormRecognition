@@ -5,14 +5,14 @@ Supports either:
 1) image input directly, or
 2) PDF + page number, with automatic top-crop generation.
 
-The tester then runs vision-only OCR with an ID prompt preset and prints:
+The tester then runs the ID/form workflow and prints:
 - raw OCR JSON output
 - interpreted ID output
 - detailed debug metadata (especially with --verbose)
 
 Usage examples:
     python3 testing/test_vlm_id_prompt.py --pdf-path data/sample.pdf --page 1
-    python3 testing/test_vlm_id_prompt.py image.png --preset-key id --verbose
+    python3 testing/test_vlm_id_prompt.py image.png --verbose
     python3 testing/test_vlm_id_prompt.py --pdf-path data/sample.pdf --page 3 --json-only
 """
 
@@ -33,8 +33,7 @@ import cv2
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "py"))
 
-from config import ID_FORM_LLM, OCR_ENGINE, PATHS, PDF_TO_IMAGES
-from ocr_engine import ocr_raw_vision_only
+from config import ID_FORM_LLM, PATHS, PDF_TO_IMAGES
 from id_form_llm import extract_id_and_form_type
 
 try:
@@ -50,30 +49,6 @@ ID_SUFFIX_RE = re.compile(r"\b([A-Z0-9]{8})\b", flags=re.IGNORECASE)
 def _vprint(enabled: bool, message: str) -> None:
     if enabled:
         print(f"[vlm_id_tester] {message}")
-
-
-def _cfg_prompt_presets() -> dict[str, str]:
-    raw = OCR_ENGINE.get("prompt_presets", {}) if isinstance(OCR_ENGINE, dict) else {}
-    if not isinstance(raw, dict):
-        return {}
-    out: dict[str, str] = {}
-    for k, v in raw.items():
-        key = str(k).strip().lower()
-        txt = str(v or "").strip()
-        if key and txt:
-            out[key] = txt
-    return out
-
-
-def _select_prompt(preset_key: str | None) -> tuple[str | None, str | None]:
-    presets = _cfg_prompt_presets()
-    key = str(preset_key or "").strip().lower()
-    if not key:
-        return None, None
-    prompt = presets.get(key)
-    if not prompt:
-        return None, None
-    return prompt, key
 
 
 def _extract_id_candidates(parsed: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
@@ -232,13 +207,10 @@ def _prepare_image_input(
 def run_test(
     image_path: Path,
     *,
-    preset_key: str = "id",
     timeout: int | None = None,
     verbose: bool = False,
     input_meta: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
-    # Keep custom-prompt validation and metadata visibility.
-    prompt_override, effective_key = _select_prompt(preset_key)
     _vprint(verbose, f"running ID workflow on image={image_path}")
 
     crop_top_percent = None
@@ -274,7 +246,6 @@ def run_test(
     workflow_id = workflow_result.get("id") if isinstance(workflow_result, dict) else None
     if workflow_id:
         id_data["chosen_id"] = str(workflow_id).strip()
-    resolved_prompt = prompt_override or "(default ocr_engine prompt)"
 
     return {
         "meta": {
@@ -282,15 +253,10 @@ def run_test(
             "elapsed_sec": elapsed,
             "model": out.get("selected_model"),
             "selected_stage_index": out.get("selected_stage_index"),
-            "preset_key_requested": preset_key,
-            "preset_key_used": effective_key,
-            "prompt_override_used": bool(prompt_override),
             "needs_human_review": bool(out.get("needs_human_review", False)),
             "input": input_meta or {},
         },
-        "debug": {
-            "resolved_prompt": resolved_prompt,
-        },
+        "debug": {},
         "raw_output": out,
         "workflow_output": workflow_result,
         "interpreted": {
@@ -317,11 +283,6 @@ def _parse_args() -> argparse.Namespace:
         default=float(ID_FORM_LLM.get("crop_top_percent", 15.0)),
         help="Top-percent crop for PDF mode.",
     )
-    p.add_argument(
-        "--preset-key",
-        default="id",
-        help="Prompt preset key from OCR_ENGINE['prompt_presets'] (default: id)",
-    )
     p.add_argument("--timeout", type=int, default=None, help="OCR timeout (seconds).")
     p.add_argument(
         "--write-image",
@@ -333,7 +294,6 @@ def _parse_args() -> argparse.Namespace:
         default=None,
         help="Optional explicit output path for written image/crop.",
     )
-    p.add_argument("--print-prompt", action="store_true", help="Print resolved prompt text.")
     p.add_argument("--verbose", action="store_true", help="Verbose running/debug logs.")
     p.add_argument("--json-only", action="store_true", help="Print only JSON output.")
     return p.parse_args()
@@ -361,26 +321,6 @@ def main() -> None:
         print(f"Error preparing input: {exc}")
         sys.exit(1)
 
-    if str(args.preset_key).strip().lower() != "id":
-        print(
-            f"Warning: preset_key={args.preset_key!r} is ignored in workflow mode; "
-            "ID workflow always uses OCR prompt_mode='id'."
-        )
-
-    prompt_override, _ = _select_prompt("id")
-    if not prompt_override:
-        print(
-            "Warning: preset not found or empty; falling back to OCR engine default prompt "
-            "(requested key: 'id')"
-        )
-
-    if args.print_prompt or args.verbose:
-        print("=" * 72)
-        print("RESOLVED PROMPT")
-        print("=" * 72)
-        print(prompt_override or "(default ocr_engine prompt)")
-        print("=" * 72)
-
     if args.verbose:
         print("=" * 72)
         print("RUN INPUT")
@@ -390,7 +330,6 @@ def main() -> None:
     try:
         result = run_test(
             ocr_image_path,
-            preset_key=args.preset_key,
             timeout=args.timeout,
             verbose=bool(args.verbose),
             input_meta=input_meta,
@@ -419,8 +358,6 @@ def main() -> None:
     print(f"OCR image: {meta.get('ocr_image_path')}")
     print(f"Elapsed: {meta.get('elapsed_sec')}s")
     print(f"Model: {meta.get('model')}")
-    print(f"Preset requested: {meta.get('preset_key_requested')}")
-    print(f"Preset used: {meta.get('preset_key_used')}")
     print(f"Needs human review: {meta.get('needs_human_review')}")
     print(f"Input mode: {(meta.get('input') or {}).get('input_mode')}")
     if (meta.get("input") or {}).get("crop_image"):

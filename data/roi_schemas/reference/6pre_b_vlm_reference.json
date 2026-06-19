@@ -86,8 +86,7 @@
       "name": "13",
       "w": 349,
       "x": 543,
-      "y": 582,
-      "ocr_prompt_override": "请按下列JSON格式输出图中信息:\n```json\n{ \"answer_letter\":\"\" }\n```"
+      "y": 582
     },
     {
       "h": 60,
@@ -99,8 +98,7 @@
       "name": "14",
       "w": 347,
       "x": 770,
-      "y": 631,
-      "ocr_prompt_override": "请按下列JSON格式输出图中信息:\n```json\n{ \"answer_letter\":\"\" }\n```"
+      "y": 631
     },
     {
       "h": 45,
@@ -112,8 +110,7 @@
       "name": "15",
       "w": 353,
       "x": 60,
-      "y": 728,
-      "ocr_prompt_override": "请按下列JSON格式输出图中信息:\n```json\n{ \"answer_letter\":\"\" }\n```"
+      "y": 728
     },
     {
       "h": 52,
@@ -125,8 +122,7 @@
       "name": "16",
       "w": 287,
       "x": 797,
-      "y": 777,
-      "ocr_prompt_override": "请按下列JSON格式输出图中信息:\n```json\n{ \"answer_letter\":\"\" }\n```"
+      "y": 777
     },
     {
       "h": 47,
@@ -138,8 +134,7 @@
       "name": "17",
       "w": 427,
       "x": 531,
-      "y": 832,
-      "ocr_prompt_override": "请按下列JSON格式输出图中信息:\n```json\n{ \"answer_letter\":\"\" }\n```"
+      "y": 832
     },
     {
       "h": 53,
@@ -151,8 +146,7 @@
       "name": "18",
       "w": 440,
       "x": 605,
-      "y": 887,
-      "ocr_prompt_override": "请按下列JSON格式输出图中信息:\n```json\n{ \"answer_letter\":\"\" }\n```"
+      "y": 887
     },
     {
       "h": 48,
@@ -164,8 +158,7 @@
       "name": "19",
       "w": 356,
       "x": 791,
-      "y": 943,
-      "ocr_prompt_override": "请按下列JSON格式输出图中信息:\n```json\n{ \"answer_letter\":\"\" }\n```"
+      "y": 943
     },
     {
       "h": 71,
@@ -225,8 +218,7 @@
       "name": "21",
       "w": 100,
       "x": 270,
-      "y": 1174,
-      "ocr_prompt_override": "请按下列JSON格式输出图中信息:\n```json\n{ \"age\":\"\" }\n```"
+      "y": 1174
     },
     {
       "h": 137,

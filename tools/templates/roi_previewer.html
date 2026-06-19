@@ -356,16 +356,6 @@
           </div>
           <textarea id="llm-prompt" readonly placeholder="Select an ROI to view its LLM prompt."></textarea>
         </div>
-        <div>
-          <div class="prompt-header">
-            <span class="label">OCR Prompt</span>
-            <span class="prompt-actions">
-              <button type="button" class="copy-btn" id="btn-copy-ocr">Copy</button>
-              <span class="copy-status" id="copy-ocr-status"></span>
-            </span>
-          </div>
-          <textarea id="ocr-prompt" readonly placeholder="Select an ROI to view its OCR prompt."></textarea>
-        </div>
       </div>
     </div>
   </div>
@@ -405,11 +395,8 @@
   const postNormalizeEl = document.getElementById("post-normalize");
   const postNormalizeModeEl = document.getElementById("post-normalize-mode");
   const llmPromptEl = document.getElementById("llm-prompt");
-  const ocrPromptEl = document.getElementById("ocr-prompt");
   const btnCopyLlm = document.getElementById("btn-copy-llm");
-  const btnCopyOcr = document.getElementById("btn-copy-ocr");
   const copyLlmStatusEl = document.getElementById("copy-llm-status");
-  const copyOcrStatusEl = document.getElementById("copy-ocr-status");
 
   let imagePath = "";
   let currentSchemaPath = "";
@@ -584,7 +571,6 @@
       postNormalizeEl.checked = false;
       postNormalizeModeEl.textContent = "Select an ROI.";
       llmPromptEl.value = "";
-      ocrPromptEl.value = "";
       return;
     }
     ocrRegexEl.value = typeof roi.ocr_output_regex === "string" ? roi.ocr_output_regex : "";
@@ -593,7 +579,6 @@
       ? normalizedPostNormalizeMode(roi.post_normalize_mode)
       : "(off)";
     llmPromptEl.value = typeof roi.llm_prompt_override === "string" ? roi.llm_prompt_override : "";
-    ocrPromptEl.value = typeof roi.ocr_prompt_override === "string" ? roi.ocr_prompt_override : "";
   }
 
   function setCopyStatus(el, msg) {
@@ -851,7 +836,6 @@
   chkBoxes.addEventListener("change", draw);
   chkFill.addEventListener("change",  draw);
   btnCopyLlm.addEventListener("click", () => copyTextFrom(llmPromptEl, copyLlmStatusEl));
-  btnCopyOcr.addEventListener("click", () => copyTextFrom(ocrPromptEl, copyOcrStatusEl));
 
   /* --- Pan & zoom (middle/right-drag + scroll wheel) --- */
   canvas.addEventListener("mousedown", (e) => {

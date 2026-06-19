@@ -24,7 +24,14 @@ def _fixture(tmp_path: Path) -> dict:
         "start_row": 2,
         "mappings": [
             {"type": "direct", "source": "id", "column": "A"},
-            {"type": "direct", "source": "teacher", "column": "B"},
+            {
+                "type": "direct",
+                "source": "teacher",
+                "column": "B",
+                "comment": {
+                    "text": "Confidence: {ocr_confidence}\nFile: {file_name}\nPages: {pdf_pages}"
+                },
+            },
         ],
     }
     (mapping_dir / "6post.json").write_text(json.dumps(mapping), encoding="utf-8")
@@ -55,14 +62,30 @@ def _items(teacher: str) -> list[dict]:
         {
             "id": "123",
             "form_type": "6post",
-            "data": [{"name": "teacher", "kind": "text", "text": teacher}],
+            "page_odd": 5,
+            "page_even": 6,
+            "data": [
+                {
+                    "name": "teacher",
+                    "kind": "text",
+                    "text": teacher,
+                    "ocr_confidence_label": "high",
+                    "ocr_confidence_score": 0.98765,
+                }
+            ],
         }
     ]
 
 
 def test_fill_from_pipeline_keeps_single_sheet_without_original_items(tmp_path):
     cfg = _fixture(tmp_path)
-    out = fill_from_pipeline(_items("Peterson"), pdf_stem="single", cfg=cfg, verbose=False)
+    out = fill_from_pipeline(
+        _items("Peterson"),
+        pdf_stem="single",
+        source_file_name="original.pdf",
+        cfg=cfg,
+        verbose=False,
+    )
 
     wb = load_workbook(out)
     try:
@@ -70,6 +93,8 @@ def test_fill_from_pipeline_keeps_single_sheet_without_original_items(tmp_path):
         ws = wb["6th Grade Post-Assessment Data"]
         assert ws["A2"].value == "123"
         assert ws["B2"].value == "Peterson"
+        assert ws["B2"].comment is not None
+        assert ws["B2"].comment.text == "Confidence: high (0.988)\nFile: original.pdf\nPages: 5-6"
         assert ws.freeze_panes == "A2"
     finally:
         wb.close()

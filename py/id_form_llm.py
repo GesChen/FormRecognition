@@ -410,9 +410,8 @@ def _crop_top_and_ocr_form_type_with_raw(
     crop_top_percent: float,
     *,
     crop_debug_out: Path | None = None,
-    prompt_override: str | None = None,
 ) -> tuple[str, dict[str, Any]]:
-    """Top-crop OCR call dedicated to form_type extraction with optional custom prompt."""
+    """Top-crop OCR call dedicated to form_type extraction."""
     import cv2
     from ocr_engine import ocr_raw
 
@@ -431,7 +430,7 @@ def _crop_top_and_ocr_form_type_with_raw(
         tmp = Path(f.name)
     try:
         cv2.imwrite(str(tmp), cropped)
-        raw = ocr_raw(tmp, prompt_override=prompt_override)
+        raw = ocr_raw(tmp)
         raw_out = raw if isinstance(raw, dict) else {}
         text = str(raw_out.get("detected_text", "") or "").strip()
         return text, raw_out
@@ -553,11 +552,7 @@ def _ocr_roi_with_raw(
     if tmp is None:
         return "", {}
     try:
-        prompt_override = _roi_meta_value(roi, "ocr_prompt_override", "prompt_override") or None
-        raw = ocr_raw(
-            tmp,
-            prompt_override=prompt_override,
-        )
+        raw = ocr_raw(tmp)
         raw_out = raw if isinstance(raw, dict) else {}
         text = str(raw_out.get("detected_text", "") or "").strip()
         return text, raw_out
@@ -568,10 +563,10 @@ def _ocr_roi_with_raw(
 def _id_llm_meta_from_roi(roi: dict[str, Any]) -> dict[str, dict[str, Any]]:
     return {
         "id": {
-            "llm_field_data_type": _roi_meta_value(roi, "llm_field_data_type", "ocr_field_data_type"),
-            "llm_validation_rules": _roi_meta_value(roi, "llm_validation_rules", "ocr_validation_rules"),
-            "llm_prompt_instruction": _roi_meta_value(roi, "llm_prompt_instruction", "ocr_prompt_instruction"),
-            "llm_prompt_override": _roi_meta_value(roi, "llm_prompt_override", "ocr_prompt_override"),
+            "llm_field_data_type": _roi_meta_value(roi, "llm_field_data_type"),
+            "llm_validation_rules": _roi_meta_value(roi, "llm_validation_rules"),
+            "llm_prompt_instruction": _roi_meta_value(roi, "llm_prompt_instruction"),
+            "llm_prompt_override": _roi_meta_value(roi, "llm_prompt_override"),
         }
     }
 
@@ -1029,7 +1024,6 @@ def extract_id_and_form_type(
         path,
         crop_top_percent=pct,
         crop_debug_out=crop_dbg_form,
-        prompt_override=None,
     )
 
     if verbose:
@@ -1158,7 +1152,6 @@ def extract_id_and_form_type_batch(
             p,
             crop_top_percent=pct,
             crop_debug_out=dbg_form,
-            prompt_override=None,
         )
         uid = f"p{i}"
         if include_id and isinstance(raw_schema, dict) and isinstance(id_roi, dict):

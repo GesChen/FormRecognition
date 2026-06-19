@@ -5,6 +5,7 @@ Workflows:
 - ocr_raw_vision_only: direct local vision OCR call.
 - ocr_raw_paddle_only: Paddle OCR only, no vision fallback.
 - ocr_raw_paddle_then_vision: Paddle first (min-confidence gate), then local vision fallback.
+- ocr_raw_vision_with_paddle_confidence: vision text with Paddle confidence.
 
 Default ocr_raw() uses the configured default workflow.
 """
@@ -32,6 +33,13 @@ _LABEL_TO_SCORE = {
     "medium": 0.6,
     "high": 0.9,
 }
+
+_TEMP_TEXT_VLM_PROMPT = """Text recognition:
+```json
+{
+"text":""
+}
+```"""
 
 _paddle_engine = None
 
@@ -142,7 +150,11 @@ def _json_from_text(text: str) -> dict[str, Any]:
         s = m.group(1).strip()
     try:
         obj = json.loads(s)
-        return obj if isinstance(obj, dict) else {}
+        if isinstance(obj, dict):
+            if "detected_text" not in obj and "text" in obj:
+                obj["detected_text"] = obj.get("text")
+            return obj
+        return {}
     except json.JSONDecodeError:
         pass
     dec = json.JSONDecoder()
@@ -151,7 +163,11 @@ def _json_from_text(text: str) -> dict[str, Any]:
         return {}
     try:
         obj, _ = dec.raw_decode(s[i0:])
-        return obj if isinstance(obj, dict) else {}
+        if isinstance(obj, dict):
+            if "detected_text" not in obj and "text" in obj:
+                obj["detected_text"] = obj.get("text")
+            return obj
+        return {}
     except json.JSONDecodeError:
         return {}
 
@@ -275,25 +291,204 @@ def default_text_prompt() -> str:
     return _build_prompt()
 
 
-def _resolve_prompt(
-    *,
-    prompt_override: str | None = None,
-) -> tuple[str, str]:
+def _is_text_json_obj(obj: Any) -> bool:
+    return isinstance(obj, dict) and ("text" in obj or "detected_text" in obj)
+
+
+def _canonical_stream_json_obj(obj: dict[str, Any]) -> str:
+    try:
+        return json.dumps(obj, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    except (TypeError, ValueError):
+        return repr(obj)
+
+
+def _stream_text_json_blocks(text: str) -> list[dict[str, Any]]:
     """
-    Resolve the prompt text and effective mode.
+    Return completed OCR JSON objects found anywhere in streamed text.
 
-    Precedence:
-    1) explicit prompt_override (if non-empty and OCR prompts enabled)
-    2) default built-in prompt
+    This intentionally does not require markdown fences to close. Some VLMs emit:
+        ```json
+        {"text": "..."}
+        ```
+    and then keep generating more fenced JSON blocks. As soon as the object itself
+    is complete, the caller can safely stop reading.
     """
-    if not bool(_cfg().get("use_ocr_prompts", True)):
-        return _build_prompt(), "default"
+    s = str(text or "")
+    if not s:
+        return []
 
-    override = str(prompt_override or "").strip()
-    if override:
-        return override, "custom"
+    decoder = json.JSONDecoder()
+    blocks: list[dict[str, Any]] = []
+    seen_spans: set[tuple[int, int]] = set()
+    for match in re.finditer(r"\{", s):
+        start = match.start()
+        try:
+            obj, rel_end = decoder.raw_decode(s[start:])
+        except json.JSONDecodeError:
+            continue
+        if not _is_text_json_obj(obj):
+            continue
+        end = start + rel_end
+        span = (start, end)
+        if span in seen_spans:
+            continue
+        seen_spans.add(span)
+        blocks.append(
+            {
+                "mode": "json_object",
+                "start_index": start,
+                "end_index": end,
+                "obj": obj,
+                "canonical": _canonical_stream_json_obj(obj),
+            }
+        )
+    blocks.sort(key=lambda b: int(b.get("start_index", 0)))
+    return blocks
 
-    return _build_prompt(), "default"
+
+def _stream_text_json_completion(text: str) -> dict[str, int | str] | None:
+    """
+    Return metadata once the streamed text contains a complete {"text": ...} JSON block.
+    """
+    s = str(text or "")
+    if not s:
+        return None
+
+    blocks = _stream_text_json_blocks(s)
+    if blocks:
+        first = blocks[0]
+        return {
+            "mode": str(first.get("mode") or "json_object"),
+            "start_index": int(first.get("start_index", 0) or 0),
+            "end_index": int(first.get("end_index", 0) or 0),
+        }
+
+    fence = re.search(r"```(?:json)?\s*", s, flags=re.IGNORECASE)
+    if fence:
+        close = s.find("```", fence.end())
+        if close >= 0:
+            block = s[fence.end() : close].strip()
+            try:
+                obj = json.loads(block)
+            except json.JSONDecodeError:
+                obj = None
+            if _is_text_json_obj(obj):
+                return {"mode": "fenced_json", "end_index": close + 3}
+
+    start = s.find("{")
+    if start < 0:
+        return None
+    decoder = json.JSONDecoder()
+    try:
+        obj, end = decoder.raw_decode(s[start:])
+    except json.JSONDecodeError:
+        return None
+    if _is_text_json_obj(obj):
+        return {"mode": "raw_json", "end_index": start + end}
+    return None
+
+
+def _stream_text_json_repeat_completion(text: str) -> dict[str, int | str] | None:
+    """
+    Return metadata when streamed OCR output starts repeating JSON answers.
+
+    The returned end_index points to the end of the first completed JSON block,
+    so downstream parsing keeps the first answer and discards repeated tails.
+    """
+    blocks = _stream_text_json_blocks(text)
+    if len(blocks) < max(2, _cfg_int("vlm_repeat_json_min_blocks", 2)):
+        return None
+
+    first = blocks[0]
+    second = blocks[1]
+    stop: dict[str, int | str] = {
+        "mode": "repeated_json_blocks",
+        "start_index": int(first.get("start_index", 0) or 0),
+        "end_index": int(first.get("end_index", 0) or 0),
+        "block_count": len(blocks),
+    }
+    if first.get("canonical") == second.get("canonical"):
+        stop["mode"] = "repeated_identical_json"
+    return stop
+
+
+def _stream_repeated_tail_completion(text: str) -> dict[str, int | str] | None:
+    """
+    Detect exact repeated suffix loops in a stream.
+
+    This is a fallback for malformed generations that never yield a parseable
+    JSON object. It is intentionally conservative: the repeated unit must be
+    reasonably long and repeated several times at the end of the stream.
+    """
+    if not _cfg_bool("vlm_repeat_tail_stop_enabled", True):
+        return None
+
+    s = str(text or "")
+    min_unit = max(8, _cfg_int("vlm_repeat_tail_min_unit_chars", 24))
+    max_unit = max(min_unit, _cfg_int("vlm_repeat_tail_max_unit_chars", 240))
+    repeats = max(2, _cfg_int("vlm_repeat_tail_repeats", 3))
+    min_total = max(min_unit * repeats, _cfg_int("vlm_repeat_tail_min_total_chars", 80))
+    if len(s) < min_total:
+        return None
+
+    upper_unit = min(max_unit, len(s) // repeats)
+    for unit_len in range(min_unit, upper_unit + 1):
+        unit = s[-unit_len:]
+        if not unit.strip():
+            continue
+        repeated = unit * repeats
+        if not s.endswith(repeated):
+            continue
+        return {
+            "mode": "repeated_tail",
+            "end_index": len(s) - (unit_len * (repeats - 1)),
+            "repeat_unit_chars": unit_len,
+            "repeat_count": repeats,
+        }
+    return None
+
+
+def _stream_stop_completion(text: str) -> dict[str, int | str] | None:
+    """
+    Decide whether the current streamed text is complete enough to stop reading.
+    """
+    json_completion = _stream_text_json_completion(text)
+    if json_completion is not None:
+        json_completion = dict(json_completion)
+        json_completion["stop_reason"] = "json_completion"
+        return json_completion
+
+    if _cfg_bool("vlm_repeat_json_stop_enabled", True):
+        repeated_json = _stream_text_json_repeat_completion(text)
+        if repeated_json is not None:
+            repeated_json = dict(repeated_json)
+            repeated_json["stop_reason"] = "json_repeat"
+            return repeated_json
+
+    repeated_tail = _stream_repeated_tail_completion(text)
+    if repeated_tail is not None:
+        repeated_tail = dict(repeated_tail)
+        repeated_tail["stop_reason"] = "tail_repeat"
+        return repeated_tail
+    return None
+
+
+def _completed_json_from_stream(
+    text: str,
+    json_completion: dict[str, int | str] | None = None,
+) -> str:
+    """
+    Return the completed JSON block when streaming found its end.
+    """
+    s = str(text or "")
+    if isinstance(json_completion, dict):
+        try:
+            end_index = int(json_completion.get("end_index", 0))
+        except (TypeError, ValueError):
+            end_index = 0
+        if end_index > 0:
+            return s[:end_index]
+    return s
 
 
 def _local_vision_call(
@@ -308,9 +503,10 @@ def _local_vision_call(
     stream: bool,
     extra_params: dict[str, Any] | None,
 ) -> tuple[str, dict[str, Any]]:
+    effective_prompt = _TEMP_TEXT_VLM_PROMPT
     payload: dict[str, Any] = {
         "model": model,
-        "prompt": prompt,
+        "prompt": effective_prompt,
         "stream": bool(stream),
         "keep_alive": int(keep_alive),
         "images": [image_b64],
@@ -319,6 +515,73 @@ def _local_vision_call(
         payload.update(extra_params)
 
     url = f"http://{host}:{int(port)}/api/generate"
+    if bool(stream):
+        response_parts: list[str] = []
+        terminal_obj: dict[str, Any] = {}
+        json_completion: dict[str, int | str] | None = None
+        chunk_count = 0
+        with requests.post(url, json=payload, timeout=(10, timeout), stream=True) as resp:
+            if resp.status_code >= 400:
+                detail = (resp.text or "").strip()
+                if len(detail) > 1500:
+                    detail = detail[:1500] + "...(truncated)"
+                raise RuntimeError(f"HTTP {resp.status_code} error from {url}: {detail}")
+
+            for raw_line in resp.iter_lines(chunk_size=1, decode_unicode=False):
+                if not raw_line:
+                    continue
+                if isinstance(raw_line, bytes):
+                    line = raw_line.decode("utf-8", errors="replace").strip()
+                else:
+                    line = str(raw_line).strip()
+                if not line:
+                    continue
+                try:
+                    obj = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+
+                chunk_count += 1
+                delta = str(obj.get("response", "") or "")
+                if delta:
+                    response_parts.append(delta)
+                    full_so_far = "".join(response_parts)
+                    json_completion = _stream_stop_completion(full_so_far)
+                    if json_completion is not None:
+                        terminal_obj = obj
+                        break
+
+                if bool(obj.get("done")):
+                    terminal_obj = obj
+                    break
+
+        full_text = "".join(response_parts)
+        text = _completed_json_from_stream(
+            full_text,
+            json_completion,
+        )
+        body: dict[str, Any] = dict(terminal_obj or {})
+        body["response"] = text
+        body["streaming"] = {
+            "enabled": True,
+            "chunk_count": chunk_count,
+            "stopped_for_json_completion": json_completion is not None,
+            "stopped_for_stream_completion": json_completion is not None,
+            "stop_reason": (
+                str(json_completion.get("stop_reason"))
+                if isinstance(json_completion, dict) and json_completion.get("stop_reason")
+                else None
+            ),
+            "json_completion": json_completion,
+            "raw_response_chars": len(full_text),
+            "returned_response_chars": len(text),
+        }
+        body["prompt_override"] = {
+            "temporary_text_vlm_prompt": True,
+            "ignored_passed_prompt": prompt != effective_prompt,
+        }
+        return text, body
+
     resp = requests.post(url, json=payload, timeout=timeout)
     if resp.status_code >= 400:
         detail = (resp.text or "").strip()
@@ -327,6 +590,12 @@ def _local_vision_call(
         raise RuntimeError(f"HTTP {resp.status_code} error from {url}: {detail}")
     body = resp.json()
     text = str(body.get("response", "") or "")
+    if isinstance(body, dict):
+        body["streaming"] = {"enabled": False}
+        body["prompt_override"] = {
+            "temporary_text_vlm_prompt": True,
+            "ignored_passed_prompt": prompt != effective_prompt,
+        }
     return text, body
 
 
@@ -473,7 +742,6 @@ def _run_vision_stage(
     min_conf: float,
     verbose: bool,
     stage_index: int,
-    prompt_override: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     model = _cfg_str("model", "qwen2.5vl")
     host = _llm_host()
@@ -501,10 +769,8 @@ def _run_vision_stage(
         "vlm_slow_dropped_attempts": [],
     }
 
-    prompt_text, prompt_source = _resolve_prompt(
-        prompt_override=prompt_override,
-    )
-    stage["prompt_source"] = prompt_source
+    prompt_text = _build_prompt()
+    stage["prompt_source"] = "default"
 
     _vprint(verbose, f"stage {stage_index} begin model={model} (vision)")
     t0 = time.time()
@@ -642,12 +908,80 @@ def _build_output(
     }
 
 
+def _paddle_confidence_summary(
+    *,
+    paddle_stage: dict[str, Any],
+    paddle_full_out: dict[str, Any] | None,
+    include_raw: bool,
+) -> dict[str, Any]:
+    parsed = dict(paddle_stage.get("parsed") or {})
+    full = paddle_full_out if isinstance(paddle_full_out, dict) else {}
+    error = paddle_stage.get("error")
+
+    if error and not full and not parsed:
+        return {
+            "detected_text": "",
+            "confidence_label": None,
+            "confidence_score": None,
+            "needs_human_review": True,
+            "min_rec_score": None,
+            "mean_rec_score": None,
+            "rec_scores": [],
+            "rec_texts": [],
+            "selected_model": paddle_stage.get("model"),
+            "selected_stage_index": paddle_stage.get("stage_index"),
+            "self_evaluation": {},
+            "error": error,
+        }
+
+    rec_scores_raw = full.get("rec_scores") if full else []
+    rec_scores: list[float] = []
+    if isinstance(rec_scores_raw, list):
+        for x in rec_scores_raw:
+            try:
+                rec_scores.append(float(x))
+            except (TypeError, ValueError):
+                pass
+
+    rec_texts_raw = full.get("rec_texts") if full else []
+    rec_texts: list[str] = []
+    if isinstance(rec_texts_raw, list):
+        rec_texts = [str(t) for t in rec_texts_raw if str(t).strip()]
+
+    detected_text = str(full.get("detected_text") or parsed.get("detected_text") or "").strip()
+    score = _coerce_confidence_score(full or parsed)
+    label = _score_to_label(score)
+    min_rec_score = min(rec_scores) if rec_scores else score
+    mean_rec_score = (sum(rec_scores) / len(rec_scores)) if rec_scores else score
+    needs_review_raw = full.get("needs_human_review") if full else parsed.get("needs_human_review")
+    needs_review = _coerce_bool(needs_review_raw)
+    if needs_review is None:
+        needs_review = score < _cfg_float("paddle_min_confidence_for_accept", 0.90)
+
+    summary = {
+        "detected_text": detected_text,
+        "confidence_label": label,
+        "confidence_score": score,
+        "needs_human_review": bool(needs_review),
+        "min_rec_score": float(min_rec_score),
+        "mean_rec_score": float(mean_rec_score),
+        "rec_scores": rec_scores,
+        "rec_texts": rec_texts,
+        "selected_model": paddle_stage.get("model"),
+        "selected_stage_index": paddle_stage.get("stage_index"),
+        "self_evaluation": full.get("self_evaluation") or parsed.get("self_evaluation", {}),
+        "error": error,
+    }
+    if include_raw and full:
+        summary["raw_response"] = full.get("raw_response")
+    return summary
+
+
 def ocr_raw_vision_only(
     image_path: str | Path,
     *,
     timeout: int | None = None,
     verbose: bool = False,
-    prompt_override: str | None = None,
 ) -> dict[str, Any]:
     path = Path(image_path)
     if not path.exists():
@@ -669,7 +1003,6 @@ def ocr_raw_vision_only(
         min_conf=min_conf,
         verbose=verbose,
         stage_index=0,
-        prompt_override=prompt_override,
     )
     out = _build_output(
         chosen=stage,
@@ -686,13 +1019,80 @@ def ocr_raw_vision_only(
     return out
 
 
+def ocr_raw_vision_with_paddle_confidence(
+    image_path: str | Path,
+    *,
+    timeout: int | None = None,
+    verbose: bool = False,
+    force_paddle_failure: bool = False,
+) -> dict[str, Any]:
+    path = Path(image_path)
+    if not path.exists():
+        raise FileNotFoundError(f"Image not found: {path}")
+
+    call_timeout = int(timeout or _cfg_int("call_timeout_sec", 90))
+    min_conf = _cfg_float("min_confidence_for_accept", 0.82)
+
+    _vprint(verbose, f"start OCR vision_with_paddle_confidence image={Path(path).resolve()}")
+
+    vision_stage, image_meta = _run_vision_stage(
+        path,
+        timeout=call_timeout,
+        min_conf=min_conf,
+        verbose=verbose,
+        stage_index=0,
+    )
+    paddle_stage, paddle_full = _run_paddle_stage(
+        path,
+        verbose=verbose,
+        force_failure=force_paddle_failure,
+    )
+    stages = [vision_stage, paddle_stage]
+
+    out = _build_output(
+        chosen=vision_stage,
+        stages=[vision_stage],
+        min_conf=min_conf,
+        image_encode_meta=image_meta,
+        paddle_full_out=None,
+    )
+    out["stages"] = stages
+    out["text_source"] = "vision"
+
+    include_raw = _cfg_bool("include_paddle_confidence_raw", False)
+    paddle_confidence = _paddle_confidence_summary(
+        paddle_stage=paddle_stage,
+        paddle_full_out=paddle_full,
+        include_raw=include_raw,
+    )
+    out["paddle_confidence"] = paddle_confidence
+
+    if isinstance(paddle_full, dict) and not paddle_stage.get("error"):
+        out["confidence_source"] = "paddle"
+        out["confidence_label"] = paddle_confidence["confidence_label"]
+        out["confidence_score"] = paddle_confidence["confidence_score"]
+        out["needs_human_review"] = paddle_confidence["needs_human_review"]
+        out["min_rec_score"] = paddle_confidence["min_rec_score"]
+        out["mean_rec_score"] = paddle_confidence["mean_rec_score"]
+        out["rec_scores"] = paddle_confidence["rec_scores"]
+        out["rec_texts"] = paddle_confidence["rec_texts"]
+    else:
+        out["confidence_source"] = "fallback_vlm"
+
+    _vprint(
+        verbose,
+        f"final selected_model={out.get('selected_model')} selected_stage_index={out.get('selected_stage_index')} "
+        f"confidence_source={out.get('confidence_source')} needs_human_review={out.get('needs_human_review')}",
+    )
+    return out
+
+
 def ocr_raw_paddle_then_vision(
     image_path: str | Path,
     *,
     timeout: int | None = None,
     verbose: bool = False,
     force_paddle_failure: bool = False,
-    prompt_override: str | None = None,
 ) -> dict[str, Any]:
     path = Path(image_path)
     if not path.exists():
@@ -723,7 +1123,6 @@ def ocr_raw_paddle_then_vision(
             min_conf=min_conf,
             verbose=verbose,
             stage_index=1,
-            prompt_override=prompt_override,
         )
         stages.append(vision_stage)
         if vision_stage.get("error") and not vision_stage.get("parsed"):
@@ -752,7 +1151,6 @@ def ocr_raw_paddle_only(
     timeout: int | None = None,
     verbose: bool = False,
     force_paddle_failure: bool = False,
-    prompt_override: str | None = None,
 ) -> dict[str, Any]:
     path = Path(image_path)
     if not path.exists():
@@ -787,7 +1185,6 @@ def ocr_raw(
     timeout: int | None = None,
     verbose: bool = False,
     force_paddle_failure: bool = False,
-    prompt_override: str | None = None,
 ) -> dict[str, Any]:
     workflow = _workflow_default()
     if workflow in {"vision_only", "vision"}:
@@ -795,7 +1192,18 @@ def ocr_raw(
             image_path,
             timeout=timeout,
             verbose=verbose,
-            prompt_override=prompt_override,
+        )
+    if workflow in {
+        "vision_with_paddle_confidence",
+        "vlm_paddle_confidence",
+        "vision_paddle_confidence",
+        "vlm_with_paddle_confidence",
+    }:
+        return ocr_raw_vision_with_paddle_confidence(
+            image_path,
+            timeout=timeout,
+            verbose=verbose,
+            force_paddle_failure=force_paddle_failure,
         )
     if workflow in {"paddle_only", "paddle"}:
         return ocr_raw_paddle_only(
@@ -803,14 +1211,12 @@ def ocr_raw(
             timeout=timeout,
             verbose=verbose,
             force_paddle_failure=force_paddle_failure,
-            prompt_override=prompt_override,
         )
     return ocr_raw_paddle_then_vision(
         image_path,
         timeout=timeout,
         verbose=verbose,
         force_paddle_failure=force_paddle_failure,
-        prompt_override=prompt_override,
     )
 
 
@@ -821,6 +1227,8 @@ def ocr(image_path: str | Path) -> str:
 
 def ocr_confidence_stats(raw_result: dict[str, Any] | None) -> dict[str, Any]:
     raw = raw_result or {}
+    if not isinstance(raw, dict):
+        raw = {}
     score = _coerce_confidence_score(raw if isinstance(raw, dict) else {})
     label = _score_to_label(score)
 
@@ -849,7 +1257,7 @@ def ocr_confidence_stats(raw_result: dict[str, Any] | None) -> dict[str, Any]:
         text = str(raw.get("detected_text", "") or "")
         rec_texts = [text] if text else []
 
-    return {
+    out = {
         "min_rec_score": min_rec,
         "mean_rec_score": mean_rec,
         "rec_scores": rec_scores,
@@ -859,3 +1267,12 @@ def ocr_confidence_stats(raw_result: dict[str, Any] | None) -> dict[str, Any]:
         "selected_model": raw.get("selected_model"),
         "selected_stage_index": raw.get("selected_stage_index"),
     }
+    if "confidence_score" in raw:
+        out["confidence_score"] = score
+    if "confidence_source" in raw:
+        out["confidence_source"] = raw.get("confidence_source")
+    if "text_source" in raw:
+        out["text_source"] = raw.get("text_source")
+    if isinstance(raw.get("paddle_confidence"), dict):
+        out["paddle_confidence"] = raw.get("paddle_confidence")
+    return out

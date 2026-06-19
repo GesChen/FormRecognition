@@ -332,10 +332,10 @@ def postprocess_text_rois(
 
     for name, ocr_text in rows_iter:
         meta = (roi_meta_by_name or {}).get(name) or {}
-        field_data_type = _meta_str(meta, "llm_field_data_type", "ocr_field_data_type")
-        validation_rules = _meta_str(meta, "llm_validation_rules", "ocr_validation_rules")
-        instruction = _meta_str(meta, "llm_prompt_instruction", "ocr_prompt_instruction")
-        prompt_override = _meta_str(meta, "llm_prompt_override", "ocr_prompt_override")
+        field_data_type = _meta_str(meta, "llm_field_data_type")
+        validation_rules = _meta_str(meta, "llm_validation_rules")
+        instruction = _meta_str(meta, "llm_prompt_instruction")
+        prompt_override = _meta_str(meta, "llm_prompt_override")
         per_roi_extra = _merge_extra_params(
             _extra_params(),
             _meta_obj(meta, "llm_extra_params", "ocr_extra_params"),

@@ -790,8 +790,7 @@ def _run_ocr_regex_retry_step_queue(
             tmp_path = Path(tmp.name)
         try:
             cv2.imwrite(str(tmp_path), transformed)
-            prompt_override = str(entry.get("ocr_prompt_override", "") or "").strip() or None
-            raw = ocr_raw(tmp_path, prompt_override=prompt_override)
+            raw = ocr_raw(tmp_path)
             raw_out = raw if isinstance(raw, dict) else {}
             out[uid] = _normalize_text_value(raw_out.get("detected_text", ""))
         finally:
@@ -840,7 +839,6 @@ def _run_deferred_text_llm_postprocess(
                 "ocr_output_regex": row.get("_ocr_output_regex"),
                 "image_path": row.get("_ocr_retry_image_path"),
                 "bbox_xyxy": row.get("_ocr_retry_bbox_xyxy"),
-                "ocr_prompt_override": row.get("_ocr_retry_prompt_override"),
             }
             row_refs[uid] = row
 
@@ -947,7 +945,6 @@ def _run_deferred_text_llm_postprocess(
                         "uid": uid,
                         "image_path": ctx.get("image_path"),
                         "bbox_xyxy": ctx.get("bbox_xyxy"),
-                        "ocr_prompt_override": ctx.get("ocr_prompt_override"),
                     }
                 )
             step_ocr_texts = _run_ocr_regex_retry_step_queue(
@@ -1081,7 +1078,6 @@ def _run_deferred_text_llm_postprocess(
             row.pop("_ocr_output_regex", None)
             row.pop("_ocr_retry_image_path", None)
             row.pop("_ocr_retry_bbox_xyxy", None)
-            row.pop("_ocr_retry_prompt_override", None)
 
 
 def _build_pair_items(
@@ -1173,12 +1169,18 @@ def _build_pair_items(
                     pass
             if id_row_for_stats.get("ocr_confidence_label") is not None:
                 entry["id_ocr_confidence_label"] = str(id_row_for_stats.get("ocr_confidence_label")).lower()
+            if id_row_for_stats.get("ocr_confidence_source") is not None:
+                entry["id_ocr_confidence_source"] = str(id_row_for_stats.get("ocr_confidence_source"))
+            if id_row_for_stats.get("ocr_text_source") is not None:
+                entry["id_ocr_text_source"] = str(id_row_for_stats.get("ocr_text_source"))
             if id_row_for_stats.get("ocr_needs_human_review") is not None:
                 entry["id_ocr_needs_human_review"] = bool(id_row_for_stats.get("ocr_needs_human_review"))
             if id_row_for_stats.get("ocr_selected_model") is not None:
                 entry["id_ocr_selected_model"] = str(id_row_for_stats.get("ocr_selected_model"))
             if id_row_for_stats.get("ocr_selected_stage_index") is not None:
                 entry["id_ocr_selected_stage_index"] = id_row_for_stats.get("ocr_selected_stage_index")
+            if isinstance(id_row_for_stats.get("ocr_paddle_confidence"), dict):
+                entry["id_ocr_paddle_confidence"] = id_row_for_stats.get("ocr_paddle_confidence")
 
         items.append(entry)
 
@@ -1583,6 +1585,7 @@ def _run_workflow(
             xlsx_path = fill_from_pipeline(
                 items,
                 pdf_stem=output_stem,
+                source_file_name=pdf_path.name,
                 verbose=verbose,
                 original_items=items_original,
             )

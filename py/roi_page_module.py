@@ -367,22 +367,6 @@ def _serialize_raw_ocr(raw_result: dict[str, Any] | None) -> dict[str, Any]:
         return {"__repr__": repr(raw_result)}
 
 
-def _roi_ocr_prompt_override(meta: Dict[str, Any] | None) -> str | None:
-    """
-    Resolve optional legacy OCR prompt override from ROI metadata.
-    """
-    if not isinstance(meta, dict):
-        return None
-    for key in ("ocr_prompt_override", "prompt_override"):
-        value = meta.get(key)
-        if value is None:
-            continue
-        text = str(value).strip()
-        if text:
-            return text
-    return None
-
-
 def _roi_output_regex(meta: Dict[str, Any] | None) -> str | None:
     """
     Optional strict regex for final normalized ROI text.
@@ -515,18 +499,11 @@ def recognize_text_fields(
             cv2.imwrite(str(tmp_path), crop)
             roi_meta = getattr(roi, "meta", None)
             is_header_prompt_roi = str(roi.name or "").strip().lower() in {"id", "form_type"}
-            # ROI-only prompt routing:
-            # - default OCR prompt
-            # - optional per-ROI OCR override (ocr_prompt_override / prompt_override)
-            legacy_ocr_override = _roi_ocr_prompt_override(roi_meta)
             strict_regex = _roi_output_regex(roi_meta)
-            prompt_override = legacy_ocr_override
-            use_legacy_ocr_override = bool(legacy_ocr_override)
             if ocr_retry_meta_out is not None:
                 ocr_retry_meta_out[str(roi.name)] = {
                     "image_path": str(img_path),
                     "bbox_xyxy": [int(x1), int(y1), int(x2), int(y2)],
-                    "ocr_prompt_override": prompt_override,
                     "ocr_output_regex": strict_regex,
                 }
             need_raw = (
@@ -535,29 +512,20 @@ def recognize_text_fields(
                 or queue_enabled
             )
             if need_raw:
-                raw_out = ocr_raw(
-                    tmp_path,
-                    prompt_override=prompt_override,
-                )
+                raw_out = ocr_raw(tmp_path)
                 raw_result = raw_out if isinstance(raw_out, dict) else {}
                 text = str(raw_result.get("detected_text", "") or "")
                 if debug_collector is not None:
                     debug_collector["text_per_roi"][roi.name] = {
                         "text": text,
                         "raw_ocr": _serialize_raw_ocr(raw_result),
-                        "ocr_path": (
-                            "text_ocr_override" if use_legacy_ocr_override else "text_default"
-                        ),
-                        "prompt_override_used": use_legacy_ocr_override,
+                        "ocr_path": "text_default",
                     }
                 stats = ocr_confidence_stats(raw_result)
                 if ocr_confidence_out is not None:
                     ocr_confidence_out[roi.name] = stats
             else:
-                raw_out = ocr_raw(
-                    tmp_path,
-                    prompt_override=prompt_override,
-                )
+                raw_out = ocr_raw(tmp_path)
                 raw_result = raw_out if isinstance(raw_out, dict) else {}
                 text = str(raw_result.get("detected_text", "") or "")
                 stats = ocr_confidence_stats({})
@@ -917,7 +885,9 @@ def analyze_page(
     from ocr_human_review import make_review_target_ref
 
     hr_cfg = PDF_RECOGNITION.get("human_review") or {}
-    collect_ocr = bool(hr_cfg.get("enabled"))
+    # Keep OCR confidence in pipeline rows even when human review is disabled;
+    # later stages need the value as durable data, not only as review metadata.
+    collect_ocr = True
     ocr_conf: Dict[str, Any] = {}
     ocr_retry_meta: Dict[str, Dict[str, Any]] = {}
     review_ctx = None
@@ -954,15 +924,24 @@ def analyze_page(
             "name": str(name),
             "kind": "text",
             "text": "" if value is None else str(value),
+            "ocr_confidence_score": None,
+            "ocr_confidence_label": None,
+            "ocr_confidence_source": None,
+            "ocr_text_source": None,
         }
         if collect_ocr and name in ocr_conf:
             st = ocr_conf[name]
-            mn = st.get("min_rec_score")
+            mn = st.get("confidence_score")
+            if mn is None:
+                mn = st.get("min_rec_score")
             mean = st.get("mean_rec_score")
             label = st.get("confidence_label")
             review_flag = st.get("needs_human_review")
             model = st.get("selected_model")
             stage_index = st.get("selected_stage_index")
+            confidence_source = st.get("confidence_source")
+            text_source = st.get("text_source")
+            paddle_confidence = st.get("paddle_confidence")
             if mn is not None:
                 try:
                     score = round(float(mn), 6)
@@ -978,12 +957,18 @@ def analyze_page(
                     pass
             if label is not None:
                 row["ocr_confidence_label"] = str(label).lower()
+            if confidence_source is not None:
+                row["ocr_confidence_source"] = str(confidence_source)
+            if text_source is not None:
+                row["ocr_text_source"] = str(text_source)
             if review_flag is not None:
                 row["ocr_needs_human_review"] = bool(review_flag)
             if model is not None:
                 row["ocr_selected_model"] = str(model)
             if stage_index is not None:
                 row["ocr_selected_stage_index"] = stage_index
+            if isinstance(paddle_confidence, dict):
+                row["ocr_paddle_confidence"] = json.loads(json.dumps(paddle_confidence, default=str))
         if pdf_stem:
             row["review_target_ref"] = make_review_target_ref(
                 pdf_stem, pair_index, page_in_pair, str(name), "text"
@@ -992,25 +977,22 @@ def analyze_page(
         meta = text_meta_by_name.get(str(name), {})
         if meta:
             row["_llm_field_data_type"] = str(
-                meta.get("llm_field_data_type", meta.get("ocr_field_data_type", "")) or ""
+                meta.get("llm_field_data_type", "") or ""
             ).strip() or None
             row["_llm_validation_rules"] = str(
-                meta.get("llm_validation_rules", meta.get("ocr_validation_rules", "")) or ""
+                meta.get("llm_validation_rules", "") or ""
             ).strip() or None
             row["_llm_prompt_instruction"] = str(
-                meta.get("llm_prompt_instruction", meta.get("ocr_prompt_instruction", "")) or ""
+                meta.get("llm_prompt_instruction", "") or ""
             ).strip() or None
             row["_llm_prompt_override"] = str(
-                meta.get("llm_prompt_override", meta.get("ocr_prompt_override", "")) or ""
+                meta.get("llm_prompt_override", "") or ""
             ).strip() or None
             row["_ocr_output_regex"] = str(meta.get("ocr_output_regex", "") or "").strip() or None
         retry_meta = ocr_retry_meta.get(str(name), {})
         if retry_meta:
             row["_ocr_retry_image_path"] = str(retry_meta.get("image_path", "") or "").strip() or None
             row["_ocr_retry_bbox_xyxy"] = retry_meta.get("bbox_xyxy")
-            row["_ocr_retry_prompt_override"] = str(
-                retry_meta.get("ocr_prompt_override", "") or ""
-            ).strip() or None
             if row.get("_ocr_output_regex") in {None, ""}:
                 row["_ocr_output_regex"] = str(
                     retry_meta.get("ocr_output_regex", "") or ""

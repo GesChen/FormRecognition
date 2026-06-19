@@ -44,6 +44,21 @@ COLUMN_RE = re.compile(r"^[A-Z]{1,3}$")
 VALID_TYPES = {"direct", "lookup", "multi_column", "static"}
 VALID_TRANSFORMS = {"", "upper", "lower", "number", "date"}
 RESERVED_SOURCES = {"id", "form_type", "page_odd", "page_even"}
+COMMENT_PLACEHOLDERS = {
+    "{value}",
+    "{raw}",
+    "{source}",
+    "{type}",
+    "{ocr_confidence}",
+    "{ocr_confidence_score}",
+    "{ocr_confidence_label}",
+    "{file_name}",
+    "{pdf_stem}",
+    "{pdf_pages}",
+    "{page_numbers}",
+    "{page_odd}",
+    "{page_even}",
+}
 
 
 def _resolve_collection_root(path_value: Path | str, expected_leaf: str) -> Path:
@@ -358,6 +373,28 @@ def _validate_mapping(mapping: Any, *, release: str, form: str) -> dict[str, Any
             mark = row.get("mark")
             if mark is None or str(mark) == "":
                 issue("warning", "multi_column row has no mark value; pipeline defaults to Yes", idx)
+        comment = row.get("comment")
+        if comment is not None:
+            if isinstance(comment, str):
+                comment_text = comment
+            elif isinstance(comment, dict):
+                comment_text = str(
+                    comment.get("text")
+                    or comment.get("template")
+                    or comment.get("comment")
+                    or ""
+                )
+                replacements = comment.get("replacements")
+                if replacements is not None and not isinstance(replacements, (dict, list)):
+                    issue("warning", "comment.replacements should be an object or list", idx)
+            else:
+                comment_text = ""
+                issue("warning", "comment should be a string or object", idx)
+            if not comment_text.strip():
+                issue("warning", "comment has no text/template", idx)
+            for token in re.findall(r"\{[^{}\s]+\}", comment_text):
+                if token not in COMMENT_PLACEHOLDERS:
+                    issue("info", f"Comment placeholder {token!r} is not a built-in drop-in", idx)
         for col in _row_destinations(row):
             destinations.setdefault(col, []).append(idx)
 
@@ -413,6 +450,38 @@ def _sample_value(source: str) -> str:
     return f"sample {source}"
 
 
+def _preview_comment(row: dict[str, Any], *, source: str, raw: Any, value: Any) -> str:
+    comment = row.get("comment")
+    if isinstance(comment, str):
+        text = comment
+        replacements = {}
+    elif isinstance(comment, dict):
+        text = str(comment.get("text") or comment.get("template") or comment.get("comment") or "")
+        replacements = comment.get("replacements") if isinstance(comment.get("replacements"), dict) else {}
+    else:
+        return ""
+    drop_ins = {
+        "{value}": "" if value is None else str(value),
+        "{raw}": "" if raw is None else str(raw),
+        "{source}": source,
+        "{type}": str(row.get("type") or ""),
+        "{ocr_confidence}": "high (0.980)",
+        "{ocr_confidence_score}": "0.980",
+        "{ocr_confidence_label}": "high",
+        "{file_name}": "sample.pdf",
+        "{pdf_stem}": "sample",
+        "{pdf_pages}": "1-2",
+        "{page_numbers}": "1-2",
+        "{page_odd}": "1",
+        "{page_even}": "2",
+    }
+    for key, replacement in {str(k): str(v) for k, v in replacements.items()}.items():
+        text = text.replace(key, replacement)
+    for key, replacement in drop_ins.items():
+        text = text.replace(key, replacement)
+    return text.strip()
+
+
 def _preview_mapping(mapping: dict[str, Any]) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     rows = mapping.get("mappings") or []
@@ -425,19 +494,22 @@ def _preview_mapping(mapping: dict[str, Any]) -> list[dict[str, Any]]:
         source = str(row.get("source", "")).strip()
         raw = _sample_value(source) if source else ""
         if mtype == "static":
-            out.append({"row": idx, "column": str(row.get("column", "")), "source": "static", "raw": "", "value": row.get("value", "")})
+            value = row.get("value", "")
+            out.append({"row": idx, "column": str(row.get("column", "")), "source": "static", "raw": "", "value": value, "comment": _preview_comment(row, source="", raw=value, value=value)})
         elif mtype == "direct":
-            out.append({"row": idx, "column": str(row.get("column", "")), "source": source, "raw": raw, "value": _transform_value(raw, str(row.get("transform", "")))})
+            value = _transform_value(raw, str(row.get("transform", "")))
+            out.append({"row": idx, "column": str(row.get("column", "")), "source": source, "raw": raw, "value": value, "comment": _preview_comment(row, source=source, raw=raw, value=value)})
         elif mtype == "lookup":
             mp = row.get("map") if isinstance(row.get("map"), dict) else {}
             key = raw.strip().lower()
             value = mp.get(key, mp.get(raw, row.get("default", "")))
-            out.append({"row": idx, "column": str(row.get("column", "")), "source": source, "raw": raw, "value": value})
+            out.append({"row": idx, "column": str(row.get("column", "")), "source": source, "raw": raw, "value": value, "comment": _preview_comment(row, source=source, raw=raw, value=value)})
         elif mtype == "multi_column":
             choices = row.get("choices") if isinstance(row.get("choices"), dict) else {}
             key = raw.strip().lower()
             col = choices.get(key) or choices.get(raw) or row.get("no_answer", "")
-            out.append({"row": idx, "column": str(col), "source": source, "raw": raw, "value": row.get("mark", "Yes")})
+            value = row.get("mark", "Yes")
+            out.append({"row": idx, "column": str(col), "source": source, "raw": raw, "value": value, "comment": _preview_comment(row, source=source, raw=raw, value=value)})
     return out
 
 

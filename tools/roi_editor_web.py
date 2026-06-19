@@ -21,10 +21,7 @@ import roi_editor_core as core
 from roi_prompt_creator import (
     generate_roi_llm_prompt,
     generate_roi_llm_prompt_stream,
-    generate_roi_ocr_prompt,
-    generate_roi_ocr_prompt_stream,
     llm_generator_prompt_template_preview,
-    ocr_generator_prompt_template_preview,
 )
 from roi_auto_detector import detect_rois_with_openai, paddle_preview_rois
 try:
@@ -209,76 +206,6 @@ def create_app() -> Flask:
     def api_roi_prompt_template():
         try:
             template = llm_generator_prompt_template_preview()
-        except Exception as exc:
-            return jsonify({"error": f"Failed to build template: {exc}"}), 500
-        return jsonify({"ok": True, "template": template})
-
-    @app.route("/api/roi-ocr-prompt-generate", methods=["POST"])
-    def api_roi_ocr_prompt_generate():
-        body = request.get_json(silent=True) or {}
-        instruction = str(body.get("instruction", "")).strip()
-        if not instruction:
-            return jsonify({"error": "instruction is required"}), 400
-        roi_name = str(body.get("roi_name", "")).strip() or None
-        field_data_type = str(body.get("field_data_type", "")).strip() or None
-        validation_rules = str(body.get("validation_rules", "")).strip() or None
-        existing_prompt = str(body.get("existing_prompt", "")).strip() or None
-        try:
-            result = generate_roi_ocr_prompt(
-                instruction,
-                roi_name=roi_name,
-                field_data_type=field_data_type,
-                validation_rules=validation_rules,
-                existing_prompt=existing_prompt,
-            )
-        except ValueError as exc:
-            return jsonify({"error": str(exc)}), 400
-        except Exception as exc:
-            return jsonify({"error": f"Prompt generation failed: {exc}"}), 500
-        return jsonify(
-            {
-                "ok": True,
-                "prompt": result.get("prompt", ""),
-                "elapsed": result.get("elapsed"),
-                "model": result.get("model", ""),
-            }
-        )
-
-    @app.route("/api/roi-ocr-prompt-generate-stream", methods=["POST"])
-    def api_roi_ocr_prompt_generate_stream():
-        body = request.get_json(silent=True) or {}
-        instruction = str(body.get("instruction", "")).strip()
-        if not instruction:
-            return jsonify({"error": "instruction is required"}), 400
-        roi_name = str(body.get("roi_name", "")).strip() or None
-        field_data_type = str(body.get("field_data_type", "")).strip() or None
-        validation_rules = str(body.get("validation_rules", "")).strip() or None
-        existing_prompt = str(body.get("existing_prompt", "")).strip() or None
-
-        def _stream():
-            try:
-                for event in generate_roi_ocr_prompt_stream(
-                    instruction,
-                    roi_name=roi_name,
-                    field_data_type=field_data_type,
-                    validation_rules=validation_rules,
-                    existing_prompt=existing_prompt,
-                ):
-                    yield json.dumps(event, ensure_ascii=False) + "\n"
-            except ValueError as exc:
-                yield json.dumps({"type": "error", "error": str(exc)}, ensure_ascii=False) + "\n"
-            except Exception as exc:
-                yield json.dumps(
-                    {"type": "error", "error": f"Prompt generation failed: {exc}"},
-                    ensure_ascii=False,
-                ) + "\n"
-
-        return Response(stream_with_context(_stream()), mimetype="application/x-ndjson")
-
-    @app.route("/api/roi-ocr-prompt-template")
-    def api_roi_ocr_prompt_template():
-        try:
-            template = ocr_generator_prompt_template_preview()
         except Exception as exc:
             return jsonify({"error": f"Failed to build template: {exc}"}), 500
         return jsonify({"ok": True, "template": template})

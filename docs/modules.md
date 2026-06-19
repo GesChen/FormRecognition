@@ -208,6 +208,7 @@ Staged OCR module using PaddleOCR and/or a vision API, selected by
 - `vision_only`: direct vision OCR.
 - `paddle_only`: PaddleOCR only, with no vision fallback.
 - `paddle_then_vision`: PaddleOCR first, then vision fallback when Paddle confidence is low.
+- `vision_with_paddle_confidence`: vision OCR text with PaddleOCR confidence on the same image.
 
 ### Public functions
 
@@ -220,10 +221,19 @@ Runs OCR on one image and returns structured output:
 - `confidence_score` (0..1)
 - `needs_human_review`
 - `selected_model`, `selected_stage_index`
+- `confidence_source`, `text_source` for workflows that combine text and confidence sources
+- `paddle_confidence` summary when Paddle is used as a confidence source
 - `self_evaluation`
 - `stages` (per-stage response/debug data)
 
 `force_paddle_failure=True` is a test hook to force stage-0 Paddle to fail so API stages are exercised.
+Set `OCR_ENGINE["include_paddle_confidence_raw"] = True` to include Paddle's full raw response under
+`paddle_confidence["raw_response"]` for debug output.
+
+When the PDF pipeline writes recognition JSON, text rows in `items[].data[]` include OCR confidence fields:
+`ocr_confidence_score`, `ocr_confidence_label`, `ocr_confidence_source`, `ocr_text_source`, and
+`ocr_paddle_confidence` when Paddle confidence was available. ID rows also copy these to item-level
+`id_ocr_*` fields.
 
 #### `ocr(image_path, *, model_stages=None) -> str`
 

@@ -81,6 +81,59 @@ pull from the item's top-level fields.
 
 ## Mapping types
 
+### Optional cell comments
+
+Any mapping row that writes a cell can include a `comment`. The XLSX filler
+renders the comment and attaches it to the cell that was actually written.
+
+```json
+{
+  "source": "25",
+  "column": "AJ",
+  "type": "direct",
+  "comment": {
+    "text": "OCR confidence: {ocr_confidence}\nSource: {file_name}, PDF pages {pdf_pages}"
+  }
+}
+```
+
+`comment` may be a plain string or an object with `text`/`template` and optional
+literal replacements:
+
+```json
+{
+  "source": "25",
+  "column": "AJ",
+  "type": "direct",
+  "comment": {
+    "template": "Confidence: {{CONF}}\nFile: {file_name}",
+    "replacements": {
+      "{{CONF}}": "{ocr_confidence}"
+    }
+  }
+}
+```
+
+Built-in drop-ins:
+
+| Drop-in | Description |
+|---|---|
+| `{value}` | Final value written to the cell after transform/lookup. |
+| `{raw}` | Raw source value before transform/lookup. |
+| `{source}` | Mapping source name. |
+| `{type}` | Mapping type. |
+| `{ocr_confidence}` | Text OCR confidence label and score, e.g. `high (0.980)`. Available for text ROI cells and ID cells. |
+| `{ocr_confidence_score}` | Text OCR confidence score only. |
+| `{ocr_confidence_label}` | Text OCR confidence label only. |
+| `{file_name}` | Original PDF filename when available, otherwise the PDF stem. |
+| `{pdf_stem}` | Recognition/output PDF stem. |
+| `{pdf_pages}` / `{page_numbers}` | Item pages as a single string, e.g. `1-2` or `3`. |
+| `{page_odd}` | Odd/side-A PDF page number. |
+| `{page_even}` | Even/side-B PDF page number. |
+
+For `multi_column`, the comment is added only to the selected/no-answer cell,
+not to blanked unselected cells.
+
 ### 1. `direct` — write value as-is
 
 Use for **free-response text**, **MCQ letters**, **numbers**, **dates**, or any

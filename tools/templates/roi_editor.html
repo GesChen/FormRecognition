@@ -136,8 +136,7 @@
       flex: 0 0 auto;
       white-space: nowrap;
     }
-    #prompt-creator-modal .modal,
-    #ocr-prompt-creator-modal .modal {
+    #prompt-creator-modal .modal {
       width: min(440px, 92vw);
       min-width: 360px;
       max-width: 92vw;
@@ -147,27 +146,23 @@
       border: 1px solid var(--border);
       box-shadow: 0 20px 52px rgba(0, 0, 0, 0.5);
     }
-    #prompt-creator-modal .modal-body,
-    #ocr-prompt-creator-modal .modal-body {
+    #prompt-creator-modal .modal-body {
       min-height: 0;
       padding: 12px;
     }
-    #prompt-creator-modal,
-    #ocr-prompt-creator-modal {
+    #prompt-creator-modal {
       justify-content: flex-end;
       align-items: center;
       padding: 20px;
       background: rgba(0, 0, 0, 0.12);
     }
     @media (max-width: 980px) {
-      #prompt-creator-modal,
-      #ocr-prompt-creator-modal {
+      #prompt-creator-modal {
         justify-content: center;
         align-items: center;
         background: var(--overlay);
       }
-      #prompt-creator-modal .modal,
-      #ocr-prompt-creator-modal .modal {
+      #prompt-creator-modal .modal {
         min-width: 0;
         width: 96vw;
         height: auto;
@@ -176,8 +171,7 @@
         border: 1px solid var(--border);
         box-shadow: var(--shadow-modal);
       }
-      #prompt-creator-modal .modal-body,
-      #ocr-prompt-creator-modal .modal-body {
+      #prompt-creator-modal .modal-body {
         min-height: 300px;
       }
     }
@@ -692,57 +686,6 @@
       </div>
     </div>
   </div>
-  <div class="modal-overlay" id="ocr-prompt-creator-modal" aria-hidden="true">
-    <div class="modal">
-      <div class="modal-header">
-        <div>
-          <h3>OCR Prompt Creator</h3>
-          <div class="modal-breadcrumb">Generate a custom OCR prompt for the selected ROI image crop.</div>
-        </div>
-        <button type="button" class="btn" id="ocr-prompt-creator-close">Close</button>
-      </div>
-      <div class="modal-body">
-        <details class="inline-help">
-          <summary>What is this?</summary>
-          <div class="help-body">
-            Use these fields to generate a custom OCR prompt modeled after the ID OCR prompt style.
-            Generation fills the OCR prompt override field automatically.
-          </div>
-        </details>
-        <div class="field-group" style="margin-top:10px;">
-          <label for="ocr-roi-field-data-type">Field data type</label>
-          <select id="ocr-roi-field-data-type">
-            <option value="text">Text</option>
-            <option value="id">Identifier</option>
-            <option value="date">Date</option>
-            <option value="number">Number</option>
-            <option value="boolean">Boolean</option>
-            <option value="choice">Choice</option>
-            <option value="json">JSON</option>
-          </select>
-        </div>
-        <div class="field-group" style="margin-top:0;">
-          <label for="ocr-roi-validation-rules">Validation rules</label>
-          <textarea class="compact" id="ocr-roi-validation-rules" placeholder="Example: Must be ISO date; if unclear return null."></textarea>
-          <div class="field-hint">Optional extra constraints for generated OCR prompt.</div>
-        </div>
-        <div class="field-group" style="margin-top:0;">
-          <label for="ocr-roi-prompt-instruction">Creator instruction</label>
-          <textarea class="compact" id="ocr-roi-prompt-instruction" placeholder="Example: Extract ID in exact format ID:XXXXXXXX and return null when unclear."></textarea>
-          <div class="field-hint">Saved per ROI and used to generate the final OCR prompt.</div>
-        </div>
-        <details class="inline-help" id="ocr-roi-generator-template-wrap">
-          <summary>View OCR template</summary>
-          <div class="help-body">
-            <textarea class="prompt" id="ocr-roi-generator-template" readonly placeholder="Loading template..."></textarea>
-          </div>
-        </details>
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn subtle" id="btn-generate-ocr-roi-prompt">Generate OCR Prompt</button>
-      </div>
-    </div>
-  </div>
   <div class="main">
     <div class="left-panel">
       <div class="roi-list-shell">
@@ -789,15 +732,6 @@
         </div>
         <div class="btn-grid">
           <button type="button" class="btn subtle span-2" id="btn-open-prompt-creator">Open LLM Prompt Creator</button>
-        </div>
-        <div class="field-group" style="margin-top:10px;">
-          <label for="roi-ocr-prompt-override">Final OCR prompt (editable)</label>
-          <textarea class="prompt" id="roi-ocr-prompt-override" placeholder="Generated OCR prompt appears here. You can edit it."></textarea>
-          <div class="field-hint">Saved per ROI as <code>ocr_prompt_override</code>.</div>
-          <div class="stream-status" id="roi-ocr-prompt-stream-status">Idle.</div>
-        </div>
-        <div class="btn-grid">
-          <button type="button" class="btn subtle span-2" id="btn-open-ocr-prompt-creator">Open OCR Prompt Creator</button>
         </div>
         <div class="field-group" style="margin-top:10px;">
           <label for="roi-ocr-output-regex">Strict OCR Output Regex</label>
@@ -890,18 +824,9 @@
   const roiPromptStreamStatusEl = document.getElementById("roi-prompt-stream-status");
   const btnOpenPromptCreator = document.getElementById("btn-open-prompt-creator");
   const btnGenerateRoiPrompt = document.getElementById("btn-generate-roi-prompt");
-  const ocrRoiFieldDataTypeEl = document.getElementById("ocr-roi-field-data-type");
-  const ocrRoiValidationRulesEl = document.getElementById("ocr-roi-validation-rules");
-  const ocrRoiPromptInstructionEl = document.getElementById("ocr-roi-prompt-instruction");
-  const ocrRoiGeneratorTemplateWrapEl = document.getElementById("ocr-roi-generator-template-wrap");
-  const ocrRoiGeneratorTemplateEl = document.getElementById("ocr-roi-generator-template");
-  const roiOcrPromptOverrideEl = document.getElementById("roi-ocr-prompt-override");
   const roiOcrOutputRegexEl = document.getElementById("roi-ocr-output-regex");
   const roiPostNormalizeEl = document.getElementById("roi-post-normalize");
   const roiPostNormalizeModeEl = document.getElementById("roi-post-normalize-mode");
-  const roiOcrPromptStreamStatusEl = document.getElementById("roi-ocr-prompt-stream-status");
-  const btnOpenOcrPromptCreator = document.getElementById("btn-open-ocr-prompt-creator");
-  const btnGenerateOcrRoiPrompt = document.getElementById("btn-generate-ocr-roi-prompt");
   const btnAutoDetect = document.getElementById("btn-auto-detect");
   const btnBatchAutoDetect = document.getElementById("btn-batch-auto-detect");
   const autoDetectSplit = document.getElementById("auto-detect-split");
@@ -924,9 +849,7 @@
   const AUTOSAVE_DELAY_MS = 1500;
   let autosaveTimer = null;
   let roiGeneratorTemplateLoaded = false;
-  let ocrRoiGeneratorTemplateLoaded = false;
   let promptGenAbortController = null;
-  let ocrPromptGenAbortController = null;
   const UNDO_LIMIT = 100;
   const undoStack = [];
   const redoStack = [];
@@ -1254,14 +1177,6 @@
       roiPromptInstructionEl.disabled = true;
       roiPromptOverrideEl.value = "";
       roiPromptOverrideEl.disabled = true;
-      ocrRoiFieldDataTypeEl.value = "text";
-      ocrRoiFieldDataTypeEl.disabled = true;
-      ocrRoiValidationRulesEl.value = "";
-      ocrRoiValidationRulesEl.disabled = true;
-      ocrRoiPromptInstructionEl.value = "";
-      ocrRoiPromptInstructionEl.disabled = true;
-      roiOcrPromptOverrideEl.value = "";
-      roiOcrPromptOverrideEl.disabled = true;
       roiOcrOutputRegexEl.value = "";
       roiOcrOutputRegexEl.disabled = true;
       roiPostNormalizeEl.checked = false;
@@ -1269,11 +1184,8 @@
       roiPostNormalizeModeEl.value = "aggressive";
       roiPostNormalizeModeEl.disabled = true;
       setPromptStreamStatus("Idle.", null);
-      setOcrPromptStreamStatus("Idle.", null);
       btnOpenPromptCreator.disabled = true;
       btnGenerateRoiPrompt.disabled = true;
-      btnOpenOcrPromptCreator.disabled = true;
-      btnGenerateOcrRoiPrompt.disabled = true;
       return;
     }
     roiFieldDataTypeEl.disabled = false;
@@ -1292,22 +1204,6 @@
     roiPromptOverrideEl.value = (typeof roi.llm_prompt_override === "string")
       ? roi.llm_prompt_override
       : "";
-    ocrRoiFieldDataTypeEl.disabled = false;
-    ocrRoiFieldDataTypeEl.value = (typeof roi.ocr_field_data_type === "string" && roi.ocr_field_data_type.trim())
-      ? roi.ocr_field_data_type
-      : "text";
-    ocrRoiValidationRulesEl.disabled = false;
-    ocrRoiValidationRulesEl.value = (typeof roi.ocr_validation_rules === "string")
-      ? roi.ocr_validation_rules
-      : "";
-    ocrRoiPromptInstructionEl.disabled = false;
-    ocrRoiPromptInstructionEl.value = (typeof roi.ocr_prompt_instruction === "string")
-      ? roi.ocr_prompt_instruction
-      : "";
-    roiOcrPromptOverrideEl.disabled = false;
-    roiOcrPromptOverrideEl.value = (typeof roi.ocr_prompt_override === "string")
-      ? roi.ocr_prompt_override
-      : "";
     roiOcrOutputRegexEl.disabled = false;
     roiOcrOutputRegexEl.value = (typeof roi.ocr_output_regex === "string")
       ? roi.ocr_output_regex
@@ -1317,11 +1213,8 @@
     roiPostNormalizeModeEl.disabled = roi.post_normalize !== true;
     roiPostNormalizeModeEl.value = normalizedPostNormalizeMode(roi.post_normalize_mode);
     setPromptStreamStatus("Idle.", null);
-    setOcrPromptStreamStatus("Idle.", null);
     btnOpenPromptCreator.disabled = false;
     btnGenerateRoiPrompt.disabled = false;
-    btnOpenOcrPromptCreator.disabled = false;
-    btnGenerateOcrRoiPrompt.disabled = false;
   }
 
   function setStatus(msg) {
@@ -1452,13 +1345,6 @@
     if (kind) roiPromptStreamStatusEl.classList.add(kind);
   }
 
-  function setOcrPromptStreamStatus(text, kind) {
-    if (!roiOcrPromptStreamStatusEl) return;
-    roiOcrPromptStreamStatusEl.textContent = text || "";
-    roiOcrPromptStreamStatusEl.classList.remove("generating", "done", "error");
-    if (kind) roiOcrPromptStreamStatusEl.classList.add(kind);
-  }
-
   async function loadGeneratorTemplatePreview() {
     if (roiGeneratorTemplateLoaded) return;
     if (!roiGeneratorTemplateEl) return;
@@ -1483,30 +1369,6 @@
     }
   }
 
-  async function loadOcrGeneratorTemplatePreview() {
-    if (ocrRoiGeneratorTemplateLoaded) return;
-    if (!ocrRoiGeneratorTemplateEl) return;
-    ocrRoiGeneratorTemplateEl.value = "Loading template...";
-    try {
-      const r = await fetch("/api/roi-ocr-prompt-template?ts=" + Date.now());
-      const contentType = String(r.headers.get("content-type") || "").toLowerCase();
-      let data = null;
-      if (contentType.includes("application/json")) {
-        data = await r.json();
-      } else {
-        const raw = await r.text();
-        throw new Error(raw ? raw.slice(0, 240) : "Non-JSON response from server.");
-      }
-      if (!r.ok || !data || !data.ok) {
-        throw new Error((data && data.error) ? data.error : "Failed to load template.");
-      }
-      ocrRoiGeneratorTemplateEl.value = String(data.template || "").trim();
-      ocrRoiGeneratorTemplateLoaded = true;
-    } catch (err) {
-      ocrRoiGeneratorTemplateEl.value = `Template unavailable: ${err instanceof Error ? err.message : String(err)}`;
-    }
-  }
-
   const browseModal = document.getElementById("browse-modal");
   const browseBody = document.getElementById("browse-body");
   const browseTitle = document.getElementById("browse-title");
@@ -1517,7 +1379,6 @@
   const importBody = document.getElementById("import-body");
   const importSourceLabel = document.getElementById("import-source-label");
   const promptCreatorModal = document.getElementById("prompt-creator-modal");
-  const ocrPromptCreatorModal = document.getElementById("ocr-prompt-creator-modal");
   const importSelectAllBtn = document.getElementById("import-select-all");
   const importSelectNoneBtn = document.getElementById("import-select-none");
   const importConfirmBtn = document.getElementById("import-confirm");
@@ -2107,11 +1968,6 @@
               : "";
             if (dt) out.llm_field_data_type = dt;
             else delete out.llm_field_data_type;
-            const ocrDt = typeof out.ocr_field_data_type === "string"
-              ? out.ocr_field_data_type.trim()
-              : "";
-            if (ocrDt) out.ocr_field_data_type = ocrDt;
-            else delete out.ocr_field_data_type;
             // Deprecated field: keep removing it from saved schema.
             delete out.ocr_output_format;
             const vr = typeof out.llm_validation_rules === "string"
@@ -2119,31 +1975,16 @@
               : "";
             if (vr) out.llm_validation_rules = vr;
             else delete out.llm_validation_rules;
-            const ocrVr = typeof out.ocr_validation_rules === "string"
-              ? out.ocr_validation_rules.trim()
-              : "";
-            if (ocrVr) out.ocr_validation_rules = ocrVr;
-            else delete out.ocr_validation_rules;
             const ins = typeof out.llm_prompt_instruction === "string"
               ? out.llm_prompt_instruction.trim()
               : "";
             if (ins) out.llm_prompt_instruction = ins;
             else delete out.llm_prompt_instruction;
-            const ocrIns = typeof out.ocr_prompt_instruction === "string"
-              ? out.ocr_prompt_instruction.trim()
-              : "";
-            if (ocrIns) out.ocr_prompt_instruction = ocrIns;
-            else delete out.ocr_prompt_instruction;
             const pov = typeof out.llm_prompt_override === "string"
               ? out.llm_prompt_override.trim()
               : "";
             if (pov) out.llm_prompt_override = pov;
             else delete out.llm_prompt_override;
-            const ocrPov = typeof out.ocr_prompt_override === "string"
-              ? out.ocr_prompt_override.trim()
-              : "";
-            if (ocrPov) out.ocr_prompt_override = ocrPov;
-            else delete out.ocr_prompt_override;
             const ocrRx = typeof out.ocr_output_regex === "string"
               ? out.ocr_output_regex.trim()
               : "";
@@ -2759,24 +2600,6 @@
       }
     });
   }
-  btnOpenOcrPromptCreator.addEventListener("click", () => {
-    if (!getPrimaryRoi()) {
-      alert("Select an ROI first.");
-      return;
-    }
-    ocrPromptCreatorModal.classList.add("open");
-    ocrPromptCreatorModal.setAttribute("aria-hidden", "false");
-    if (ocrRoiGeneratorTemplateWrapEl && ocrRoiGeneratorTemplateWrapEl.open) {
-      loadOcrGeneratorTemplatePreview();
-    }
-  });
-  if (ocrRoiGeneratorTemplateWrapEl) {
-    ocrRoiGeneratorTemplateWrapEl.addEventListener("toggle", () => {
-      if (ocrRoiGeneratorTemplateWrapEl.open) {
-        loadOcrGeneratorTemplatePreview();
-      }
-    });
-  }
   roiFieldDataTypeEl.addEventListener("change", () => {
     const roi = getPrimaryRoi();
     if (!roi) return;
@@ -2807,38 +2630,6 @@
     const value = roiPromptOverrideEl.value || "";
     if (value.trim()) roi.llm_prompt_override = value;
     else delete roi.llm_prompt_override;
-    scheduleAutosave();
-  });
-  ocrRoiFieldDataTypeEl.addEventListener("change", () => {
-    const roi = getPrimaryRoi();
-    if (!roi) return;
-    const value = (ocrRoiFieldDataTypeEl.value || "text").trim();
-    if (value) roi.ocr_field_data_type = value;
-    else delete roi.ocr_field_data_type;
-    scheduleAutosave();
-  });
-  ocrRoiValidationRulesEl.addEventListener("input", () => {
-    const roi = getPrimaryRoi();
-    if (!roi) return;
-    const value = ocrRoiValidationRulesEl.value || "";
-    if (value.trim()) roi.ocr_validation_rules = value;
-    else delete roi.ocr_validation_rules;
-    scheduleAutosave();
-  });
-  ocrRoiPromptInstructionEl.addEventListener("input", () => {
-    const roi = getPrimaryRoi();
-    if (!roi) return;
-    const value = ocrRoiPromptInstructionEl.value || "";
-    if (value.trim()) roi.ocr_prompt_instruction = value;
-    else delete roi.ocr_prompt_instruction;
-    scheduleAutosave();
-  });
-  roiOcrPromptOverrideEl.addEventListener("input", () => {
-    const roi = getPrimaryRoi();
-    if (!roi) return;
-    const value = roiOcrPromptOverrideEl.value || "";
-    if (value.trim()) roi.ocr_prompt_override = value;
-    else delete roi.ocr_prompt_override;
     scheduleAutosave();
   });
   roiOcrOutputRegexEl.addEventListener("input", () => {
@@ -2994,130 +2785,6 @@
       btnGenerateRoiPrompt.classList.remove("working");
     }
   });
-  btnGenerateOcrRoiPrompt.addEventListener("click", async () => {
-    const roi = getPrimaryRoi();
-    if (!roi) {
-      alert("Select an ROI first.");
-      return;
-    }
-    const instruction = (ocrRoiPromptInstructionEl.value || "").trim();
-    if (!instruction) {
-      alert("Add an OCR creator instruction first.");
-      return;
-    }
-    if (ocrPromptGenAbortController) {
-      try { ocrPromptGenAbortController.abort(); } catch (e) {}
-      ocrPromptGenAbortController = null;
-    }
-    btnGenerateOcrRoiPrompt.disabled = true;
-    btnGenerateOcrRoiPrompt.classList.add("working");
-    ocrPromptCreatorModal.classList.remove("open");
-    ocrPromptCreatorModal.setAttribute("aria-hidden", "true");
-    setStatus("Generating OCR ROI prompt...");
-    setOcrPromptStreamStatus("Generating OCR prompt...", "generating");
-    const existingPromptBeforeGen = roiOcrPromptOverrideEl.value || "";
-    ocrPromptGenAbortController = new AbortController();
-    const reqPayload = {
-      instruction,
-      roi_name: roi.name || "",
-      field_data_type: ocrRoiFieldDataTypeEl.value || "text",
-      validation_rules: ocrRoiValidationRulesEl.value || "",
-      existing_prompt: existingPromptBeforeGen,
-    };
-    try {
-      const r = await fetch("/api/roi-ocr-prompt-generate-stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        signal: ocrPromptGenAbortController.signal,
-        body: JSON.stringify(reqPayload),
-      });
-      if (!r.ok || !r.body) {
-        const txt = await r.text();
-        throw new Error(txt || "OCR prompt generation failed.");
-      }
-      const reader = r.body.getReader();
-      const decoder = new TextDecoder();
-      let buf = "";
-      let modelName = "";
-      let fullPrompt = "";
-      let doneSeen = false;
-      const handleStreamEvent = (evt) => {
-        const t = String(evt.type || "");
-        if (t === "start") {
-          modelName = String(evt.model || "");
-          return;
-        }
-        if (t === "chunk") {
-          const delta = String(evt.delta || "");
-          if (!delta) return;
-          fullPrompt += delta;
-          roiOcrPromptOverrideEl.value = fullPrompt;
-          roi.ocr_prompt_override = fullPrompt;
-          return;
-        }
-        if (t === "done") {
-          const finalPrompt = String(evt.prompt || fullPrompt || "").trim();
-          fullPrompt = finalPrompt;
-          roiOcrPromptOverrideEl.value = finalPrompt;
-          if (finalPrompt) roi.ocr_prompt_override = finalPrompt;
-          else delete roi.ocr_prompt_override;
-          scheduleAutosave();
-          doneSeen = true;
-          const modelTxt = modelName ? ` (${modelName})` : "";
-          setStatus("OCR prompt generated" + modelTxt + ".");
-          setOcrPromptStreamStatus("Generation finished.", "done");
-          return;
-        }
-        if (t === "error") {
-          throw new Error(String(evt.error || "OCR prompt generation failed."));
-        }
-      };
-      while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        buf += decoder.decode(value, { stream: true });
-        const lines = buf.split("\n");
-        buf = lines.pop() || "";
-        for (const rawLine of lines) {
-          const line = rawLine.trim();
-          if (!line) continue;
-          let evt;
-          try {
-            evt = JSON.parse(line);
-          } catch (e) {
-            continue;
-          }
-          handleStreamEvent(evt);
-        }
-      }
-      const tail = buf.trim();
-      if (tail) {
-        try {
-          const evt = JSON.parse(tail);
-          handleStreamEvent(evt);
-        } catch (e) {
-        }
-      }
-      if (!doneSeen) {
-        const finalPrompt = String(fullPrompt || "").trim();
-        roiOcrPromptOverrideEl.value = finalPrompt;
-        if (finalPrompt) roi.ocr_prompt_override = finalPrompt;
-        else delete roi.ocr_prompt_override;
-        scheduleAutosave();
-        setStatus("OCR prompt generated.");
-        setOcrPromptStreamStatus("Generation finished.", "done");
-      }
-    } catch (err) {
-      setStatus("OCR prompt generation failed.");
-      setOcrPromptStreamStatus("Generation failed.", "error");
-      alert(String(err));
-    } finally {
-      ocrPromptGenAbortController = null;
-      const selected = !!getPrimaryRoi();
-      btnGenerateOcrRoiPrompt.disabled = !selected;
-      btnGenerateOcrRoiPrompt.classList.remove("working");
-    }
-  });
   document.getElementById("prompt-creator-close").addEventListener("click", () => {
     promptCreatorModal.classList.remove("open");
     promptCreatorModal.setAttribute("aria-hidden", "true");
@@ -3128,23 +2795,11 @@
       promptCreatorModal.setAttribute("aria-hidden", "true");
     }
   });
-  document.getElementById("ocr-prompt-creator-close").addEventListener("click", () => {
-    ocrPromptCreatorModal.classList.remove("open");
-    ocrPromptCreatorModal.setAttribute("aria-hidden", "true");
-  });
-  ocrPromptCreatorModal.addEventListener("click", (e) => {
-    if (e.target === ocrPromptCreatorModal) {
-      ocrPromptCreatorModal.classList.remove("open");
-      ocrPromptCreatorModal.setAttribute("aria-hidden", "true");
-    }
-  });
-
   window.addEventListener("keydown", (e) => {
     if (
       browseModal.classList.contains("open") ||
       importModal.classList.contains("open") ||
-      promptCreatorModal.classList.contains("open") ||
-      ocrPromptCreatorModal.classList.contains("open")
+      promptCreatorModal.classList.contains("open")
     ) return;
     const t = e.target;
     if (

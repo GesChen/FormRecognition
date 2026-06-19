@@ -39,10 +39,12 @@ from config import PATHS, XLSX_DATA_ENTRY
 from form_sheet_map import form_sheet_name, workbook_template_path
 
 try:
+    from openpyxl.comments import Comment
     from openpyxl.utils import column_index_from_string
     from openpyxl.worksheet.worksheet import Worksheet
     from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 except ImportError as e:  # pragma: no cover
+    Comment = None  # type: ignore
     column_index_from_string = None  # type: ignore
     Worksheet = None  # type: ignore
     ILLEGAL_CHARACTERS_RE = None  # type: ignore
@@ -149,6 +151,15 @@ def resolve_template_path(
 _ITEM_LEVEL_SOURCES = frozenset({"id", "form_type", "page_odd", "page_even"})
 
 
+def _find_data_entry(item: Mapping[str, Any], source: str) -> Mapping[str, Any] | None:
+    for entry in item.get("data") or []:
+        if not isinstance(entry, Mapping):
+            continue
+        if str(entry.get("name", "")).strip() == source:
+            return entry
+    return None
+
+
 def resolve_source(item: Mapping[str, Any], source: str) -> str | None:
     """
     Read a value from a pipeline item given a source string.
@@ -160,15 +171,13 @@ def resolve_source(item: Mapping[str, Any], source: str) -> str | None:
         v = item.get(source)
         return str(v).strip() if v is not None else None
 
-    for entry in item.get("data") or []:
-        if not isinstance(entry, dict):
-            continue
-        if str(entry.get("name", "")).strip() == source:
-            t = entry.get("text")
-            if t is not None:
-                s = str(t).strip()
-                return s if s else None
-            return None
+    entry = _find_data_entry(item, source)
+    if entry is not None:
+        t = entry.get("text")
+        if t is not None:
+            s = str(t).strip()
+            return s if s else None
+        return None
     return None
 
 
@@ -182,16 +191,16 @@ def _col_letter_to_idx(letter: str) -> int:
     return column_index_from_string(letter.strip().upper())
 
 
-def _write_cell(ws: Worksheet, row: int, col_letter: str, value: Any) -> None:
+def _write_cell(ws: Worksheet, row: int, col_letter: str, value: Any):
     if value is None:
-        return
+        return None
     # Guard against control characters that Excel/openpyxl reject.
     if isinstance(value, str):
         txt = value
         if ILLEGAL_CHARACTERS_RE is not None:
             txt = ILLEGAL_CHARACTERS_RE.sub("", txt)
         value = txt
-    ws.cell(row=row, column=_col_letter_to_idx(col_letter), value=value)
+    return ws.cell(row=row, column=_col_letter_to_idx(col_letter), value=value)
 
 
 def _parse_date(v: Any) -> Any:
@@ -216,6 +225,159 @@ def _parse_number(v: str) -> int | float | str:
         return v
 
 
+def _pdf_pages_string(item: Mapping[str, Any]) -> str:
+    odd = item.get("page_odd")
+    even = item.get("page_even")
+    if odd in (None, "") and even in (None, ""):
+        return ""
+    if even in (None, ""):
+        return str(odd)
+    return f"{odd}-{even}"
+
+
+def _source_file_name(item: Mapping[str, Any], context: Mapping[str, Any] | None) -> str:
+    for key in ("source_file_name", "file_name", "pdf_file_name", "pdf_name"):
+        v = item.get(key)
+        if v not in (None, ""):
+            return Path(str(v)).name
+    if context:
+        for key in ("source_file_name", "file_name", "pdf_file_name", "pdf_name"):
+            v = context.get(key)
+            if v not in (None, ""):
+                return Path(str(v)).name
+        pdf_stem = str(context.get("pdf_stem") or "").strip()
+        if pdf_stem:
+            return pdf_stem
+    return ""
+
+
+def _format_confidence(row_meta: Mapping[str, Any] | None, item: Mapping[str, Any], source: str) -> tuple[str, str, str]:
+    if row_meta:
+        label = str(row_meta.get("ocr_confidence_label") or "").strip()
+        score = row_meta.get("ocr_confidence_score")
+    elif source == "id":
+        label = str(item.get("id_ocr_confidence_label") or "").strip()
+        score = item.get("id_ocr_confidence_score")
+    else:
+        label = ""
+        score = None
+
+    score_text = ""
+    if score is not None:
+        try:
+            score_text = f"{float(score):.3f}"
+        except (TypeError, ValueError):
+            score_text = str(score)
+    if label and score_text:
+        return f"{label} ({score_text})", score_text, label
+    return label or score_text, score_text, label
+
+
+def _comment_template_and_replacements(comment_cfg: Any) -> tuple[str, dict[str, str]]:
+    if isinstance(comment_cfg, str):
+        return comment_cfg, {}
+    if not isinstance(comment_cfg, Mapping):
+        return "", {}
+
+    template = str(
+        comment_cfg.get("text")
+        or comment_cfg.get("template")
+        or comment_cfg.get("comment")
+        or ""
+    )
+    replacements: dict[str, str] = {}
+    raw_replacements = comment_cfg.get("replacements")
+    if isinstance(raw_replacements, Mapping):
+        replacements.update({str(k): "" if v is None else str(v) for k, v in raw_replacements.items()})
+    elif isinstance(raw_replacements, list):
+        for row in raw_replacements:
+            if not isinstance(row, Mapping):
+                continue
+            find = row.get("find")
+            if find is None:
+                find = row.get("from")
+            if find is None:
+                continue
+            value = row.get("text")
+            if value is None:
+                value = row.get("replace")
+            if value is None:
+                value = row.get("to")
+            replacements[str(find)] = "" if value is None else str(value)
+    return template, replacements
+
+
+def render_comment_text(
+    comment_cfg: Any,
+    *,
+    item: Mapping[str, Any],
+    entry: Mapping[str, Any],
+    source: str,
+    raw: Any,
+    value: Any,
+    context: Mapping[str, Any] | None = None,
+) -> str | None:
+    """Render a mapping comment config into Excel comment text."""
+    template, replacements = _comment_template_and_replacements(comment_cfg)
+    if not template:
+        return None
+
+    row_meta = _find_data_entry(item, source) if source else None
+    confidence, confidence_score, confidence_label = _format_confidence(row_meta, item, source)
+    drop_ins = {
+        "{value}": "" if value is None else str(value),
+        "{raw}": "" if raw is None else str(raw),
+        "{source}": source,
+        "{type}": str(entry.get("type") or ""),
+        "{ocr_confidence}": confidence,
+        "{ocr_confidence_score}": confidence_score,
+        "{ocr_confidence_label}": confidence_label,
+        "{file_name}": _source_file_name(item, context),
+        "{pdf_pages}": _pdf_pages_string(item),
+        "{page_numbers}": _pdf_pages_string(item),
+        "{page_odd}": "" if item.get("page_odd") is None else str(item.get("page_odd")),
+        "{page_even}": "" if item.get("page_even") is None else str(item.get("page_even")),
+    }
+    if context:
+        pdf_stem = str(context.get("pdf_stem") or "").strip()
+        if pdf_stem:
+            drop_ins["{pdf_stem}"] = pdf_stem
+    for key, replacement in replacements.items():
+        template = template.replace(key, replacement)
+    for key, replacement in drop_ins.items():
+        template = template.replace(key, replacement)
+    text = template.strip()
+    return text or None
+
+
+def _apply_cell_comment(
+    cell: Any,
+    entry: Mapping[str, Any],
+    item: Mapping[str, Any],
+    *,
+    source: str,
+    raw: Any,
+    value: Any,
+    context: Mapping[str, Any] | None = None,
+) -> None:
+    comment_cfg = entry.get("comment")
+    if not comment_cfg or cell is None:
+        return
+    if Comment is None:
+        _require_openpyxl()
+    text = render_comment_text(
+        comment_cfg,
+        item=item,
+        entry=entry,
+        source=source,
+        raw=raw,
+        value=value,
+        context=context,
+    )
+    if text:
+        cell.comment = Comment(text, str(entry.get("comment_author") or "EVMS OCR"))
+
+
 # ---------------------------------------------------------------------------
 # Mapping application
 # ---------------------------------------------------------------------------
@@ -225,12 +387,16 @@ def apply_mapping_entry(
     row: int,
     entry: Mapping[str, Any],
     item: Mapping[str, Any],
+    *,
+    context: Mapping[str, Any] | None = None,
 ) -> None:
     """Apply one mapping entry to a worksheet row for a given pipeline item."""
     mtype = str(entry.get("type", "")).strip().lower()
 
     if mtype == "static":
-        _write_cell(ws, row, str(entry["column"]), entry.get("value"))
+        value = entry.get("value")
+        cell = _write_cell(ws, row, str(entry["column"]), value)
+        _apply_cell_comment(cell, entry, item, source="", raw=value, value=value, context=context)
         return
 
     source = entry.get("source")
@@ -251,7 +417,8 @@ def apply_mapping_entry(
             value = _parse_number(raw)
         elif transform == "date":
             value = _parse_date(raw) or raw
-        _write_cell(ws, row, str(entry["column"]), value)
+        cell = _write_cell(ws, row, str(entry["column"]), value)
+        _apply_cell_comment(cell, entry, item, source=str(source), raw=raw, value=value, context=context)
         return
 
     if mtype == "lookup":
@@ -261,7 +428,8 @@ def apply_mapping_entry(
         if result is None:
             result = entry.get("default")
         if result is not None:
-            _write_cell(ws, row, str(entry["column"]), result)
+            cell = _write_cell(ws, row, str(entry["column"]), result)
+            _apply_cell_comment(cell, entry, item, source=str(source), raw=raw, value=result, context=context)
         return
 
     if mtype == "multi_column":
@@ -276,13 +444,17 @@ def apply_mapping_entry(
 
         if raw is None:
             if no_answer_col:
-                _write_cell(ws, row, str(no_answer_col), mark)
+                cell = _write_cell(ws, row, str(no_answer_col), mark)
+                _apply_cell_comment(
+                    cell, entry, item, source=str(source), raw=raw, value=mark, context=context
+                )
             return
 
         key = raw.strip().lower()
         target_col = choices.get(key) or choices.get(raw)
         if target_col:
-            _write_cell(ws, row, str(target_col), mark)
+            cell = _write_cell(ws, row, str(target_col), mark)
+            _apply_cell_comment(cell, entry, item, source=str(source), raw=raw, value=mark, context=context)
         return
 
     raise ValueError(f"Unknown mapping type: {mtype!r}")
@@ -293,11 +465,13 @@ def fill_row(
     row: int,
     mapping: Mapping[str, Any],
     item: Mapping[str, Any],
+    *,
+    context: Mapping[str, Any] | None = None,
 ) -> None:
     """Apply all mappings to one row for a single pipeline item."""
     for entry in mapping.get("mappings") or []:
         if isinstance(entry, Mapping):
-            apply_mapping_entry(ws, row, entry, item)
+            apply_mapping_entry(ws, row, entry, item, context=context)
 
 
 # ---------------------------------------------------------------------------
@@ -347,6 +521,8 @@ def _stamp_data_rows(dst_ws: Worksheet, src_ws: Worksheet, start_row: int, count
                 dst_cell.number_format = src_cell.number_format
                 dst_cell.protection = copy(src_cell.protection)
                 dst_cell.alignment = copy(src_cell.alignment)
+            if src_cell.comment:
+                dst_cell.comment = copy(src_cell.comment)
 
 
 def _freeze_header_rows(ws: Worksheet, start_row: int) -> None:
@@ -395,6 +571,8 @@ def _copy_sheet_structure(
                 dst_cell.number_format = cell.number_format
                 dst_cell.protection = copy(cell.protection)
                 dst_cell.alignment = copy(cell.alignment)
+            if cell.comment:
+                dst_cell.comment = copy(cell.comment)
 
     for merged in src_ws.merged_cells.ranges:
         dst_ws.merge_cells(str(merged))
@@ -415,6 +593,7 @@ def fill_template(
     *,
     template_path: str | Path | None = None,
     cfg: Mapping[str, Any] | None = None,
+    context: Mapping[str, Any] | None = None,
 ) -> Path:
     """
     Copy only the target sheet from the master template into a new workbook,
@@ -427,6 +606,7 @@ def fill_template(
     from openpyxl import Workbook, load_workbook
 
     cfg = cfg or XLSX_DATA_ENTRY
+    context = context or {}
     tpl = Path(template_path).resolve() if template_path else resolve_template_path(
         cfg,
         release=str(mapping.get("_mapping_release") or "").strip() or None,
@@ -452,7 +632,7 @@ def fill_template(
         _copy_sheet_structure(src_ws, dst_ws, start_row=start_row, row_count=len(items))
 
         for i, item in enumerate(items):
-            fill_row(dst_ws, start_row + i, mapping, item)
+            fill_row(dst_ws, start_row + i, mapping, item, context=context)
 
         out.parent.mkdir(parents=True, exist_ok=True)
         dst_wb.save(out)
@@ -470,6 +650,7 @@ def fill_template_pair(
     *,
     template_path: str | Path | None = None,
     cfg: Mapping[str, Any] | None = None,
+    context: Mapping[str, Any] | None = None,
 ) -> Path:
     """
     Fill one staging workbook with normalized and original sheets for a form type.
@@ -478,6 +659,7 @@ def fill_template_pair(
     from openpyxl import Workbook, load_workbook
 
     cfg = cfg or XLSX_DATA_ENTRY
+    context = context or {}
     tpl = Path(template_path).resolve() if template_path else resolve_template_path(
         cfg,
         release=str(mapping.get("_mapping_release") or "").strip() or None,
@@ -502,12 +684,12 @@ def fill_template_pair(
         norm_ws.title = sheet_name
         _copy_sheet_structure(src_ws, norm_ws, start_row=start_row, row_count=len(items))
         for i, item in enumerate(items):
-            fill_row(norm_ws, start_row + i, mapping, item)
+            fill_row(norm_ws, start_row + i, mapping, item, context=context)
 
         original_ws = dst_wb.create_sheet(title=original_name)
         _copy_sheet_structure(src_ws, original_ws, start_row=start_row, row_count=len(original_items))
         for i, item in enumerate(original_items):
-            fill_row(original_ws, start_row + i, mapping, item)
+            fill_row(original_ws, start_row + i, mapping, item, context=context)
 
         out.parent.mkdir(parents=True, exist_ok=True)
         dst_wb.save(out)
@@ -524,6 +706,7 @@ def fill_staging(
     output_path: str | Path | None = None,
     template_path: str | Path | None = None,
     cfg: Mapping[str, Any] | None = None,
+    context: Mapping[str, Any] | None = None,
 ) -> Path:
     """
     Like ``fill_template`` but auto-generates a staging output path when
@@ -532,7 +715,7 @@ def fill_staging(
     cfg = cfg or XLSX_DATA_ENTRY
     form_type = str(mapping.get("form_type", "unknown"))
     out = Path(output_path).resolve() if output_path else make_staging_output_path(form_type, cfg)
-    return fill_template(mapping, items, out, template_path=template_path, cfg=cfg)
+    return fill_template(mapping, items, out, template_path=template_path, cfg=cfg, context=context)
 
 
 # ---------------------------------------------------------------------------
@@ -586,6 +769,8 @@ def merge_workbooks(
                             dst_cell.number_format = cell.number_format
                             dst_cell.protection = copy(cell.protection)
                             dst_cell.alignment = copy(cell.alignment)
+                        if cell.comment:
+                            dst_cell.comment = copy(cell.comment)
 
                 for merged in src_ws.merged_cells.ranges:
                     dst_ws.merge_cells(str(merged))
@@ -611,6 +796,7 @@ def fill_from_pipeline(
     output_path: str | Path | None = None,
     *,
     pdf_stem: str | None = None,
+    source_file_name: str | None = None,
     cfg: Mapping[str, Any] | None = None,
     verbose: bool = True,
     original_items: list[dict[str, Any]] | None = None,
@@ -626,11 +812,16 @@ def fill_from_pipeline(
     *output_path*: explicit path for the merged workbook.  When ``None``, auto-generates
       ``<output_dir>/<pdf_stem>.xlsx`` (or a timestamped name if *pdf_stem* is also ``None``).
     *pdf_stem*: used for the default output filename (e.g. ``"maury_1"``).
+    *source_file_name*: optional original PDF filename for XLSX comment drop-ins.
 
     Returns the path to the merged workbook, or ``None`` if no items had a form_type.
     """
     _require_openpyxl()
     cfg = cfg or XLSX_DATA_ENTRY
+    comment_context = {
+        "pdf_stem": str(pdf_stem or "").strip(),
+        "source_file_name": str(source_file_name or "").strip(),
+    }
 
     groups: dict[str, list[dict[str, Any]]] = {}
     for item in items:
@@ -664,9 +855,9 @@ def fill_from_pipeline(
         staging_path = make_staging_output_path(ft, cfg)
         ft_original_items = original_groups.get(ft) if original_items is not None else None
         if ft_original_items is not None:
-            fill_template_pair(mapping, ft_items, ft_original_items, staging_path, cfg=cfg)
+            fill_template_pair(mapping, ft_items, ft_original_items, staging_path, cfg=cfg, context=comment_context)
         else:
-            fill_template(mapping, ft_items, staging_path, cfg=cfg)
+            fill_template(mapping, ft_items, staging_path, cfg=cfg, context=comment_context)
         staging[ft] = staging_path
         if verbose:
             suffix = ""
