@@ -6,13 +6,19 @@
     {
       "type": "direct",
       "source": "id",
-      "column": "A"
+      "column": "A",
+      "comment": {
+        "text": "OCR confidence: {ocr_confidence}\nFile name: {file_name}\nPDF pages: {pdf_pages}"
+      }
     },
     {
       "type": "direct",
       "source": "date",
       "column": "B",
-      "transform": "date"
+      "transform": "date",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
     },
     {
       "type": "static",
@@ -52,7 +58,10 @@
     {
       "type": "direct",
       "source": "teacher",
-      "column": "K"
+      "column": "K",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
     },
     {
       "type": "direct",
@@ -228,19 +237,28 @@
       "type": "direct",
       "source": "21",
       "column": "AF",
-      "transform": "upper"
+      "transform": "upper",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
     },
     {
       "type": "direct",
       "source": "22",
       "column": "AG",
-      "transform": "upper"
+      "transform": "upper",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
     },
     {
       "type": "direct",
       "source": "23",
       "column": "AH",
-      "transform": "upper"
+      "transform": "upper",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
     },
     {
       "type": "lookup",
@@ -263,7 +281,10 @@
       "type": "direct",
       "source": "25",
       "column": "AJ",
-      "transform": "number"
+      "transform": "number",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
     },
     {
       "type": "lookup",

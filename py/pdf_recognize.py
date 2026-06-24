@@ -140,6 +140,119 @@ def _rel_from_project_root(full: Path) -> str:
         return str(full.resolve())
 
 
+def _resolve_project_path(value: Any) -> Path | None:
+    raw = str(value or "").strip()
+    if not raw:
+        return None
+    p = Path(raw)
+    if p.is_absolute():
+        return p
+    return (Path(__file__).resolve().parent.parent / p).resolve()
+
+
+def _load_pdf_source_manifest(pdf_path: Path) -> dict[str, Any] | None:
+    """
+    Load optional merged-PDF source-page metadata.
+
+    New hub merges write ``<merged>.sources.json`` with one row per merged page,
+    mapping it back to the original uploaded PDF and original 1-based page.
+    """
+    candidates = [
+        pdf_path.with_suffix(".sources.json"),
+        pdf_path.with_suffix(".source_pages.json"),
+    ]
+    for path in candidates:
+        if not path.exists():
+            continue
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(data, dict):
+            return data
+    return None
+
+
+def _source_pages_from_manifest(manifest: dict[str, Any] | None) -> dict[int, dict[str, Any]]:
+    if not isinstance(manifest, dict):
+        return {}
+    pages = manifest.get("pages")
+    if not isinstance(pages, list):
+        return {}
+    out: dict[int, dict[str, Any]] = {}
+    for row in pages:
+        if not isinstance(row, dict):
+            continue
+        try:
+            merged_page = int(row.get("merged_page"))
+        except (TypeError, ValueError):
+            continue
+        if merged_page <= 0:
+            continue
+        source_pdf_path = _resolve_project_path(row.get("source_pdf_path"))
+        source_file_name = str(row.get("source_file_name") or "").strip()
+        if not source_file_name and source_pdf_path is not None:
+            source_file_name = source_pdf_path.name
+        try:
+            source_page = int(row.get("source_page"))
+        except (TypeError, ValueError):
+            source_page = merged_page
+        out[merged_page] = {
+            "source_pdf_path": str(source_pdf_path) if source_pdf_path is not None else "",
+            "source_file_name": source_file_name,
+            "source_page": source_page,
+            "merged_page": merged_page,
+            "source_index": row.get("source_index"),
+        }
+    return out
+
+
+def _source_info_for_page(
+    source_pages: dict[int, dict[str, Any]],
+    merged_page: int,
+    fallback_pdf_path: Path,
+) -> dict[str, Any]:
+    info = dict(source_pages.get(int(merged_page)) or {})
+    source_pdf_path = str(info.get("source_pdf_path") or "").strip()
+    if not source_pdf_path:
+        source_pdf_path = str(fallback_pdf_path.resolve())
+    source_file_name = str(info.get("source_file_name") or "").strip() or Path(source_pdf_path).name
+    try:
+        source_page = int(info.get("source_page", merged_page) or merged_page)
+    except (TypeError, ValueError):
+        source_page = int(merged_page)
+    return {
+        "source_pdf_path": source_pdf_path,
+        "source_file_name": source_file_name,
+        "source_page": source_page,
+        "merged_page": int(merged_page),
+        "source_index": info.get("source_index"),
+    }
+
+
+def _manifest_source_summary(manifest: dict[str, Any] | None) -> list[dict[str, Any]]:
+    if not isinstance(manifest, dict):
+        return []
+    sources = manifest.get("sources")
+    if not isinstance(sources, list):
+        return []
+    out: list[dict[str, Any]] = []
+    for row in sources:
+        if not isinstance(row, dict):
+            continue
+        out.append(
+            {
+                "source_index": row.get("source_index"),
+                "source_file_name": row.get("source_file_name"),
+                "pdf_path": str(_resolve_project_path(row.get("stored_pdf_path")) or ""),
+                "page_count": row.get("page_count"),
+                "merged_page_start": row.get("merged_page_start"),
+                "merged_page_end": row.get("merged_page_end"),
+            }
+        )
+    return out
+
+
 def _form_type_predicted_debug(form_type: str | None) -> str:
     """
     Human-readable summary of the detected form type (grade + pre/post) for verbose CLI output.
@@ -296,6 +409,9 @@ def _detect_ids_and_form_types(
     page_paths: list[Path],
     verbose: bool,
     debug_out: dict | None = None,
+    *,
+    source_pages: dict[int, dict[str, Any]] | None = None,
+    pdf_path: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Step 2: Form-type detection from side-a (odd) page headers; result is used for each page pair."""
     _log("[2/6] Detecting form type from page headers (side-a only)...", verbose)
@@ -313,11 +429,38 @@ def _detect_ids_and_form_types(
         id_form_results.append({"id": None, "form_type": None})
     # One result per pair: assign to both pages of the pair (idx 0,1 → result[0]; 2,3 → result[1]; ...)
     id_form_by_pair = id_form_results[: len(odd_indices)]
+    inferred_form_type_count = 0
+    last_known_form_type = ""
+    last_known_form_type_pair: int | None = None
+    for pair_idx, row in enumerate(id_form_by_pair):
+        if not isinstance(row, dict):
+            row = {"id": None, "form_type": None}
+            id_form_by_pair[pair_idx] = row
+        raw_form_type = str(row.get("form_type") or "").strip()
+        if raw_form_type:
+            last_known_form_type = raw_form_type
+            last_known_form_type_pair = pair_idx
+            row["form_type_inferred"] = False
+            row["form_type_inference_source_pair"] = None
+            continue
+        if not last_known_form_type:
+            row["form_type_inferred"] = False
+            row["form_type_inference_source_pair"] = None
+            continue
+        row["form_type"] = last_known_form_type
+        row["form_type_inferred"] = True
+        row["form_type_inference_source_pair"] = last_known_form_type_pair
+        inferred_form_type_count += 1
 
     page_infos: list[dict[str, Any]] = []
     for idx, p in enumerate(page_paths):
         page_num = int(p.stem.split("_")[1])
         side = "a" if page_num % 2 == 1 else "b"
+        source_info = _source_info_for_page(
+            source_pages or {},
+            page_num,
+            pdf_path or Path(""),
+        )
         pair_idx = idx // 2
         id_form = id_form_by_pair[pair_idx] if pair_idx < len(id_form_by_pair) else {}
         form_type = (id_form or {}).get("form_type")
@@ -325,8 +468,15 @@ def _detect_ids_and_form_types(
         page_infos.append(
             {
                 "page_num": page_num,
+                "source_pdf_path": source_info.get("source_pdf_path"),
+                "source_file_name": source_info.get("source_file_name"),
+                "source_page": source_info.get("source_page"),
+                "merged_page": source_info.get("merged_page"),
+                "source_index": source_info.get("source_index"),
                 "side": side,
                 "form_type": form_type,
+                "form_type_inferred": bool((id_form or {}).get("form_type_inferred")),
+                "form_type_inference_source_pair": (id_form or {}).get("form_type_inference_source_pair"),
                 # ID is extracted in Step 4 as a normal ROI-style OCR+LLM flow.
                 "id": "",
                 "schema_path": schema_path,
@@ -338,6 +488,28 @@ def _detect_ids_and_form_types(
         f"      Detected form types: {', '.join(detected_form_types) if detected_form_types else '(none)'}",
         verbose,
     )
+    if inferred_form_type_count:
+        _log(f"      Inferred {inferred_form_type_count} missing form type(s) from the last known type.", verbose)
+    if isinstance(debug_out, dict):
+        debug_out["form_type_inference"] = {
+            "method": "last_known_form_type",
+            "inferred_pair_count": inferred_form_type_count,
+            "unresolved_pair_count": len(
+                [
+                    row for row in id_form_by_pair
+                    if not (isinstance(row, dict) and str(row.get("form_type") or "").strip())
+                ]
+            ),
+            "results": [
+                {
+                    "pair_index": idx,
+                    "form_type": (row or {}).get("form_type") if isinstance(row, dict) else None,
+                    "inferred": bool((row or {}).get("form_type_inferred")) if isinstance(row, dict) else False,
+                    "source_pair": (row or {}).get("form_type_inference_source_pair") if isinstance(row, dict) else None,
+                }
+                for idx, row in enumerate(id_form_by_pair)
+            ],
+        }
     return page_infos
 
 
@@ -830,10 +1002,12 @@ def _run_deferred_text_llm_postprocess(
             uid = f"p{page_idx}:r{row_idx}:{row.get('name','')}"
             text_by_uid[uid] = _normalize_text_value(row.get("text", ""))
             meta_by_uid[uid] = {
+                "roi_name": row.get("name"),
                 "llm_field_data_type": row.get("_llm_field_data_type"),
                 "llm_validation_rules": row.get("_llm_validation_rules"),
                 "llm_prompt_instruction": row.get("_llm_prompt_instruction"),
                 "llm_prompt_override": row.get("_llm_prompt_override"),
+                "ocr_paddle_confidence": row.get("_ocr_paddle_confidence"),
             }
             retry_ctx_by_uid[uid] = {
                 "ocr_output_regex": row.get("_ocr_output_regex"),
@@ -879,6 +1053,7 @@ def _run_deferred_text_llm_postprocess(
 
     retry_cfg = _regex_retry_cfg()
     retry_enabled = bool(retry_cfg.get("ocr_regex_retry_enabled", True))
+    clear_on_final_mismatch = bool(retry_cfg.get("ocr_regex_retry_clear_on_final_mismatch", True))
     configured_steps = retry_cfg.get("ocr_regex_retry_steps") or []
     retry_steps = [
         s for s in configured_steps
@@ -1033,8 +1208,14 @@ def _run_deferred_text_llm_postprocess(
         if not isinstance(tr, dict):
             continue
         final_text = _normalize_text_value(current_values.get(uid, ""))
+        final_match = bool(regex_by_uid[uid].fullmatch(final_text))
         tr["final_text_after_retries"] = final_text
-        tr["final_match"] = bool(regex_by_uid[uid].fullmatch(final_text))
+        tr["final_match"] = final_match
+        tr["cleared_final_mismatch"] = False
+        if clear_on_final_mismatch and final_text and not final_match:
+            current_values[uid] = ""
+            tr["cleared_final_mismatch"] = True
+            tr["text_after_clear"] = ""
 
     for uid, row in row_refs.items():
         if isinstance(row, dict):
@@ -1051,6 +1232,7 @@ def _run_deferred_text_llm_postprocess(
             "details": details,
             "regex_retry": {
                 "enabled": retry_enabled,
+                "clear_on_final_mismatch": clear_on_final_mismatch,
                 "configured_steps": retry_steps,
                 "rows_with_regex": len(regex_by_uid),
                 "invalid_regex_uids": invalid_regex_uids,
@@ -1061,6 +1243,12 @@ def _run_deferred_text_llm_postprocess(
                     ]
                 ),
                 "remaining_mismatch_count": len(pending),
+                "cleared_final_mismatch_count": len(
+                    [
+                        tr for tr in retry_trace_by_uid.values()
+                        if isinstance(tr, dict) and tr.get("cleared_final_mismatch")
+                    ]
+                ),
                 "rounds": retry_rounds,
                 "per_roi": retry_trace_by_uid,
             },
@@ -1075,6 +1263,7 @@ def _run_deferred_text_llm_postprocess(
             row.pop("_llm_validation_rules", None)
             row.pop("_llm_prompt_instruction", None)
             row.pop("_llm_prompt_override", None)
+            row.pop("_ocr_paddle_confidence", None)
             row.pop("_ocr_output_regex", None)
             row.pop("_ocr_retry_image_path", None)
             row.pop("_ocr_retry_bbox_xyxy", None)
@@ -1103,15 +1292,21 @@ def _build_pair_items(
             leave=False,
         )
     for i in pair_indices:
-        page_odd = i + 1
-        page_even = i + 2 if i + 1 < len(text_paths) else None
+        merged_page_odd = i + 1
+        merged_page_even = i + 2 if i + 1 < len(text_paths) else None
         info_odd = page_infos[i]
-        info_even = page_infos[i + 1] if page_even is not None else None
+        info_even = page_infos[i + 1] if merged_page_even is not None else None
+        page_odd = int(info_odd.get("source_page") or merged_page_odd)
+        page_even = (
+            int(info_even.get("source_page") or merged_page_even)
+            if merged_page_even is not None and info_even is not None
+            else None
+        )
         form_type_value = (info_odd.get("form_type") or (info_even.get("form_type") if info_even else None))
 
         odd_data = all_page_data[i]
         even_data: list[dict[str, Any]] = []
-        if page_even is not None and info_even is not None:
+        if merged_page_even is not None and info_even is not None:
             even_data = all_page_data[i + 1]
         merged_data = _merge_page_data(odd_data, even_data)
         if PDF_RECOGNITION.get("sort_data_by_roi_name", False):
@@ -1139,13 +1334,33 @@ def _build_pair_items(
             "form_type": form_type_value,
             "page_odd": page_odd,
             "page_even": page_even,
+            "merged_page_odd": merged_page_odd,
+            "merged_page_even": merged_page_even,
             "data": merged_data,
         }
+        odd_source_pdf = str(info_odd.get("source_pdf_path") or "").strip()
+        odd_source_name = str(info_odd.get("source_file_name") or "").strip()
+        even_source_pdf = str((info_even or {}).get("source_pdf_path") or "").strip()
+        even_source_name = str((info_even or {}).get("source_file_name") or "").strip()
+        if odd_source_pdf:
+            entry["pdf_path"] = odd_source_pdf
+            entry["source_pdf_path"] = odd_source_pdf
+            entry["source_file_name"] = odd_source_name or Path(odd_source_pdf).name
+            entry["pdf_file_name"] = entry["source_file_name"]
+        if even_source_pdf:
+            entry["source_pdf_path_even"] = even_source_pdf
+            entry["source_file_name_even"] = even_source_name or Path(even_source_pdf).name
+        if odd_source_pdf and even_source_pdf and odd_source_pdf != even_source_pdf:
+            entry["source_pdf_paths"] = [odd_source_pdf, even_source_pdf]
+            entry["source_file_names"] = [
+                odd_source_name or Path(odd_source_pdf).name,
+                even_source_name or Path(even_source_pdf).name,
+            ]
         odd_text_path = text_paths[i]
         odd_mcq_path = mcq_paths[i]
         entry["normalized_page_odd"] = _rel_from_project_root(odd_text_path)
         entry["normalized_page_odd_mcq"] = _rel_from_project_root(odd_mcq_path)
-        if page_even is not None and i + 1 < len(text_paths):
+        if merged_page_even is not None and i + 1 < len(text_paths):
             entry["normalized_page_even"] = _rel_from_project_root(text_paths[i + 1])
             entry["normalized_page_even_mcq"] = _rel_from_project_root(mcq_paths[i + 1])
         else:
@@ -1199,6 +1414,7 @@ def _write_output(
     human_review: dict[str, Any] | None = None,
     original_items: list[dict[str, Any]] | None = None,
     post_normalize: dict[str, Any] | None = None,
+    source_manifest: dict[str, Any] | None = None,
 ) -> Path | None:
     """Write final JSON. Returns output file path when write_json True, else None."""
     cfg = PDF_RECOGNITION
@@ -1212,6 +1428,7 @@ def _write_output(
         _log("      Skipped (write_json=False).", verbose)
         _log("      JSON output complete.", verbose)
         return None
+    source_pdfs = _manifest_source_summary(source_manifest)
     body: dict[str, Any] = {
         "pdf_path": str(pdf_path.resolve()),
         "pdf_stem": pdf_stem,
@@ -1219,6 +1436,9 @@ def _write_output(
         "item_count": len(items),
         "items": items,
     }
+    if source_pdfs:
+        body["processed_pdf_path"] = str(pdf_path.resolve())
+        body["source_pdfs"] = source_pdfs
     if original_items is not None:
         body["items_original"] = original_items
     if post_normalize is not None:
@@ -1315,6 +1535,8 @@ def _run_workflow(
     stem = _sanitize_pdf_stem(pdf_path.name)
     custom_output_stem = _sanitize_output_filename(output_filename)
     output_stem = custom_output_stem or f"{stem}{_sanitize_output_suffix(output_suffix)}"
+    source_manifest = _load_pdf_source_manifest(pdf_path)
+    source_pages = _source_pages_from_manifest(source_manifest)
 
     debug_data: dict[str, Any] | None = None
     dbg_path: Path | None = None
@@ -1386,6 +1608,7 @@ def _run_workflow(
                 "count": len(page_paths),
                 "max_pages": max_pages,
                 "page_count_validation": page_count_validation,
+                "source_manifest": source_manifest,
             },
             t_step_1,
         )
@@ -1409,6 +1632,8 @@ def _run_workflow(
             page_paths,
             verbose,
             debug_out=step2_debug if debug_data else None,
+            source_pages=source_pages,
+            pdf_path=pdf_path,
         )
         if debug_data is not None:
             payload_2 = dict(step2_debug or {})
@@ -1445,6 +1670,10 @@ def _run_workflow(
                         {
                             "page_index": i,
                             "page_path": str(page_paths[i]),
+                            "source_pdf_path": page_infos[i].get("source_pdf_path"),
+                            "source_file_name": page_infos[i].get("source_file_name"),
+                            "source_page": page_infos[i].get("source_page"),
+                            "merged_page": page_infos[i].get("merged_page"),
                             "template_key": (
                                 f"{page_infos[i].get('form_type') or ''}_{page_infos[i].get('side') or ''}".strip("_")
                                 or None
@@ -1559,6 +1788,7 @@ def _run_workflow(
             human_review=human_review_block,
             original_items=items_original,
             post_normalize=post_normalize_payload,
+            source_manifest=source_manifest,
         )
         if debug_data is not None:
             pending = (human_review_block or {}).get("pending")

@@ -171,26 +171,75 @@ def _build_merged_upload_name(files: list) -> str:
     return f"merged_{preview}_{uuid.uuid4().hex[:6]}.pdf"
 
 
-def _merge_uploaded_pdfs_to_one(files: list, merged_path: Path) -> None:
-    """Merge uploaded PDF file objects into one PDF at merged_path."""
+def _project_rel_or_abs(path: Path) -> str:
+    try:
+        return str(path.resolve().relative_to(PROJECT_ROOT.resolve()))
+    except ValueError:
+        return str(path.resolve())
+
+
+def _merge_uploaded_pdfs_to_one(files: list, merged_path: Path) -> dict[str, object]:
+    """Merge uploaded PDF file objects into one PDF at merged_path and write source-page metadata."""
     merged_path.parent.mkdir(parents=True, exist_ok=True)
     out_doc = fitz.open()
+    manifest: dict[str, object] = {
+        "version": 1,
+        "merged_pdf_path": _project_rel_or_abs(merged_path),
+        "sources": [],
+        "pages": [],
+    }
     try:
-        for up in files:
+        merged_page = 1
+        for source_index, up in enumerate(files):
             if not up or not up.filename:
                 continue
             if not up.filename.lower().endswith(".pdf"):
                 raise ValueError(f"File must be a .pdf: {up.filename}")
-            src = fitz.open(stream=up.read(), filetype="pdf")
+            original_name = secure_filename(up.filename) or f"source_{source_index + 1}.pdf"
+            if not original_name.lower().endswith(".pdf"):
+                original_name += ".pdf"
+            source_path = merged_path.parent / f"{merged_path.stem}__src{source_index + 1:02d}_{original_name}"
+            data = up.read()
+            source_path.write_bytes(data)
+            src = fitz.open(stream=data, filetype="pdf")
             try:
+                page_count = int(src.page_count)
+                source_row = {
+                    "source_index": source_index,
+                    "source_file_name": up.filename,
+                    "stored_pdf_path": _project_rel_or_abs(source_path),
+                    "page_count": page_count,
+                    "merged_page_start": merged_page,
+                    "merged_page_end": merged_page + page_count - 1,
+                }
+                manifest_sources = manifest.setdefault("sources", [])
+                if isinstance(manifest_sources, list):
+                    manifest_sources.append(source_row)
+                manifest_pages = manifest.setdefault("pages", [])
+                if isinstance(manifest_pages, list):
+                    for source_page in range(1, page_count + 1):
+                        manifest_pages.append(
+                            {
+                                "merged_page": merged_page,
+                                "source_index": source_index,
+                                "source_file_name": up.filename,
+                                "source_pdf_path": _project_rel_or_abs(source_path),
+                                "source_page": source_page,
+                            }
+                        )
+                        merged_page += 1
                 out_doc.insert_pdf(src)
             finally:
                 src.close()
         if out_doc.page_count <= 0:
             raise ValueError("No valid PDF pages were provided")
         out_doc.save(str(merged_path))
+        manifest_path = merged_path.with_suffix(".sources.json")
+        manifest["manifest_path"] = _project_rel_or_abs(manifest_path)
+        manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     finally:
         out_doc.close()
+    return manifest
 
 
 def create_app() -> Flask:

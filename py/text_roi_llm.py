@@ -58,6 +58,20 @@ def _extra_params() -> dict[str, Any]:
     return raw if isinstance(raw, dict) else {"think": False}
 
 
+def _paddle_vlm_fusion_enabled() -> bool:
+    v = _cfg().get("paddle_vlm_fusion_enabled", True)
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return bool(v)
+    s = str(v).strip().lower()
+    if s in {"false", "0", "no", "n", "off"}:
+        return False
+    if s in {"true", "1", "yes", "y", "on"}:
+        return True
+    return True
+
+
 def _meta_str(meta: dict[str, Any], *keys: str) -> str:
     for key in keys:
         value = meta.get(key)
@@ -90,6 +104,109 @@ def _meta_obj(meta: dict[str, Any], *keys: str) -> dict[str, Any] | None:
             return None
         return parsed if isinstance(parsed, dict) else None
     return None
+
+
+def _looks_internal_uid(value: Any) -> bool:
+    return re.fullmatch(r"p\d+:r\d+:[^:\s]+", str(value or "").strip()) is not None
+
+
+def _paddle_text(sidecar: dict[str, Any] | None) -> str:
+    if not isinstance(sidecar, dict):
+        return ""
+    text = " ".join(str(sidecar.get("detected_text") or "").split())
+    if text:
+        return text
+    rec_texts = sidecar.get("rec_texts")
+    if isinstance(rec_texts, list):
+        return " ".join(str(t).strip() for t in rec_texts if str(t).strip())
+    return ""
+
+
+def _candidate_echoes_numeric_roi_name(
+    *,
+    candidate: str,
+    roi_name: str,
+    ocr_text: str,
+    paddle_sidecar: dict[str, Any] | None,
+) -> bool:
+    value = str(candidate or "").strip()
+    prompt_name = str(roi_name or "").strip()
+    if not value or value != prompt_name or not re.fullmatch(r"\d{1,3}", prompt_name):
+        return False
+    evidence = f"{ocr_text or ''} {_paddle_text(paddle_sidecar)}"
+    return re.search(rf"(?<!\d){re.escape(value)}(?!\d)", evidence) is None
+
+
+def _paddle_sidecar(meta: dict[str, Any]) -> dict[str, Any] | None:
+    raw = _meta_value(
+        meta,
+        "ocr_paddle_confidence",
+        "paddle_confidence",
+        "_ocr_paddle_confidence",
+    )
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, str):
+        s = raw.strip()
+        if not s:
+            return None
+        try:
+            parsed = json.loads(s)
+        except Exception:
+            return None
+        return parsed if isinstance(parsed, dict) else None
+    return None
+
+
+def _format_paddle_sidecar(sidecar: dict[str, Any] | None) -> str:
+    if not isinstance(sidecar, dict):
+        return ""
+    text = " ".join(str(sidecar.get("detected_text") or "").split())
+    if not text:
+        rec_texts = sidecar.get("rec_texts")
+        if isinstance(rec_texts, list):
+            text = " ".join(str(t).strip() for t in rec_texts if str(t).strip())
+            text = " ".join(text.split())
+    if not text:
+        return ""
+
+    bits = [f"PaddleOCR extracted text: {text}"]
+    score = sidecar.get("confidence_score")
+    if score is None:
+        score = sidecar.get("min_rec_score")
+    if score is not None:
+        try:
+            bits.append(f"PaddleOCR confidence_score: {float(score):.4f}")
+        except (TypeError, ValueError):
+            bits.append(f"PaddleOCR confidence_score: {score}")
+    label = str(sidecar.get("confidence_label") or "").strip()
+    if label:
+        bits.append(f"PaddleOCR confidence_label: {label}")
+    review = sidecar.get("needs_human_review")
+    if review is not None:
+        bits.append(f"PaddleOCR needs_human_review: {bool(review)}")
+    return "\n".join(bits)
+
+
+def _fusion_suffix(*, ocr_text: str, paddle_sidecar: dict[str, Any] | None) -> str:
+    if not _paddle_vlm_fusion_enabled():
+        return ""
+    paddle_block = _format_paddle_sidecar(paddle_sidecar)
+    if not paddle_block:
+        return ""
+    return (
+        "\nPaddle/VLM fusion inputs:\n"
+        f"VLM extracted text: {ocr_text}\n"
+        f"{paddle_block}\n"
+        "Fusion instructions:\n"
+        "- Treat VLM and PaddleOCR as independent OCR guesses for the same ROI.\n"
+        "- Prefer text supported by both guesses.\n"
+        "- If they disagree, use validation rules and ROI instructions to choose the most plausible visible value.\n"
+        "- If the VLM text is empty and PaddleOCR is marked needs_human_review, return null unless the Paddle text is a clean value that clearly satisfies the field rules.\n"
+        "- Treat low-confidence PaddleOCR-only text as suspect; do not copy noisy names, symbols, or partial fragments just to avoid null.\n"
+        "- If neither guess clearly satisfies the target field, return detected_text as null.\n"
+        "- Do not combine unrelated fragments from the two guesses into invented content.\n"
+    )
 
 
 def _parse_format_override(value: Any) -> Any:
@@ -236,7 +353,9 @@ def _build_prompt(
     instruction: str,
     prompt_override: str,
     ocr_text: str,
+    paddle_sidecar: dict[str, Any] | None = None,
 ) -> str:
+    fusion = _fusion_suffix(ocr_text=ocr_text, paddle_sidecar=paddle_sidecar)
     if prompt_override:
         return (
             "You are a strict text normalizer for one OCR ROI field.\n"
@@ -255,13 +374,17 @@ def _build_prompt(
             f"Creator instruction: {instruction or '(none)'}\n\n"
             "OCR extracted text:\n"
             f"{ocr_text}\n"
+            f"{fusion}"
         )
-    return _build_default_prompt(
-        roi_name=roi_name,
-        field_data_type=field_data_type,
-        validation_rules=validation_rules,
-        instruction=instruction,
-        ocr_text=ocr_text,
+    return (
+        _build_default_prompt(
+            roi_name=roi_name,
+            field_data_type=field_data_type,
+            validation_rules=validation_rules,
+            instruction=instruction,
+            ocr_text=ocr_text,
+        )
+        + fusion
     )
 
 
@@ -271,7 +394,10 @@ def _coerce_detected_text(parsed: Any, raw_text: str, fallback: str) -> str:
             value = parsed.get("detected_text")
             if value is None:
                 return ""
-            return " ".join(str(value).split())
+            normalized = " ".join(str(value).split())
+            if normalized.strip().lower() in {"null", "none", "n/a", "na", "unknown", "unreadable"}:
+                return ""
+            return normalized
     s = str(raw_text or "").strip()
     if not s:
         return fallback
@@ -332,10 +458,12 @@ def postprocess_text_rois(
 
     for name, ocr_text in rows_iter:
         meta = (roi_meta_by_name or {}).get(name) or {}
+        prompt_roi_name = _meta_str(meta, "roi_name", "name") or name
         field_data_type = _meta_str(meta, "llm_field_data_type")
         validation_rules = _meta_str(meta, "llm_validation_rules")
         instruction = _meta_str(meta, "llm_prompt_instruction")
         prompt_override = _meta_str(meta, "llm_prompt_override")
+        paddle_sidecar = _paddle_sidecar(meta)
         per_roi_extra = _merge_extra_params(
             _extra_params(),
             _meta_obj(meta, "llm_extra_params", "ocr_extra_params"),
@@ -350,12 +478,13 @@ def postprocess_text_rois(
             per_roi_extra = _merge_extra_params(per_roi_extra, {"options": options_override})
         per_roi_extra = _force_temperature_zero(per_roi_extra)
         prompt = _build_prompt(
-            roi_name=name,
+            roi_name=prompt_roi_name,
             field_data_type=field_data_type,
             validation_rules=validation_rules,
             instruction=instruction,
             prompt_override=prompt_override,
             ocr_text=ocr_text,
+            paddle_sidecar=paddle_sidecar,
         )
 
         attempts: list[dict[str, Any]] = []
@@ -371,6 +500,15 @@ def postprocess_text_rois(
             parsed = _parse_llm_json(raw_text)
             parsed_ok = _is_conforming_detected_text_json(parsed)
             candidate = _coerce_detected_text(parsed, raw_text, fallback=ocr_text) if parsed_ok else ocr_text
+            if _looks_internal_uid(candidate):
+                candidate = ""
+            if _candidate_echoes_numeric_roi_name(
+                candidate=candidate,
+                roi_name=prompt_roi_name,
+                ocr_text=ocr_text,
+                paddle_sidecar=paddle_sidecar,
+            ):
+                candidate = ""
             attempts.append(
                 {
                     "attempt": attempt + 1,
@@ -389,8 +527,10 @@ def postprocess_text_rois(
         all_debug_rows.append(
             {
                 "name": name,
+                "roi_name": prompt_roi_name,
                 "prompt": prompt,
                 "used_prompt_override": bool(prompt_override),
+                "used_paddle_vlm_fusion": bool(_format_paddle_sidecar(paddle_sidecar)),
                 "field_data_type": field_data_type or None,
                 "llm_extra_params": per_roi_extra,
                 "attempts": attempts,

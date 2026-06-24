@@ -33,7 +33,7 @@ import cv2
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "py"))
 
-from config import ID_FORM_LLM, PATHS, PDF_TO_IMAGES
+from config import HEADER_RECOGNITION, PATHS, PDF_TO_IMAGES
 from id_form_llm import extract_id_and_form_type
 
 try:
@@ -280,7 +280,7 @@ def _parse_args() -> argparse.Namespace:
     p.add_argument(
         "--crop-top-percent",
         type=float,
-        default=float(ID_FORM_LLM.get("crop_top_percent", 15.0)),
+        default=float(HEADER_RECOGNITION.get("crop_top_percent", 15.0)),
         help="Top-percent crop for PDF mode.",
     )
     p.add_argument("--timeout", type=int, default=None, help="OCR timeout (seconds).")

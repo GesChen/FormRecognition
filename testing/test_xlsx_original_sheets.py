@@ -95,6 +95,7 @@ def test_fill_from_pipeline_keeps_single_sheet_without_original_items(tmp_path):
         assert ws["B2"].value == "Peterson"
         assert ws["B2"].comment is not None
         assert ws["B2"].comment.text == "Confidence: high (0.988)\nFile: original.pdf\nPages: 5-6"
+        assert ws["B2"].comment.author != "EVMS OCR"
         assert ws.freeze_panes == "A2"
     finally:
         wb.close()
@@ -102,6 +103,7 @@ def test_fill_from_pipeline_keeps_single_sheet_without_original_items(tmp_path):
 
 def test_fill_from_pipeline_writes_original_sheet_pair(tmp_path):
     cfg = _fixture(tmp_path)
+    cfg["include_original_sheet"] = True
     out = fill_from_pipeline(
         _items("Peterson"),
         pdf_stem="paired",
@@ -121,5 +123,24 @@ def test_fill_from_pipeline_writes_original_sheet_pair(tmp_path):
         assert wb[original_name]["B2"].value == "Ms Petterson"
         assert wb[original_name].row_dimensions[2].height == 33
         assert wb[original_name].freeze_panes == "A2"
+    finally:
+        wb.close()
+
+
+def test_fill_from_pipeline_can_disable_original_sheet(tmp_path):
+    cfg = _fixture(tmp_path)
+    cfg["include_original_sheet"] = False
+    out = fill_from_pipeline(
+        _items("Peterson"),
+        pdf_stem="no-original",
+        cfg=cfg,
+        verbose=False,
+        original_items=_items("Ms Petterson"),
+    )
+
+    wb = load_workbook(out)
+    try:
+        assert wb.sheetnames == ["6th Grade Post-Assessment Data"]
+        assert wb["6th Grade Post-Assessment Data"]["B2"].value == "Peterson"
     finally:
         wb.close()

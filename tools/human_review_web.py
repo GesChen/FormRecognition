@@ -31,9 +31,9 @@ except Exception:  # pragma: no cover
     PROJECT_ROOT = ROOT
 
 try:
-    from config import ID_FORM_LLM
+    from config import HEADER_RECOGNITION
 except Exception:  # pragma: no cover
-    ID_FORM_LLM = {"crop_top_percent": 15.0}
+    HEADER_RECOGNITION = {"crop_top_percent": 15.0}
 
 # Only allow writing recognition outputs here (relative to project root).
 RECOGNITION_REL = Path("output") / "recognition"
@@ -146,7 +146,7 @@ def _load_pending_review_context(rel: str, pidx: int) -> dict:
 
     root = PROJECT_ROOT.resolve()
     kind = str(p.get("kind", "")).lower()
-    pct = float(ID_FORM_LLM.get("crop_top_percent", 8.0))
+    pct = float(HEADER_RECOGNITION.get("crop_top_percent", 8.0))
 
     if kind == "id":
         rel_img = item.get("normalized_page_odd")

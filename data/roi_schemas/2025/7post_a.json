@@ -10,7 +10,11 @@
       "x": 216,
       "y": 227,
       "w": 218,
-      "h": 55
+      "h": 55,
+      "llm_field_data_type": "date",
+      "llm_validation_rules": "Must match ^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$ exactly, or null.",
+      "ocr_output_regex": "^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$",
+      "llm_prompt_override": "You are a strict date extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the date box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget date format:\nMM/DD/YYYY, with a four-digit year from 2000 through 2099.\nThe final detected_text must match this regex exactly:\n^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$\n\nRules:\n1. Extract only the date written in this ROI.\n2. If OCR text contains a date with a two-digit year YY, interpret it as 20YY only when the month and day are clear.\n3. Zero-pad one-digit month or day.\n4. Return only a valid date-shaped value in MM/DD/YYYY that matches the regex above.\n5. If the date is missing, ambiguous, unreadable, incomplete, or cannot be made to match the regex using only visible OCR evidence, return null as {\"detected_text\":null}.\n6. Do not invent missing digits, do not guess a date from context, and do not use page numbers, IDs, question numbers, or form labels.\n7. Reject impossible or malformed OCR dates such as 02/80/2026, 04/79/2026, 0413126, 04/13, or 04/13/1926 by returning null.\n8. Do not add any extra keys or text."
     },
     {
       "id": "rn1pt8vc0",

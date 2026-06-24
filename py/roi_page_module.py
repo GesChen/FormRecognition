@@ -534,7 +534,12 @@ def recognize_text_fields(
             if not is_header_prompt_roi:
                 non_header_texts[roi.name] = cleaned
                 if isinstance(roi_meta, dict):
-                    non_header_meta[roi.name] = roi_meta
+                    non_header_meta[roi.name] = dict(roi_meta)
+                if isinstance(raw_result.get("paddle_confidence"), dict):
+                    meta_for_name = non_header_meta.setdefault(roi.name, {})
+                    meta_for_name["ocr_paddle_confidence"] = json.loads(
+                        json.dumps(raw_result.get("paddle_confidence"), default=str)
+                    )
             if queue_enabled:
                 append_low_confidence_text_roi(
                     review_text_queue_out,
@@ -989,6 +994,10 @@ def analyze_page(
                 meta.get("llm_prompt_override", "") or ""
             ).strip() or None
             row["_ocr_output_regex"] = str(meta.get("ocr_output_regex", "") or "").strip() or None
+        if isinstance(row.get("ocr_paddle_confidence"), dict):
+            row["_ocr_paddle_confidence"] = json.loads(
+                json.dumps(row.get("ocr_paddle_confidence"), default=str)
+            )
         retry_meta = ocr_retry_meta.get(str(name), {})
         if retry_meta:
             row["_ocr_retry_image_path"] = str(retry_meta.get("image_path", "") or "").strip() or None

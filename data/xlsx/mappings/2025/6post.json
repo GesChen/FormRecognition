@@ -4,16 +4,16 @@
   "start_row": 4,
   "mappings": [
 
-    { "source": "id", "column": "A", "type": "direct" },
-    { "source": "date", "column": "B", "type": "direct" },
-    { "source": "teacher", "column": "K", "type": "direct" },
+    { "source": "id", "column": "A", "type": "direct", "comment": { "text": "OCR confidence: {ocr_confidence}\nFile name: {file_name}\nPDF pages: {pdf_pages}" }},
+    { "source": "date", "column": "B", "type": "direct", "comment": { "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}" } },
+    { "source": "teacher", "column": "K", "type": "direct", "comment": { "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}" } },
     
-    { "source": "1",  "column": "L", "type": "direct", "transform": "upper" },
-    { "source": "2",  "column": "M", "type": "direct", "transform": "upper" },
-    { "source": "3",  "column": "N", "type": "direct", "transform": "upper" },
-    { "source": "4",  "column": "O", "type": "direct", "transform": "upper" },
-    { "source": "5",  "column": "P", "type": "direct", "transform": "upper" },
-    { "source": "6",  "column": "Q", "type": "direct", "transform": "upper" },
+    { "source": "1",  "column": "L", "type": "direct", "transform": "upper"  },
+    { "source": "2",  "column": "M", "type": "direct", "transform": "upper"  },
+    { "source": "3",  "column": "N", "type": "direct", "transform": "upper"  },
+    { "source": "4",  "column": "O", "type": "direct", "transform": "upper"  },
+    { "source": "5",  "column": "P", "type": "direct", "transform": "upper"  },
+    { "source": "6",  "column": "Q", "type": "direct", "transform": "upper"  },
 
     { "source": "7",  "column": "R", "type": "lookup",
       "map": { "a": "TRUE", "b": "FALSE" } },
@@ -28,13 +28,13 @@
     { "source": "12", "column": "W", "type": "lookup",
       "map": { "a": "TRUE", "b": "FALSE" } },
 
-    { "source": "13", "column": "X",  "type": "direct", "transform": "upper" },
-    { "source": "14", "column": "Y",  "type": "direct", "transform": "upper" },
-    { "source": "15", "column": "Z",  "type": "direct", "transform": "upper" },
-    { "source": "16", "column": "AA", "type": "direct", "transform": "upper" },
-    { "source": "17", "column": "AB", "type": "direct", "transform": "upper" },
-    { "source": "18", "column": "AC", "type": "direct", "transform": "upper" },
-    { "source": "19", "column": "AD", "type": "direct", "transform": "upper" },
+    { "source": "13", "column": "X",  "type": "direct", "transform": "upper" , "comment": { "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}" } },
+    { "source": "14", "column": "Y",  "type": "direct", "transform": "upper" , "comment": { "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}" } },
+    { "source": "15", "column": "Z",  "type": "direct", "transform": "upper" , "comment": { "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}" } },
+    { "source": "16", "column": "AA", "type": "direct", "transform": "upper" , "comment": { "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}" } },
+    { "source": "17", "column": "AB", "type": "direct", "transform": "upper" , "comment": { "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}" } },
+    { "source": "18", "column": "AC", "type": "direct", "transform": "upper" , "comment": { "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}" } },
+    { "source": "19", "column": "AD", "type": "direct", "transform": "upper" , "comment": { "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}" } },
 
     { "source": "20", "column": "AE", "type": "lookup",
       "map": { "a": "Strongly Disagree", "b": "Disagree",
@@ -57,7 +57,7 @@
                "c": "Neither Agree nor Disagree", "d": "Agree",
                "e": "Strongly Agree" } },
 
-    { "source": "25", "column": "AJ", "type": "direct" },
+    { "source": "25", "column": "AJ", "type": "direct", "comment": { "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}" } },
 
     { "source": "26", "column": "AK", "type": "lookup",
       "map": { 
@@ -68,7 +68,7 @@
         "e": "Other Grade" },
       "default": "6th Grade"  },
 
-    { "source": "27", "column": "AL", "type": "direct", "transform": "number" },
+    { "source": "27", "column": "AL", "type": "direct", "transform": "number" , "comment": { "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}" } },
 
     { "source": "28", "type": "multi_column", "mark": "Yes",
       "no_answer": "AT",

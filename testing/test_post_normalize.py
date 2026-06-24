@@ -112,6 +112,20 @@ def test_normalize_items_leaves_values_unchanged_after_retry_exhaustion(monkeypa
     assert normalized == original == _items()
 
 
+def test_normalize_items_does_not_apply_placeholder_echo(monkeypatch):
+    def fake_generate(*args, **kwargs):
+        return {"text": json.dumps({"Value One": "<normalize>", "Valu One": "Value One"})}
+
+    monkeypatch.setattr(post_normalize, "generate", fake_generate)
+    normalized, original = post_normalize.normalize_items(_items(), {"form_a": {"field_alpha"}})
+
+    assert original == _items()
+    assert [r["text"] for i in normalized for r in i["data"] if r["name"] == "field_alpha"] == [
+        "Value One",
+        "Value One",
+    ]
+
+
 def test_normalize_items_prompt_only_uses_observed_values(monkeypatch):
     prompts: list[str] = []
 

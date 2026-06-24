@@ -71,10 +71,11 @@ XLSX_MAPPING_AUTO_GENERATE = {
 
 TEXT_ROI_LLM = {
     "enabled": True,  # LLM post-step for non-header text ROIs (after default OCR extraction).
-    "model": None,  # None => use LLM["model"].
+    "model": "qwen3.5:9b",  # None => use LLM["model"].
     "timeout_sec": 120,  # Timeout per ROI post-step call.
     "max_reruns": 3,  # Retry count when model output does not conform to {"detected_text": string|null}.
     "extra_params": {"think": False},  # Prefer concise deterministic outputs.
+    "paddle_vlm_fusion_enabled": True,  # When Paddle sidecar text exists, give both Paddle + VLM guesses to this normalizer.
 }
 
 POST_NORMALIZE = {
@@ -101,7 +102,8 @@ OCR_ENGINE = {
     # - "paddle_only": Paddle only, no vision fallback.
     # - "vision_only": vision only.
     # - "vision_with_paddle_confidence": vision text with Paddle confidence.
-    "workflow_default": "vision_with_paddle_confidence",
+    # - "paddle_vlm_fusion": vision text + Paddle sidecar for downstream LLM fusion.
+    "workflow_default": "paddle_vlm_fusion",
 
     # Vision OCR model name.
     "model": "glm-ocr:latest",
@@ -140,12 +142,17 @@ OCR_ENGINE = {
 
 }
 
-ID_FORM_LLM = {
+HEADER_RECOGNITION = {
     "crop_top_percent": 15.0,  # Top portion of page used for ID/form_type OCR.
     "crop_write_debug_image": False,  # Write top-crop debug PNGs.
     "crop_debug_dir": PATHS["output"] / "debug_images" / "id_crop",  # Debug output dir for top-crops.
     "form_types": ["6pre", "7pre", "8pre", "hpre", "6post", "7post", "8post", "hpost"],  # Allowed form_type values.
     "normalize_id_output": False,  # Normalize ID OCR output to canonical 7-digit+A/B pattern.
+    # Optional OCR workflow override for header ID/form-type extraction.
+    # None/"" => use OCR_ENGINE["workflow_default"].
+    # Same choices/aliases as OCR_ENGINE: vision_only, paddle_only,
+    # paddle_then_vision, vision_with_paddle_confidence, paddle_vlm_fusion.
+    "ocr_workflow_override": "paddle_only",
     "form_type_prompt_override":
 """
 You normalize OCR header text into one canonical form_type value.
@@ -173,6 +180,9 @@ Rules:
 - If required grade/timing evidence is missing or ambiguous, output null.
 """,
 }
+
+# Backward-compatible alias for older tools/scripts. Prefer HEADER_RECOGNITION.
+ID_FORM_LLM = HEADER_RECOGNITION
 
 PDF_RECOGNITION = {
     "output_dir": PATHS["output"] / "recognition",  # Final recognition JSON output directory.
@@ -249,6 +259,10 @@ ROI_PAGE_RECOGNITION = {
     # If a text ROI defines `ocr_output_regex` in schema metadata and normalized text does
     # not match, each step below is attempted in order until match or steps are exhausted.
     "ocr_regex_retry_enabled": True,
+    # After all regex retry steps are exhausted, clear values that still do not match
+    # their schema-provided `ocr_output_regex`. This is generic schema enforcement,
+    # not field-specific cleanup; invalid values remain visible in debug/review traces.
+    "ocr_regex_retry_clear_on_final_mismatch": True,
     # Ordered, editable list of retry method names. Keep this short to bound runtime.
     "ocr_regex_retry_steps": [
         "pad_8px",
@@ -282,4 +296,5 @@ XLSX_DATA_ENTRY = {
     "mapping_dir": PATHS["xlsx_mappings_root"],  # Directory with <form_type>.json mapping files.
     "output_dir": PATHS["output"] / "xlsx",  # Final XLSX output directory.
     "staging_dir": PATHS["cache"] / "xlsx_staging",  # Temporary filled workbook staging area.
+    "include_original_sheet": False,  # Add pre-normalization "(Original)" sheets when items_original is available.
 }

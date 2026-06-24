@@ -189,6 +189,57 @@ class OcrEngineWorkflowTests(unittest.TestCase):
             self.assertFalse(result["needs_human_review"])
             self.assertEqual(result["paddle_confidence"]["error"], "Forced Paddle failure for testing.")
 
+    def test_empty_parsed_detected_text_does_not_fall_back_to_json_wrapper(self):
+        with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
+            image_path = Path(tmp.name)
+
+            def fake_empty_vision_stage(path, *, timeout, min_conf, verbose, stage_index):
+                return (
+                    {
+                        "stage_index": stage_index,
+                        "model": OCR_ENGINE.get("model", "qwen2.5vl"),
+                        "elapsed_sec": 0.02,
+                        "raw_response": {"response": '```json { "text": "" }'},
+                        "response_text": '```json { "text": "" }',
+                        "parsed": {"detected_text": ""},
+                        "accepted": True,
+                        "error": None,
+                        "image_payload": {"jpeg_bytes": 123},
+                    },
+                    {"jpeg_bytes": 123},
+                )
+
+            old_workflow = OCR_ENGINE.get("workflow_default")
+            OCR_ENGINE["workflow_default"] = "vision_only"
+            try:
+                with patch.object(ocr_engine, "_run_vision_stage", fake_empty_vision_stage):
+                    result = ocr_engine.ocr_raw(image_path)
+            finally:
+                OCR_ENGINE["workflow_default"] = old_workflow
+
+            self.assertEqual(result["detected_text"], "")
+
+    def test_paddle_vlm_fusion_dispatch_runs_both_engines(self):
+        with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
+            image_path = Path(tmp.name)
+            old_workflow = OCR_ENGINE.get("workflow_default")
+            OCR_ENGINE["workflow_default"] = "paddle_vlm_fusion"
+            try:
+                with patch.object(ocr_engine, "_run_vision_stage", self._fake_vision_stage):
+                    with patch.object(ocr_engine, "_run_paddle_stage", self._fake_paddle_stage):
+                        result = ocr_engine.ocr_raw(image_path)
+            finally:
+                OCR_ENGINE["workflow_default"] = old_workflow
+
+            self.assertEqual(result["detected_text"], "vision text")
+            self.assertEqual(result["workflow"], "paddle_vlm_fusion")
+            self.assertEqual(result["text_source"], "vision")
+            self.assertEqual(result["paddle_confidence"]["detected_text"], "paddle text")
+            self.assertEqual(
+                result["fusion"]["normalizer_inputs"],
+                ["vlm_detected_text", "paddle_confidence.detected_text"],
+            )
+
     def test_confidence_stats_preserve_source_and_paddle_sidecar(self):
         raw = {
             "detected_text": "vision text",

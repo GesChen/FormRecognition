@@ -17,8 +17,8 @@ Usage:
     results = extract_id_and_form_type_batch(["path/to/p1.png", "path/to/p2.png"])
     # -> [{"id": "9010526A", "form_type": "6post"}, ...]
 
-Config: ID_FORM_LLM["crop_top_percent"], ID_FORM_LLM["form_types"],
-ID_FORM_LLM["crop_write_debug_image"] / ["crop_debug_dir"] (optional PNG of the OCR crop).
+Config: HEADER_RECOGNITION["crop_top_percent"], HEADER_RECOGNITION["form_types"],
+HEADER_RECOGNITION["crop_write_debug_image"] / ["crop_debug_dir"] (optional PNG of the OCR crop).
 """
 
 from __future__ import annotations
@@ -34,7 +34,7 @@ from typing import Any
 
 from concurrent.futures import ProcessPoolExecutor, as_completed
 
-from config import ID_FORM_LLM, PATHS, PDF_RECOGNITION
+from config import HEADER_RECOGNITION, OCR_ENGINE, PATHS, PDF_RECOGNITION
 
 try:
     from tqdm import tqdm
@@ -342,6 +342,45 @@ def _crop_debug_will_write(cfg: dict, crop_debug_dir: Path | None) -> bool:
     return crop_debug_dir is not None or bool(cfg.get("crop_write_debug_image"))
 
 
+def _cfg() -> dict[str, Any]:
+    return HEADER_RECOGNITION if isinstance(HEADER_RECOGNITION, dict) else {}
+
+
+def _header_ocr_workflow_override() -> str | None:
+    cfg = _cfg()
+    raw = cfg.get("ocr_workflow_override")
+    if raw is None:
+        raw = cfg.get("workflow_override")
+    workflow = str(raw or "").strip()
+    return workflow or None
+
+
+def _ocr_raw_header(image_path: str | Path) -> dict[str, Any]:
+    """
+    OCR helper for header ID/form-type extraction.
+
+    HEADER_RECOGNITION["ocr_workflow_override"] accepts the same workflow values
+    as OCR_ENGINE["workflow_default"]. When unset, this uses the normal OCR
+    engine default.
+    """
+    from ocr_engine import ocr_raw
+
+    workflow = _header_ocr_workflow_override()
+    if not workflow:
+        raw = ocr_raw(image_path)
+        return raw if isinstance(raw, dict) else {}
+
+    old_workflow = OCR_ENGINE.get("workflow_default") if isinstance(OCR_ENGINE, dict) else None
+    try:
+        if isinstance(OCR_ENGINE, dict):
+            OCR_ENGINE["workflow_default"] = workflow
+        raw = ocr_raw(image_path)
+        return raw if isinstance(raw, dict) else {}
+    finally:
+        if isinstance(OCR_ENGINE, dict):
+            OCR_ENGINE["workflow_default"] = old_workflow
+
+
 def _crop_top_and_ocr(
     image_path: Path,
     crop_top_percent: float,
@@ -350,8 +389,6 @@ def _crop_top_and_ocr(
 ):
     """Load image, keep top ``crop_top_percent`` % of height, run OCR; return text."""
     import cv2
-    from ocr_engine import ocr_raw_vision_only
-
     img = cv2.imread(str(image_path))
     if img is None:
         return ""
@@ -366,8 +403,7 @@ def _crop_top_and_ocr(
         tmp = f.name
     try:
         cv2.imwrite(tmp, cropped)
-        raw = ocr_raw_vision_only(tmp)
-        raw_out = raw if isinstance(raw, dict) else {}
+        raw_out = _ocr_raw_header(tmp)
         return str(raw_out.get("detected_text", "") or "").strip()
     finally:
         Path(tmp).unlink(missing_ok=True)
@@ -381,8 +417,6 @@ def _crop_top_and_ocr_with_raw(
 ) -> tuple[str, dict[str, Any]]:
     """Load image, keep top ``crop_top_percent`` % of height, run OCR; return (text, raw_ocr_output)."""
     import cv2
-    from ocr_engine import ocr_raw_vision_only
-
     img = cv2.imread(str(image_path))
     if img is None:
         return "", {}
@@ -397,8 +431,7 @@ def _crop_top_and_ocr_with_raw(
         tmp = f.name
     try:
         cv2.imwrite(tmp, cropped)
-        raw = ocr_raw_vision_only(tmp)
-        raw_out = raw if isinstance(raw, dict) else {}
+        raw_out = _ocr_raw_header(tmp)
         text = str(raw_out.get("detected_text", "") or "").strip()
         return text, raw_out
     finally:
@@ -413,8 +446,6 @@ def _crop_top_and_ocr_form_type_with_raw(
 ) -> tuple[str, dict[str, Any]]:
     """Top-crop OCR call dedicated to form_type extraction."""
     import cv2
-    from ocr_engine import ocr_raw
-
     img = cv2.imread(str(image_path))
     if img is None:
         return "", {}
@@ -430,8 +461,7 @@ def _crop_top_and_ocr_form_type_with_raw(
         tmp = Path(f.name)
     try:
         cv2.imwrite(str(tmp), cropped)
-        raw = ocr_raw(tmp)
-        raw_out = raw if isinstance(raw, dict) else {}
+        raw_out = _ocr_raw_header(tmp)
         text = str(raw_out.get("detected_text", "") or "").strip()
         return text, raw_out
     finally:
@@ -541,8 +571,6 @@ def _ocr_roi_with_raw(
     roi: dict[str, Any],
     crop_debug_out: Path | None = None,
 ) -> tuple[str, dict[str, Any]]:
-    from ocr_engine import ocr_raw
-
     tmp = _crop_named_roi_image(
         image_path,
         raw_schema=raw_schema,
@@ -552,8 +580,7 @@ def _ocr_roi_with_raw(
     if tmp is None:
         return "", {}
     try:
-        raw = ocr_raw(tmp)
-        raw_out = raw if isinstance(raw, dict) else {}
+        raw_out = _ocr_raw_header(tmp)
         text = str(raw_out.get("detected_text", "") or "").strip()
         return text, raw_out
     finally:
@@ -572,7 +599,7 @@ def _id_llm_meta_from_roi(roi: dict[str, Any]) -> dict[str, dict[str, Any]]:
 
 
 def _form_type_llm_meta(allowed_form_types: list[str]) -> dict[str, dict[str, Any]]:
-    cfg = ID_FORM_LLM if isinstance(ID_FORM_LLM, dict) else {}
+    cfg = _cfg()
     prompt_override = str(cfg.get("form_type_prompt_override", "") or "").strip()
     allowed = ", ".join(str(x).strip() for x in (allowed_form_types or []) if str(x).strip())
     validation = f"Must be one of {allowed} or null" if allowed else "Must be canonical form_type or null"
@@ -645,7 +672,7 @@ def id_top_crop_rec_stats(image_path: str | Path) -> dict[str, Any]:
     """
     from ocr_engine import ocr_confidence_stats
 
-    cfg = ID_FORM_LLM
+    cfg = _cfg()
     pct = float(cfg.get("crop_top_percent", 8.0))
     path = Path(image_path)
     if not path.is_file():
@@ -723,7 +750,7 @@ def _normalize_id(value: Any) -> str | None:
     if value is None:
         return None
 
-    cfg = ID_FORM_LLM if isinstance(ID_FORM_LLM, dict) else {}
+    cfg = _cfg()
     raw_toggle = cfg.get("normalize_id_output", True)
     if isinstance(raw_toggle, bool):
         normalize_enabled = raw_toggle
@@ -922,7 +949,7 @@ def _llm_generate_with_retries(
         debug_out["prompt"] = prompt
     for attempt in range(max_reruns + 1):
         if verbose and attempt > 0:
-            print(f"[ID_FORM_LLM] Re-running LLM (attempt {attempt + 1}/{max_reruns + 1}) due to invalid JSON shape...")
+            print(f"[HEADER_RECOGNITION] Re-running LLM (attempt {attempt + 1}/{max_reruns + 1}) due to invalid JSON shape...")
         out = generate(prompt)
         raw_text = out.get("text") or ""
         last_raw_text = raw_text
@@ -989,17 +1016,17 @@ def extract_id_and_form_type(
     """
     Single image:
     - ID from side-a schema ROI named "id"
-    - form_type from top-crop OCR using ID_FORM_LLM["form_type_prompt_override"]
+    - form_type from top-crop OCR using HEADER_RECOGNITION["form_type_prompt_override"]
 
-    Config defaults from ID_FORM_LLM["crop_top_percent"] and ID_FORM_LLM["form_types"].
+    Config defaults from HEADER_RECOGNITION["crop_top_percent"] and HEADER_RECOGNITION["form_types"].
     If return_raw_ocr is True, result includes raw OCR outputs for both calls.
     If crop_debug_out is set, writes the top-crop PNG to that path. If None and
-    ID_FORM_LLM["crop_write_debug_image"] is True, writes under ID_FORM_LLM["crop_debug_dir"].
+    HEADER_RECOGNITION["crop_write_debug_image"] is True, writes under HEADER_RECOGNITION["crop_debug_dir"].
     """
     path = Path(image_path)
     if not path.exists():
         raise FileNotFoundError(f"Image not found: {path}")
-    cfg = ID_FORM_LLM
+    cfg = _cfg()
     pct = float(crop_top_percent if crop_top_percent is not None else cfg.get("crop_top_percent", 15.0))
     ft = form_types if form_types is not None else cfg.get("form_types", [])
     raw_ocr_id: dict[str, Any] | None = None
@@ -1019,7 +1046,7 @@ def extract_id_and_form_type(
         crop_dbg_form = crop_dbg_id.with_name(f"{crop_dbg_id.stem}_form_type{crop_dbg_id.suffix}")
 
     if verbose:
-        print("[ID_FORM_LLM] form_type OCR call (top-crop)...")
+        print("[HEADER_RECOGNITION] form_type OCR call (top-crop)...")
     ft_text_ocr, raw_ocr_form_type = _crop_top_and_ocr_form_type_with_raw(
         path,
         crop_top_percent=pct,
@@ -1027,7 +1054,7 @@ def extract_id_and_form_type(
     )
 
     if verbose:
-        print("[ID_FORM_LLM] ID OCR call (ROI='id')...")
+        print("[HEADER_RECOGNITION] ID OCR call (ROI='id')...")
     id_text_final, raw_ocr_id = _ocr_roi_with_raw(
         path,
         raw_schema=raw_schema,
@@ -1082,9 +1109,9 @@ def extract_id_and_form_type_batch(
     """
     Batch entrypoint:
     - ID from side-a schema ROI named "id" (when include_id=True)
-    - form_type from top-crop OCR using ID_FORM_LLM["form_type_prompt_override"]
+    - form_type from top-crop OCR using HEADER_RECOGNITION["form_type_prompt_override"]
 
-    Config defaults from ID_FORM_LLM. Returns one dict per image in order.
+    Config defaults from HEADER_RECOGNITION. Returns one dict per image in order.
     If debug_out is provided (mutable dict), includes per-page OCR payloads for both calls.
     If crop_debug_dir is set, writes crop debug PNG(s) per page.
     """
@@ -1092,7 +1119,7 @@ def extract_id_and_form_type_batch(
     for p in paths:
         if not p.exists():
             raise FileNotFoundError(f"Image not found: {p}")
-    cfg = ID_FORM_LLM
+    cfg = _cfg()
     pct = float(crop_top_percent if crop_top_percent is not None else cfg.get("crop_top_percent", 15.0))
     ft = form_types if form_types is not None else cfg.get("form_types", [])
     raw_schema: dict[str, Any] | None = None
@@ -1108,12 +1135,12 @@ def extract_id_and_form_type_batch(
     if verbose:
         if include_id:
             print(
-                f"[ID_FORM_LLM] ID/form OCR on {len(paths)} page(s): "
+                f"[HEADER_RECOGNITION] ID/form OCR on {len(paths)} page(s): "
                 "ID ROI + top-crop form_type."
             )
         else:
             print(
-                f"[ID_FORM_LLM] form-type OCR on {len(paths)} page(s): "
+                f"[HEADER_RECOGNITION] form-type OCR on {len(paths)} page(s): "
                 "top-crop only."
             )
 

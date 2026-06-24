@@ -21,7 +21,7 @@ Central configuration consumed by every other module. Contains no logic — only
 | `IMAGE_NORMALIZE` | `dict` | Normalization pipeline toggles and parameters (see below). |
 | `PDF_RECOGNITION` | `dict` | Full-pipeline settings (output dir, schema dir, debug, sort, **human_review** OCR threshold). |
 | `LLM` | `dict` | Ollama server connection (host, port, model, keep_alive). |
-| `ID_FORM_LLM` | `dict` | ID + form-type extraction (crop height, allowed types, retry/MP options). |
+| `HEADER_RECOGNITION` | `dict` | Header ID + form-type extraction (crop height, allowed types, OCR workflow override). |
 | `ROI_PAGE_RECOGNITION` | `dict` | MCQ scorer tuning (eps, suppression, power, blur, expand, debug). |
 | `XLSX_DATA_ENTRY` | `dict` | Mapping dir + template path for `xlsx_data_entry` Excel filling. |
 
@@ -53,7 +53,7 @@ Central configuration consumed by every other module. Contains no logic — only
 | `mcq_blur_sigma` | `0` | Gaussian blur sigma before comparison (0 = off). |
 | `mcq_return_raw_darkness_debug` | `False` | Include per-choice scores in MCQ output. |
 
-### ID_FORM_LLM keys
+### HEADER_RECOGNITION keys
 
 | Key | Default | Effect |
 |---|---|---|
@@ -61,6 +61,7 @@ Central configuration consumed by every other module. Contains no logic — only
 | `crop_write_debug_image` | `False` | If `True`, save the top-crop region (pixels sent to OCR) as PNG(s) under `crop_debug_dir`. |
 | `crop_debug_dir` | `output/debug_images/id_crop` | Directory for crop debug PNGs: single image `stem_crop_top<pct>pct.png`; batch `stem_NNNN_crop_top<pct>pct.png`. |
 | `form_types` | `["6pre","7pre",…]` | Allowed form-type values for LLM selection. |
+| `ocr_workflow_override` | `None` | Optional header-only OCR workflow override; accepts the same values as `OCR_ENGINE["workflow_default"]` (`vision_only`, `paddle_only`, `paddle_then_vision`, `vision_with_paddle_confidence`, `paddle_vlm_fusion`). |
 | `debug_prompt` | `False` | Print full LLM prompt before each call. |
 | `max_llm_reruns` | `2` | Retry LLM when output shape is invalid. |
 | `use_multiprocessing` | `False` | Parallel OCR crop step. |
@@ -295,8 +296,8 @@ OCR engine + a single LLM call.
 
 Single-image extraction. Returns `{"id": str|None, "form_type": str|None}`.
 When `return_raw_ocr=True`, the result also contains `"raw_ocr"`.
-With `verbose=True`, prints LLM retry messages; full prompt text prints only if `verbose=True` and `ID_FORM_LLM["debug_prompt"]` is true.
-Optional `crop_debug_out` writes the top-crop PNG to that path; if unset, use `ID_FORM_LLM["crop_write_debug_image"]` and `crop_debug_dir`.
+With `verbose=True`, prints LLM retry messages; full prompt text prints only if `verbose=True` and `HEADER_RECOGNITION["debug_prompt"]` is true.
+Optional `crop_debug_out` writes the top-crop PNG to that path; if unset, use `HEADER_RECOGNITION["crop_write_debug_image"]` and `crop_debug_dir`.
 
 #### `extract_id_and_form_type_batch(image_paths, *, crop_top_percent=None, form_types=None, verbose=False, debug_out=None, crop_debug_dir=None) -> list[dict]`
 
@@ -309,7 +310,7 @@ Returns a list of `{"id", "form_type"}` dicts aligned to input order.
 | `verbose` | `bool` | Print LLM timing and status messages. |
 | `debug_out` | `dict \| None` | Mutable dict filled with `ocr_per_page` and `llm` debug data. |
 
-**Multiprocessing:** when `ID_FORM_LLM["use_multiprocessing"]` is `True` and debug
+**Multiprocessing:** when `HEADER_RECOGNITION["use_multiprocessing"]` is `True` and debug
 is not active **and** crop debug output is not enabled, the OCR crop step runs across `num_workers` processes via
 `ProcessPoolExecutor`.
 
@@ -574,6 +575,7 @@ file at `data/xlsx/mappings/<release>/<form_type>.json`.  See `docs/xlsx_mapping
 | `mapping_dir` | `PATHS["data"] / "xlsx" / "mappings" / <release>` | Directory for `<form_type>.json` mapping files. |
 | `output_dir` | `PATHS["output"] / "xlsx"` | Directory for merged per-PDF output workbooks. |
 | `staging_dir` | `PATHS["cache"] / "xlsx_staging"` | Default directory for staging filled copies. |
+| `include_original_sheet` | `False` | When `True`, include pre-normalization `(Original)` sheets when `items_original` is available. |
 
 ### Mapping types
 

@@ -6,13 +6,19 @@
     {
       "type": "direct",
       "source": "id",
-      "column": "A"
+      "column": "A",
+      "comment": {
+        "text": "OCR confidence: {ocr_confidence}\nFile name: {file_name}\nPDF pages: {pdf_pages}"
+      }
     },
     {
       "type": "direct",
       "source": "date",
       "column": "B",
-      "transform": "date"
+      "transform": "date",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
     },
     {
       "type": "static",
@@ -52,7 +58,10 @@
     {
       "type": "direct",
       "source": "teacher",
-      "column": "K"
+      "column": "K",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
     },
     {
       "type": "direct",
@@ -270,7 +279,10 @@
       "type": "direct",
       "source": "22",
       "column": "AG",
-      "transform": "number"
+      "transform": "number",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
     },
     {
       "type": "multi_column",
@@ -316,7 +328,10 @@
     {
       "type": "direct",
       "source": "23",
-      "column": "AQ"
+      "column": "AQ",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
     }
   ]
 }

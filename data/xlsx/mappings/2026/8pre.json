@@ -8,14 +8,17 @@
       "source": "id",
       "column": "A",
       "comment": {
-        "text": "Value: {value}\nRaw: {raw}\nSource: {source}\nMapping type: {type}\nOCR confidence: {ocr_confidence}\nOCR confidence score: {ocr_confidence_score}\nOCR confidence label: {ocr_confidence_label}\nFile name: {file_name}\nPDF stem: {pdf_stem}\nPDF pages: {pdf_pages}\nPage numbers: {page_numbers}\nOdd page: {page_odd}\nEven page: {page_even}"
+        "text": "OCR confidence: {ocr_confidence}\nFile name: {file_name}\nPDF pages: {pdf_pages}"
       }
     },
     {
       "type": "direct",
       "source": "date",
       "column": "B",
-      "transform": "date"
+      "transform": "date",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
     },
     {
       "type": "static",
@@ -55,7 +58,10 @@
     {
       "type": "direct",
       "source": "teacher",
-      "column": "K"
+      "column": "K",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
     },
     {
       "type": "direct",
@@ -247,7 +253,10 @@
       "type": "direct",
       "source": "25",
       "column": "AJ",
-      "transform": "number"
+      "transform": "number",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
     },
     {
       "type": "multi_column",

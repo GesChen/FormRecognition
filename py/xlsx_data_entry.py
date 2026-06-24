@@ -375,7 +375,7 @@ def _apply_cell_comment(
         context=context,
     )
     if text:
-        cell.comment = Comment(text, str(entry.get("comment_author") or "EVMS OCR"))
+        cell.comment = Comment(text, str(entry.get("comment_author") or ""))
 
 
 # ---------------------------------------------------------------------------
@@ -806,9 +806,9 @@ def fill_from_pipeline(
     then merge all sheets into a single output workbook.
 
     *items*: list of pipeline item dicts (each with ``form_type``, ``id``, ``data[]``).
-    *original_items*: optional pre-post-normalization item list. When provided,
-      each form_type staging workbook includes a normalized sheet and an
-      ``(Original)`` sheet.
+    *original_items*: optional pre-post-normalization item list. When provided
+      and ``cfg["include_original_sheet"]`` is truthy, each form_type staging
+      workbook includes a normalized sheet and an ``(Original)`` sheet.
     *output_path*: explicit path for the merged workbook.  When ``None``, auto-generates
       ``<output_dir>/<pdf_stem>.xlsx`` (or a timestamped name if *pdf_stem* is also ``None``).
     *pdf_stem*: used for the default output filename (e.g. ``"maury_1"``).
@@ -830,8 +830,10 @@ def fill_from_pipeline(
             continue
         groups.setdefault(ft, []).append(item)
 
+    include_original_sheet = bool(cfg.get("include_original_sheet", True))
+
     original_groups: dict[str, list[dict[str, Any]]] = {}
-    if original_items is not None:
+    if include_original_sheet and original_items is not None:
         for item in original_items:
             ft = (item.get("form_type") or "").strip()
             if not ft:
@@ -853,7 +855,7 @@ def fill_from_pipeline(
             continue
 
         staging_path = make_staging_output_path(ft, cfg)
-        ft_original_items = original_groups.get(ft) if original_items is not None else None
+        ft_original_items = original_groups.get(ft) if include_original_sheet and original_items is not None else None
         if ft_original_items is not None:
             fill_template_pair(mapping, ft_items, ft_original_items, staging_path, cfg=cfg, context=comment_context)
         else:

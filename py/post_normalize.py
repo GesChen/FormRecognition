@@ -95,7 +95,16 @@ def _looks_placeholder(value: str, roi_name: str | None = None) -> bool:
     s = _norm_text(value).strip().lower()
     if not s:
         return True
-    if s in {"null", "none", "n/a", "na", "unknown", "unreadable"}:
+    if s in {
+        "null",
+        "none",
+        "n/a",
+        "na",
+        "unknown",
+        "unreadable",
+        "<normalize>",
+        "normalize",
+    }:
         return True
     field = _norm_text(roi_name).strip().lower()
     if not field:
@@ -326,9 +335,10 @@ def _coerce_normalized_mapping(parsed: Any, expected_keys: set[str]) -> tuple[di
             return None, f"non_string:{key}"
         normalized = _norm_text(value) if value is not None else ""
         nullish_string = normalized.lower() in {"null", "none", "n/a", "na"}
-        if nullish_string:
+        placeholder_string = _looks_placeholder(normalized)
+        if nullish_string or placeholder_string:
             normalized = ""
-        if value is not None and not normalized and not nullish_string:
+        if value is not None and not normalized and not (nullish_string or placeholder_string):
             return None, f"empty_string:{key}"
         out[key] = normalized
     return out, None

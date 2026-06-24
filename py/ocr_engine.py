@@ -6,6 +6,7 @@ Workflows:
 - ocr_raw_paddle_only: Paddle OCR only, no vision fallback.
 - ocr_raw_paddle_then_vision: Paddle first (min-confidence gate), then local vision fallback.
 - ocr_raw_vision_with_paddle_confidence: vision text with Paddle confidence.
+- ocr_raw_paddle_vlm_fusion: vision text plus Paddle sidecar for downstream LLM fusion.
 
 Default ocr_raw() uses the configured default workflow.
 """
@@ -862,7 +863,7 @@ def _build_output(
         needs_review = True
 
     detected_text = str(parsed.get("detected_text", "") or "").strip()
-    if not detected_text and not chosen.get("error"):
+    if not detected_text and "detected_text" not in parsed and not chosen.get("error"):
         detected_text = str(chosen.get("response_text", "") or "").strip()
 
     selected_model = str(chosen.get("model", _cfg_str("model", "qwen2.5vl")))
@@ -1087,6 +1088,34 @@ def ocr_raw_vision_with_paddle_confidence(
     return out
 
 
+def ocr_raw_paddle_vlm_fusion(
+    image_path: str | Path,
+    *,
+    timeout: int | None = None,
+    verbose: bool = False,
+    force_paddle_failure: bool = False,
+) -> dict[str, Any]:
+    """
+    Run both VLM and Paddle so the downstream text ROI LLM can see both guesses.
+
+    The OCR result still exposes the VLM text as detected_text. Paddle output is
+    carried in the existing paddle_confidence sidecar, which text_roi_llm uses
+    as a second OCR hypothesis during normalization.
+    """
+    out = ocr_raw_vision_with_paddle_confidence(
+        image_path,
+        timeout=timeout,
+        verbose=verbose,
+        force_paddle_failure=force_paddle_failure,
+    )
+    out["workflow"] = "paddle_vlm_fusion"
+    out["fusion"] = {
+        "enabled": True,
+        "normalizer_inputs": ["vlm_detected_text", "paddle_confidence.detected_text"],
+    }
+    return out
+
+
 def ocr_raw_paddle_then_vision(
     image_path: str | Path,
     *,
@@ -1200,6 +1229,18 @@ def ocr_raw(
         "vlm_with_paddle_confidence",
     }:
         return ocr_raw_vision_with_paddle_confidence(
+            image_path,
+            timeout=timeout,
+            verbose=verbose,
+            force_paddle_failure=force_paddle_failure,
+        )
+    if workflow in {
+        "paddle_vlm_fusion",
+        "vlm_paddle_fusion",
+        "vision_paddle_fusion",
+        "paddle_vision_fusion",
+    }:
+        return ocr_raw_paddle_vlm_fusion(
             image_path,
             timeout=timeout,
             verbose=verbose,
