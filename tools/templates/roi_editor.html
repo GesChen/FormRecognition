@@ -433,7 +433,8 @@
       font: inherit;
       line-height: 1.35;
     }
-    .field-group select {
+    .field-group select,
+    .field-group input[type="text"] {
       width: 100%;
       padding: 8px;
       border: 1px solid var(--border);
@@ -725,6 +726,11 @@
           <h3>Selected ROI</h3>
         </div>
         <div class="field-group" style="margin-top:0;">
+          <label for="roi-vlm-query">VLM query</label>
+          <input type="text" id="roi-vlm-query" placeholder="Example: Todays Date" />
+          <div class="field-hint">Optional. Saved per ROI as <code>vlm_query</code> and used to build the VLM OCR prompt.</div>
+        </div>
+        <div class="field-group" style="margin-top:0;">
           <label for="roi-prompt-override">Final LLM prompt (editable)</label>
           <textarea class="prompt" id="roi-prompt-override" placeholder="Generated prompt appears here. You can edit it."></textarea>
           <div class="field-hint">Saved per ROI as <code>llm_prompt_override</code>.</div>
@@ -820,6 +826,7 @@
   const roiPromptInstructionEl = document.getElementById("roi-prompt-instruction");
   const roiGeneratorTemplateWrapEl = document.getElementById("roi-generator-template-wrap");
   const roiGeneratorTemplateEl = document.getElementById("roi-generator-template");
+  const roiVlmQueryEl = document.getElementById("roi-vlm-query");
   const roiPromptOverrideEl = document.getElementById("roi-prompt-override");
   const roiPromptStreamStatusEl = document.getElementById("roi-prompt-stream-status");
   const btnOpenPromptCreator = document.getElementById("btn-open-prompt-creator");
@@ -1175,6 +1182,8 @@
       roiValidationRulesEl.disabled = true;
       roiPromptInstructionEl.value = "";
       roiPromptInstructionEl.disabled = true;
+      roiVlmQueryEl.value = "";
+      roiVlmQueryEl.disabled = true;
       roiPromptOverrideEl.value = "";
       roiPromptOverrideEl.disabled = true;
       roiOcrOutputRegexEl.value = "";
@@ -1199,6 +1208,10 @@
     roiPromptInstructionEl.disabled = false;
     roiPromptInstructionEl.value = (typeof roi.llm_prompt_instruction === "string")
       ? roi.llm_prompt_instruction
+      : "";
+    roiVlmQueryEl.disabled = false;
+    roiVlmQueryEl.value = (typeof roi.vlm_query === "string")
+      ? roi.vlm_query
       : "";
     roiPromptOverrideEl.disabled = false;
     roiPromptOverrideEl.value = (typeof roi.llm_prompt_override === "string")
@@ -1985,6 +1998,11 @@
               : "";
             if (pov) out.llm_prompt_override = pov;
             else delete out.llm_prompt_override;
+            const vq = typeof out.vlm_query === "string"
+              ? out.vlm_query.trim()
+              : "";
+            if (vq) out.vlm_query = vq;
+            else delete out.vlm_query;
             const ocrRx = typeof out.ocr_output_regex === "string"
               ? out.ocr_output_regex.trim()
               : "";
@@ -2630,6 +2648,14 @@
     const value = roiPromptOverrideEl.value || "";
     if (value.trim()) roi.llm_prompt_override = value;
     else delete roi.llm_prompt_override;
+    scheduleAutosave();
+  });
+  roiVlmQueryEl.addEventListener("input", () => {
+    const roi = getPrimaryRoi();
+    if (!roi) return;
+    const value = roiVlmQueryEl.value || "";
+    if (value.trim()) roi.vlm_query = value;
+    else delete roi.vlm_query;
     scheduleAutosave();
   });
   roiOcrOutputRegexEl.addEventListener("input", () => {

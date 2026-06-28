@@ -19,6 +19,7 @@ import signal
 import subprocess
 import sys
 import threading
+import traceback
 import uuid
 from pathlib import Path
 
@@ -364,6 +365,10 @@ def create_app() -> Flask:
 
         def generate():
             proc: subprocess.Popen[bytes] | None = None
+            code: int | None = None
+            stream_error: str | None = None
+            stream_traceback: str | None = None
+            cancelled = False
             try:
                 yield f"$ {' '.join(cmd)}\n\n"
                 proc = subprocess.Popen(
@@ -381,7 +386,9 @@ def create_app() -> Flask:
                     for piece in _iter_subprocess_merged_output(proc):
                         yield piece
                 except (BrokenPipeError, OSError):
-                    pass
+                    cancelled = True
+                    _terminate_process_tree(proc)
+                    return
                 finally:
                     if proc.stdout and not proc.stdout.closed:
                         try:
@@ -389,12 +396,25 @@ def create_app() -> Flask:
                         except OSError:
                             pass
                 code = proc.wait()
+            except Exception as exc:
+                stream_error = f"{type(exc).__name__}: {exc}"
+                stream_traceback = traceback.format_exc()
+                if proc is not None and proc.poll() is None:
+                    _terminate_process_tree(proc)
+                    code = proc.wait()
+                elif proc is not None:
+                    code = proc.poll()
+                else:
+                    code = -1
+                yield "\n--- Hub stream error ---\n"
+                yield stream_traceback
+            finally:
                 try:
                     pdf_used_rel = str(pdf_abs.resolve().relative_to(PROJECT_ROOT.resolve()))
                 except ValueError:
                     pdf_used_rel = str(pdf_abs.resolve())
                 result = {
-                    "exit_code": code,
+                    "exit_code": code if code is not None else -1,
                     "stem": output_stem,
                     "output_suffix": output_suffix_raw,
                     "output_filename": output_filename_stem,
@@ -403,10 +423,15 @@ def create_app() -> Flask:
                     "upload_rel": upload_rel,
                     "pdf_rel_path_used": pdf_used_rel,
                     "no_json": bool(request.form.get("no_json")),
-                    "cancelled": bool(code is not None and code < 0),
+                    "cancelled": bool(cancelled or (code is not None and code < 0)),
                 }
-                yield "\n__RESULT__" + json.dumps(result) + "\n"
-            finally:
+                if stream_error:
+                    result["stream_error"] = stream_error
+                try:
+                    yield "\n__RESULT__" + json.dumps(result) + "\n"
+                except (BrokenPipeError, OSError):
+                    if proc is not None and proc.poll() is None:
+                        _terminate_process_tree(proc)
                 with _jobs_lock:
                     _active_recognition_jobs.pop(job_id, None)
 

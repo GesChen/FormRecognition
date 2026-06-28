@@ -5,49 +5,54 @@
   "image_height": 1650,
   "rois": [
     {
-      "h": 33,
+      "h": 61,
       "id": "r57868e52c",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "15",
-      "w": 790,
-      "x": 105,
-      "y": 96
+      "vlm_query": "15. The part of the uterus that includes the opening betweent he uterus and the vagina.",
+      "w": 839,
+      "x": 55,
+      "y": 68
     },
     {
-      "h": 29,
+      "h": 54,
       "id": "rf70ddf55a",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "16",
-      "w": 635,
-      "x": 102,
-      "y": 148
+      "vlm_query": "16. The pear-shaped reproductive organ where a pregnancy develops.",
+      "w": 683,
+      "x": 54,
+      "y": 123
     },
     {
-      "h": 28,
+      "h": 53,
       "id": "r7a9bf73cd",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "17",
-      "w": 417,
-      "x": 104,
-      "y": 199
+      "vlm_query": "17. The process of a sperm and egg meeting.",
+      "w": 465,
+      "x": 56,
+      "y": 174
     },
     {
-      "h": 29,
+      "h": 55,
       "id": "rc7440140e",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "18",
-      "w": 475,
-      "x": 104,
-      "y": 247
+      "vlm_query": "18. The loose skin that covers the head of the penis.",
+      "w": 527,
+      "x": 52,
+      "y": 221
     },
     {
-      "h": 31,
+      "h": 56,
       "id": "r3b0449bb8",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "19",
-      "w": 632,
-      "x": 105,
-      "y": 295
+      "vlm_query": "19. The fluid that gets the urethra ready for the passage of the sperm.",
+      "w": 683,
+      "x": 54,
+      "y": 270
     },
     {
       "h": 91,
@@ -294,21 +299,22 @@
       "id": "r689183490",
       "llm_prompt_override": "You are a strict text normalizer for ROI '25'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the written response text for what could have made the experience better.\n- Preserve wording conservatively.\n- Do not invent, infer, summarize, or explain.\n- If OCR text is empty, crossed out, or unreadable, return detected_text as null.\nTask:\n- Normalize the optional written response only.",
       "name": "25",
-      "w": 1207,
-      "x": 54,
+      "w": 1275,
+      "x": 0,
       "y": 1105
     },
     {
       "h": 32,
       "id": "r7f2f6cdc5",
-      "llm_prompt_override": "You are a strict age extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the age box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget age format:\nOne or two digits only, normally 10 through 19 for these school forms.\n\nRules:\n1. Extract only the student's written age from the OCR text.\n2. Strip labels such as \"Age:\", punctuation, whitespace, and surrounding words.\n3. If OCR text contains exactly one clear one- or two-digit age, return digits only.\n4. If OCR text is empty, unreadable, crossed out, or does not contain a clear age, return {\"detected_text\":null}.\n5. Do not use the ROI/question number as the age. For example, if this field is named 21, 25, 27, or 31, that number is not evidence of the student's age.\n6. Do not repair or guess digits from unrelated marks, answer choices, form labels, page numbers, or OCR artifacts.\n7. Do not add any extra keys or text.",
-      "name": "27",
-      "w": 190,
-      "x": 245,
-      "y": 1208,
       "llm_field_data_type": "age",
+      "llm_prompt_override": "You are a strict age extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the age box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget age format:\nOne or two digits only, normally 10 through 19 for these school forms.\n\nRules:\n1. Extract only the student's written age from the OCR text.\n2. Strip labels such as \"Age:\", punctuation, whitespace, and surrounding words.\n3. If OCR text contains exactly one clear one- or two-digit age, return digits only.\n4. If OCR text is empty, unreadable, crossed out, or does not contain a clear age, return {\"detected_text\":null}.\n5. Do not use the ROI/question number as the age. For example, if this field is named 21, 25, 27, or 31, that number is not evidence of the student's age.\n6. Do not repair or guess digits from unrelated marks, answer choices, form labels, page numbers, or OCR artifacts.\n7. Do not add any extra keys or text.",
       "llm_validation_rules": "Must be one or two digits only, or null. Do not use the ROI/question number as the value.",
-      "ocr_output_regex": "^[0-9]{1,2}$"
+      "name": "27",
+      "ocr_output_regex": "^[0-9]{1,2}$",
+      "vlm_query": "27. What is your age?",
+      "w": 383,
+      "x": 52,
+      "y": 1208
     },
     {
       "h": 114,
@@ -364,7 +370,7 @@
       "name": "28f",
       "w": 205,
       "x": 676,
-      "y": 1321
+      "y": 1322
     },
     {
       "h": 28,

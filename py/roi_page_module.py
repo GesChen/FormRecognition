@@ -68,6 +68,49 @@ def _tqdm_enabled() -> bool:
     return bool(getattr(sys.stderr, "isatty", lambda: False)())
 
 
+def _suppress_horizontal_lines(crop: Any) -> tuple[Any, dict[str, Any]]:
+    """Remove long horizontal rules from a grayscale text ROI crop."""
+    cfg = ROI_PAGE_RECOGNITION if isinstance(ROI_PAGE_RECOGNITION, dict) else {}
+    enabled = bool(cfg.get("text_roi_horizontal_line_suppression_enabled", False))
+    try:
+        min_line_len = max(2, int(cfg.get("text_roi_horizontal_line_min_len", 80) or 80))
+    except (TypeError, ValueError):
+        min_line_len = 80
+    try:
+        thickness = max(1, int(cfg.get("text_roi_horizontal_line_thickness", 2) or 2))
+    except (TypeError, ValueError):
+        thickness = 2
+    try:
+        inpaint_radius = max(1, int(cfg.get("text_roi_horizontal_line_inpaint_radius", 3) or 3))
+    except (TypeError, ValueError):
+        inpaint_radius = 3
+
+    details = {
+        "enabled": enabled,
+        "min_line_len": min_line_len,
+        "thickness": thickness,
+        "inpaint_radius": inpaint_radius,
+        "removed_pixels": 0,
+    }
+    if not enabled:
+        return crop, details
+
+    import cv2
+
+    gray = crop if getattr(crop, "ndim", 0) == 2 else cv2.cvtColor(crop, cv2.COLOR_BGR2GRAY)
+    bw = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)[1]
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (min_line_len, 1))
+    line_mask = cv2.morphologyEx(bw, cv2.MORPH_OPEN, kernel)
+    if thickness > 1:
+        dilate_kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (3, thickness))
+        line_mask = cv2.dilate(line_mask, dilate_kernel, iterations=1)
+
+    details["removed_pixels"] = int(cv2.countNonZero(line_mask))
+    if not details["removed_pixels"]:
+        return gray, details
+    return cv2.inpaint(gray, line_mask, inpaint_radius, cv2.INPAINT_TELEA), details
+
+
 @dataclass
 class BaseRoi:
     """Common fields shared by all ROI types."""
@@ -372,6 +415,8 @@ def _roi_output_regex(meta: Dict[str, Any] | None) -> str | None:
     Optional strict regex for final normalized ROI text.
     Stored in schema metadata as `ocr_output_regex`.
     """
+    if not bool(ROI_PAGE_RECOGNITION.get("ocr_regex_check_enabled", True)):
+        return None
     if not isinstance(meta, dict):
         return None
     value = meta.get("ocr_output_regex")
@@ -408,7 +453,7 @@ def recognize_text_fields(
     ``review_target_ref`` (see ``ocr_human_review``). *review_context* must include
     ``pdf_stem``, ``pair_index``, ``page_in_pair`` (``odd``/``even``).
     """
-    from ocr_engine import ocr_raw, ocr_confidence_stats
+    from ocr_engine import build_vlm_roi_prompt, ocr_raw, ocr_confidence_stats
     from ocr_human_review import append_low_confidence_text_roi
     import cv2
 
@@ -449,6 +494,10 @@ def recognize_text_fields(
         and isinstance(review_context, dict)
         and review_context.get("pdf_stem")
     )
+    try:
+        text_roi_expand_px = max(0, int(ROI_PAGE_RECOGNITION.get("text_roi_expand_px", 0) or 0))
+    except (TypeError, ValueError):
+        text_roi_expand_px = 0
 
     roi_bar = None
     roi_iterable = page_schema.text_rois
@@ -478,10 +527,14 @@ def recognize_text_fields(
                 f"{roi_index}/{total_text_rois} roi={roi.name}",
                 refresh=False,
             )
-        x1 = max(int(round(roi.x * scale_x)), 0)
-        y1 = max(int(round(roi.y * scale_y)), 0)
-        x2 = min(int(round((roi.x + roi.w) * scale_x)), w)
-        y2 = min(int(round((roi.y + roi.h) * scale_y)), h)
+        x1_raw = int(round(roi.x * scale_x))
+        y1_raw = int(round(roi.y * scale_y))
+        x2_raw = int(round((roi.x + roi.w) * scale_x))
+        y2_raw = int(round((roi.y + roi.h) * scale_y))
+        x1 = max(x1_raw - text_roi_expand_px, 0)
+        y1 = max(y1_raw - text_roi_expand_px, 0)
+        x2 = min(x2_raw + text_roi_expand_px, w)
+        y2 = min(y2_raw + text_roi_expand_px, h)
         if x2 <= x1 or y2 <= y1:
             results[roi.name] = ""
             if debug_collector is not None:
@@ -491,6 +544,7 @@ def recognize_text_fields(
             continue
 
         crop = img[y1:y2, x1:x2]
+        crop, horizontal_line_cleanup = _suppress_horizontal_lines(crop)
         import tempfile
 
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmp:
@@ -498,13 +552,22 @@ def recognize_text_fields(
         try:
             cv2.imwrite(str(tmp_path), crop)
             roi_meta = getattr(roi, "meta", None)
+            vlm_query = ""
+            vlm_prompt = None
+            if isinstance(roi_meta, dict):
+                vlm_query = str(roi_meta.get("vlm_query", "") or "").strip()
+                vlm_prompt = build_vlm_roi_prompt(vlm_query)
             is_header_prompt_roi = str(roi.name or "").strip().lower() in {"id", "form_type"}
             strict_regex = _roi_output_regex(roi_meta)
             if ocr_retry_meta_out is not None:
                 ocr_retry_meta_out[str(roi.name)] = {
                     "image_path": str(img_path),
                     "bbox_xyxy": [int(x1), int(y1), int(x2), int(y2)],
+                    "text_roi_expand_px": int(text_roi_expand_px),
+                    "horizontal_line_cleanup": dict(horizontal_line_cleanup),
                     "ocr_output_regex": strict_regex,
+                    "vlm_query": vlm_query,
+                    "vlm_prompt_override": vlm_prompt,
                 }
             need_raw = (
                 debug_collector is not None
@@ -512,21 +575,38 @@ def recognize_text_fields(
                 or queue_enabled
             )
             if need_raw:
-                raw_out = ocr_raw(tmp_path)
+                raw_out = (
+                    ocr_raw(tmp_path, prompt_override=vlm_prompt)
+                    if vlm_prompt
+                    else ocr_raw(tmp_path)
+                )
                 raw_result = raw_out if isinstance(raw_out, dict) else {}
+                if vlm_prompt:
+                    raw_result = dict(raw_result)
+                    raw_result["vlm_query"] = vlm_query
+                    raw_result["vlm_prompt_override"] = vlm_prompt
                 text = str(raw_result.get("detected_text", "") or "")
                 if debug_collector is not None:
                     debug_collector["text_per_roi"][roi.name] = {
                         "text": text,
                         "raw_ocr": _serialize_raw_ocr(raw_result),
-                        "ocr_path": "text_default",
+                        "ocr_path": "text_vlm_query" if vlm_prompt else "text_default",
+                        "horizontal_line_cleanup": dict(horizontal_line_cleanup),
                     }
                 stats = ocr_confidence_stats(raw_result)
                 if ocr_confidence_out is not None:
                     ocr_confidence_out[roi.name] = stats
             else:
-                raw_out = ocr_raw(tmp_path)
+                raw_out = (
+                    ocr_raw(tmp_path, prompt_override=vlm_prompt)
+                    if vlm_prompt
+                    else ocr_raw(tmp_path)
+                )
                 raw_result = raw_out if isinstance(raw_out, dict) else {}
+                if vlm_prompt:
+                    raw_result = dict(raw_result)
+                    raw_result["vlm_query"] = vlm_query
+                    raw_result["vlm_prompt_override"] = vlm_prompt
                 text = str(raw_result.get("detected_text", "") or "")
                 stats = ocr_confidence_stats({})
             cleaned = " ".join(str(text).split())

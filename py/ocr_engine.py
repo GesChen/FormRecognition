@@ -142,35 +142,159 @@ def _encode_image(image_path: str | Path, *, quality: int) -> tuple[str, dict[st
     return base64.b64encode(data).decode("ascii"), meta
 
 
+def _first_nonempty_scalar_value(obj: dict[str, Any]) -> Any:
+    for key in ("detected_text", "text"):
+        if key not in obj:
+            continue
+        value = obj.get(key)
+        if value is None:
+            continue
+        if isinstance(value, str):
+            if value.strip():
+                return value
+            continue
+        if isinstance(value, (int, float, bool)):
+            return value
+    for key, value in obj.items():
+        if key in {"confidence", "confidence_score", "confidence_label", "needs_human_review"}:
+            continue
+        if value is None:
+            continue
+        if isinstance(value, str):
+            if value.strip():
+                return value
+            continue
+        if isinstance(value, (int, float, bool)):
+            return value
+    return None
+
+
+def _normalize_parsed_json_obj(obj: Any) -> dict[str, Any]:
+    if not isinstance(obj, dict):
+        return {}
+    out = dict(obj)
+    if "detected_text" not in out:
+        if "text" in out:
+            out["detected_text"] = out.get("text")
+        else:
+            scalar = _first_nonempty_scalar_value(out)
+            if scalar is not None:
+                out["detected_text"] = scalar
+    return out
+
+
+def _json_text_candidates(text: str) -> list[str]:
+    s = str(text or "").strip()
+    if not s:
+        return []
+    candidates: list[str] = []
+    for m in re.finditer(r"```(?:json)?\s*([\s\S]*?)(?:```|$)", s, flags=re.IGNORECASE):
+        block = m.group(1).strip()
+        if block:
+            candidates.append(block)
+    candidates.append(s)
+    for start in [m.start() for m in re.finditer(r"\{", s)]:
+        end = s.find("}", start)
+        if end >= 0:
+            candidates.append(s[start : end + 1].strip())
+        else:
+            candidates.append(s[start:].strip())
+
+    out: list[str] = []
+    seen: set[str] = set()
+    for candidate in candidates:
+        c = candidate.strip()
+        if not c or c in seen:
+            continue
+        seen.add(c)
+        out.append(c)
+    return out
+
+
+def _clean_malformed_scalar(value: str) -> str:
+    v = str(value or "").strip()
+    v = v.strip("`")
+    v = re.sub(r"\s*```\s*$", "", v).strip()
+    v = v.strip().strip(",")
+    v = v.strip().strip('"').strip("'").strip()
+    return v
+
+
+def _malformed_json_like_from_text(text: str) -> dict[str, Any]:
+    """
+    Best-effort extraction for common VLM JSON mistakes.
+
+    Examples handled:
+      {"Record ID: "8011576A"}
+      {"Record ID" "8011576A"}
+      {"Record ID":8011576A}
+      Record ID: 8011576A
+    """
+    for raw in _json_text_candidates(text):
+        s = raw.strip()
+        if not s:
+            continue
+        s = s.replace("\u201c", '"').replace("\u201d", '"').replace("\u2018", "'").replace("\u2019", "'")
+        s = re.sub(r",\s*}", "}", s)
+
+        repaired = s
+        if "'" in repaired and '"' not in repaired:
+            repaired = repaired.replace("'", '"')
+        try:
+            obj = json.loads(repaired)
+            normalized = _normalize_parsed_json_obj(obj)
+            if normalized:
+                return normalized
+        except json.JSONDecodeError:
+            pass
+
+        patterns = (
+            # Missing JSON colon between a quoted key and quoted value; the key
+            # may itself end with a human-readable colon.
+            r'^\{\s*"(?P<key>[^"]+?)"\s*:?\s*"(?P<value>[^"]+)"\s*\}\s*$',
+            # Missing JSON colon and value is effectively bare after the key quote:
+            # {"Record ID: "8011576A"}
+            r'^\{\s*"(?P<key>[^"]+?:\s*)"\s*(?P<value>[^"}]+)"?\s*\}\s*$',
+            # Quoted key with bare alphanumeric-ish value.
+            r'^\{\s*"(?P<key>[^"]+?)"\s*:?\s*(?P<value>[^"}][^}]*)\s*\}\s*$',
+            # Unbraced label/value response.
+            r'^(?P<key>[A-Za-z][^:\n]{0,80}?)\s*:\s*(?P<value>[^\n{}]+)\s*$',
+        )
+        for pattern in patterns:
+            m = re.match(pattern, s, flags=re.DOTALL)
+            if not m:
+                continue
+            value = _clean_malformed_scalar(m.group("value"))
+            if value:
+                key = str(m.groupdict().get("key") or "detected_text").strip()
+                return _normalize_parsed_json_obj({key: value})
+
+    return {}
+
+
 def _json_from_text(text: str) -> dict[str, Any]:
     if not text:
         return {}
-    s = text.strip()
-    m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", s, flags=re.IGNORECASE)
-    if m:
-        s = m.group(1).strip()
-    try:
-        obj = json.loads(s)
-        if isinstance(obj, dict):
-            if "detected_text" not in obj and "text" in obj:
-                obj["detected_text"] = obj.get("text")
-            return obj
-        return {}
-    except json.JSONDecodeError:
-        pass
-    dec = json.JSONDecoder()
-    i0 = s.find("{")
-    if i0 < 0:
-        return {}
-    try:
-        obj, _ = dec.raw_decode(s[i0:])
-        if isinstance(obj, dict):
-            if "detected_text" not in obj and "text" in obj:
-                obj["detected_text"] = obj.get("text")
-            return obj
-        return {}
-    except json.JSONDecodeError:
-        return {}
+    for s in _json_text_candidates(text):
+        try:
+            obj = json.loads(s)
+            parsed = _normalize_parsed_json_obj(obj)
+            if parsed:
+                return parsed
+        except json.JSONDecodeError:
+            pass
+        dec = json.JSONDecoder()
+        i0 = s.find("{")
+        if i0 < 0:
+            continue
+        try:
+            obj, _ = dec.raw_decode(s[i0:])
+            parsed = _normalize_parsed_json_obj(obj)
+            if parsed:
+                return parsed
+        except json.JSONDecodeError:
+            continue
+    return _malformed_json_like_from_text(text)
 
 
 def _normalize_label(label: Any) -> str:
@@ -292,8 +416,27 @@ def default_text_prompt() -> str:
     return _build_prompt()
 
 
+def build_vlm_roi_prompt(query: str | None) -> str | None:
+    """Build the configured custom VLM prompt for a per-ROI query."""
+    q = str(query or "").strip()
+    if not q:
+        return None
+    template = str(
+        _cfg().get(
+            "vlm_roi_prompt_template",
+            '请按下列JSON格式输 出图中信息: {"{query}":""}',
+        )
+        or ""
+    )
+    if not template.strip():
+        return None
+    if "{query}" in template:
+        return template.replace("{query}", q)
+    return f"{template}{q}"
+
+
 def _is_text_json_obj(obj: Any) -> bool:
-    return isinstance(obj, dict) and ("text" in obj or "detected_text" in obj)
+    return isinstance(obj, dict) and _first_nonempty_scalar_value(obj) is not None
 
 
 def _canonical_stream_json_obj(obj: dict[str, Any]) -> str:
@@ -383,6 +526,13 @@ def _stream_text_json_completion(text: str) -> dict[str, int | str] | None:
     try:
         obj, end = decoder.raw_decode(s[start:])
     except json.JSONDecodeError:
+        close = s.find("}", start)
+        if close >= 0 and _malformed_json_like_from_text(s[start : close + 1]):
+            return {
+                "mode": "malformed_json_object",
+                "start_index": start,
+                "end_index": close + 1,
+            }
         return None
     if _is_text_json_obj(obj):
         return {"mode": "raw_json", "end_index": start + end}
@@ -504,7 +654,7 @@ def _local_vision_call(
     stream: bool,
     extra_params: dict[str, Any] | None,
 ) -> tuple[str, dict[str, Any]]:
-    effective_prompt = _TEMP_TEXT_VLM_PROMPT
+    effective_prompt = str(prompt or "").strip() or _TEMP_TEXT_VLM_PROMPT
     payload: dict[str, Any] = {
         "model": model,
         "prompt": effective_prompt,
@@ -578,8 +728,9 @@ def _local_vision_call(
             "returned_response_chars": len(text),
         }
         body["prompt_override"] = {
-            "temporary_text_vlm_prompt": True,
-            "ignored_passed_prompt": prompt != effective_prompt,
+            "temporary_text_vlm_prompt": effective_prompt == _TEMP_TEXT_VLM_PROMPT,
+            "ignored_passed_prompt": False,
+            "custom_prompt": effective_prompt != _TEMP_TEXT_VLM_PROMPT,
         }
         return text, body
 
@@ -594,8 +745,9 @@ def _local_vision_call(
     if isinstance(body, dict):
         body["streaming"] = {"enabled": False}
         body["prompt_override"] = {
-            "temporary_text_vlm_prompt": True,
-            "ignored_passed_prompt": prompt != effective_prompt,
+            "temporary_text_vlm_prompt": effective_prompt == _TEMP_TEXT_VLM_PROMPT,
+            "ignored_passed_prompt": False,
+            "custom_prompt": effective_prompt != _TEMP_TEXT_VLM_PROMPT,
         }
     return text, body
 
@@ -743,6 +895,7 @@ def _run_vision_stage(
     min_conf: float,
     verbose: bool,
     stage_index: int,
+    prompt_override: str | None = None,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     model = _cfg_str("model", "qwen2.5vl")
     host = _llm_host()
@@ -770,8 +923,9 @@ def _run_vision_stage(
         "vlm_slow_dropped_attempts": [],
     }
 
-    prompt_text = _build_prompt()
-    stage["prompt_source"] = "default"
+    prompt_text = str(prompt_override or "").strip() or _TEMP_TEXT_VLM_PROMPT
+    stage["prompt_source"] = "roi_override" if str(prompt_override or "").strip() else "default"
+    stage["prompt"] = prompt_text
 
     _vprint(verbose, f"stage {stage_index} begin model={model} (vision)")
     t0 = time.time()
@@ -863,8 +1017,12 @@ def _build_output(
         needs_review = True
 
     detected_text = str(parsed.get("detected_text", "") or "").strip()
-    if not detected_text and "detected_text" not in parsed and not chosen.get("error"):
-        detected_text = str(chosen.get("response_text", "") or "").strip()
+    raw_response_text = str(chosen.get("response_text", "") or "").strip()
+    # Preserve plain-text model responses as a compatibility fallback, but never
+    # promote a successfully parsed JSON envelope into OCR text.  An empty JSON
+    # value (for example {"text": ""}) means the model detected no text.
+    if not detected_text and not parsed and raw_response_text and not chosen.get("error"):
+        detected_text = raw_response_text
 
     selected_model = str(chosen.get("model", _cfg_str("model", "qwen2.5vl")))
     selected_stage_index = int(chosen.get("stage_index", 0))
@@ -983,6 +1141,7 @@ def ocr_raw_vision_only(
     *,
     timeout: int | None = None,
     verbose: bool = False,
+    prompt_override: str | None = None,
 ) -> dict[str, Any]:
     path = Path(image_path)
     if not path.exists():
@@ -998,12 +1157,16 @@ def ocr_raw_vision_only(
         f"host={_llm_host()} port={_llm_port()} keep_alive={_llm_keep_alive()}",
     )
 
+    vision_kwargs = {}
+    if str(prompt_override or "").strip():
+        vision_kwargs["prompt_override"] = prompt_override
     stage, image_meta = _run_vision_stage(
         path,
         timeout=call_timeout,
         min_conf=min_conf,
         verbose=verbose,
         stage_index=0,
+        **vision_kwargs,
     )
     out = _build_output(
         chosen=stage,
@@ -1026,6 +1189,7 @@ def ocr_raw_vision_with_paddle_confidence(
     timeout: int | None = None,
     verbose: bool = False,
     force_paddle_failure: bool = False,
+    prompt_override: str | None = None,
 ) -> dict[str, Any]:
     path = Path(image_path)
     if not path.exists():
@@ -1036,12 +1200,16 @@ def ocr_raw_vision_with_paddle_confidence(
 
     _vprint(verbose, f"start OCR vision_with_paddle_confidence image={Path(path).resolve()}")
 
+    vision_kwargs = {}
+    if str(prompt_override or "").strip():
+        vision_kwargs["prompt_override"] = prompt_override
     vision_stage, image_meta = _run_vision_stage(
         path,
         timeout=call_timeout,
         min_conf=min_conf,
         verbose=verbose,
         stage_index=0,
+        **vision_kwargs,
     )
     paddle_stage, paddle_full = _run_paddle_stage(
         path,
@@ -1094,6 +1262,7 @@ def ocr_raw_paddle_vlm_fusion(
     timeout: int | None = None,
     verbose: bool = False,
     force_paddle_failure: bool = False,
+    prompt_override: str | None = None,
 ) -> dict[str, Any]:
     """
     Run both VLM and Paddle so the downstream text ROI LLM can see both guesses.
@@ -1107,6 +1276,7 @@ def ocr_raw_paddle_vlm_fusion(
         timeout=timeout,
         verbose=verbose,
         force_paddle_failure=force_paddle_failure,
+        prompt_override=prompt_override,
     )
     out["workflow"] = "paddle_vlm_fusion"
     out["fusion"] = {
@@ -1122,6 +1292,7 @@ def ocr_raw_paddle_then_vision(
     timeout: int | None = None,
     verbose: bool = False,
     force_paddle_failure: bool = False,
+    prompt_override: str | None = None,
 ) -> dict[str, Any]:
     path = Path(image_path)
     if not path.exists():
@@ -1146,12 +1317,16 @@ def ocr_raw_paddle_then_vision(
         chosen = paddle_stage
         _vprint(verbose, "paddle accepted; skipping vision fallback")
     else:
+        vision_kwargs = {}
+        if str(prompt_override or "").strip():
+            vision_kwargs["prompt_override"] = prompt_override
         vision_stage, image_meta = _run_vision_stage(
             path,
             timeout=call_timeout,
             min_conf=min_conf,
             verbose=verbose,
             stage_index=1,
+            **vision_kwargs,
         )
         stages.append(vision_stage)
         if vision_stage.get("error") and not vision_stage.get("parsed"):
@@ -1214,6 +1389,7 @@ def ocr_raw(
     timeout: int | None = None,
     verbose: bool = False,
     force_paddle_failure: bool = False,
+    prompt_override: str | None = None,
 ) -> dict[str, Any]:
     workflow = _workflow_default()
     if workflow in {"vision_only", "vision"}:
@@ -1221,6 +1397,7 @@ def ocr_raw(
             image_path,
             timeout=timeout,
             verbose=verbose,
+            prompt_override=prompt_override,
         )
     if workflow in {
         "vision_with_paddle_confidence",
@@ -1233,6 +1410,7 @@ def ocr_raw(
             timeout=timeout,
             verbose=verbose,
             force_paddle_failure=force_paddle_failure,
+            prompt_override=prompt_override,
         )
     if workflow in {
         "paddle_vlm_fusion",
@@ -1245,6 +1423,7 @@ def ocr_raw(
             timeout=timeout,
             verbose=verbose,
             force_paddle_failure=force_paddle_failure,
+            prompt_override=prompt_override,
         )
     if workflow in {"paddle_only", "paddle"}:
         return ocr_raw_paddle_only(
@@ -1258,6 +1437,7 @@ def ocr_raw(
         timeout=timeout,
         verbose=verbose,
         force_paddle_failure=force_paddle_failure,
+        prompt_override=prompt_override,
     )
 
 

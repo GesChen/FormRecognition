@@ -16,7 +16,7 @@ from difflib import SequenceMatcher
 from math import ceil
 from typing import Any, Mapping
 
-from config import LLM, POST_NORMALIZE
+from config import LLM, LLM_POSTPROCESS, POST_NORMALIZE
 from llm_client import generate
 
 try:
@@ -40,7 +40,8 @@ def _cfg() -> dict[str, Any]:
 
 
 def _enabled() -> bool:
-    return bool(_cfg().get("enabled", True))
+    global_cfg = LLM_POSTPROCESS if isinstance(LLM_POSTPROCESS, dict) else {}
+    return bool(global_cfg.get("enabled", True)) and bool(_cfg().get("enabled", True))
 
 
 def _model() -> str | None:

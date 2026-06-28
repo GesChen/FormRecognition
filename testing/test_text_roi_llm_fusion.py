@@ -52,6 +52,72 @@ class TextRoiLlmFusionTests(unittest.TestCase):
         self.assertIn("PaddleOCR extracted text: 1234567A", prompt)
         self.assertTrue(debug["per_roi"][0]["used_paddle_vlm_fusion"])
 
+    def test_fusion_rejects_null_when_either_source_has_evidence(self):
+        responses = iter(
+            [
+                '{"detected_text":null}',
+                '{"detected_text":"04/13/2026"}',
+            ]
+        )
+        captured_prompts: list[str] = []
+
+        def fake_generate(prompt, *, model=None, timeout=None, extra_params=None):
+            captured_prompts.append(prompt)
+            return {"text": next(responses), "elapsed": 0.01}
+
+        debug: dict = {}
+        with patch.object(text_roi_llm, "generate", fake_generate):
+            out = text_roi_llm.postprocess_text_rois(
+                {"date": "4/13/26"},
+                roi_meta_by_name={
+                    "date": {
+                        "roi_name": "date",
+                        "ocr_paddle_confidence": {"detected_text": None},
+                    }
+                },
+                debug_out=debug,
+            )
+
+        self.assertEqual(out["date"], "04/13/2026")
+        self.assertEqual(len(captured_prompts), 2)
+        self.assertIn("PaddleOCR extracted text: null", captured_prompts[0])
+        self.assertIn("must not return null or empty", captured_prompts[1])
+        self.assertEqual(
+            debug["per_roi"][0]["attempts"][0]["rejection_reason"],
+            "null_with_fusion_evidence",
+        )
+
+    def test_fusion_preserves_supported_source_after_repeated_nulls(self):
+        def fake_generate(prompt, *, model=None, timeout=None, extra_params=None):
+            return {"text": '{"detected_text":null}', "elapsed": 0.01}
+
+        with patch.object(text_roi_llm, "generate", fake_generate):
+            with patch.object(text_roi_llm, "_max_reruns", return_value=1):
+                out = text_roi_llm.postprocess_text_rois(
+                    {"date": ""},
+                    roi_meta_by_name={
+                        "date": {
+                            "ocr_paddle_confidence": {"detected_text": "4/13/26"},
+                        }
+                    },
+                )
+
+        self.assertEqual(out["date"], "4/13/26")
+
+    def test_fusion_allows_null_when_both_sources_are_empty(self):
+        def fake_generate(prompt, *, model=None, timeout=None, extra_params=None):
+            return {"text": '{"detected_text":null}', "elapsed": 0.01}
+
+        with patch.object(text_roi_llm, "generate", fake_generate):
+            out = text_roi_llm.postprocess_text_rois(
+                {"date": ""},
+                roi_meta_by_name={
+                    "date": {"ocr_paddle_confidence": {"detected_text": None}}
+                },
+            )
+
+        self.assertEqual(out["date"], "")
+
     def test_postprocess_coerces_string_null_to_empty(self):
         def fake_generate(prompt, *, model=None, timeout=None, extra_params=None):
             return {
@@ -65,6 +131,19 @@ class TextRoiLlmFusionTests(unittest.TestCase):
             out = text_roi_llm.postprocess_text_rois({"age": "unclear"})
 
         self.assertEqual(out["age"], "")
+
+    def test_global_llm_postprocess_toggle_returns_original_text(self):
+        def fail_generate(*args, **kwargs):
+            raise AssertionError("generate should not be called")
+
+        debug: dict = {}
+        with patch.dict(text_roi_llm.LLM_POSTPROCESS, {"enabled": False}, clear=False):
+            with patch.object(text_roi_llm, "generate", fail_generate):
+                out = text_roi_llm.postprocess_text_rois({"age": "  14  "}, debug_out=debug)
+
+        self.assertEqual(out, {"age": "14"})
+        self.assertFalse(debug["enabled"])
+        self.assertEqual(debug["skipped"], "disabled")
 
     def test_postprocess_uses_roi_name_metadata_and_drops_internal_uid_echo(self):
         captured_prompts: list[str] = []
@@ -98,7 +177,7 @@ class TextRoiLlmFusionTests(unittest.TestCase):
         self.assertEqual(debug["per_roi"][0]["name"], "p702:r1:id")
         self.assertEqual(debug["per_roi"][0]["roi_name"], "id")
 
-    def test_postprocess_drops_unsupported_numeric_roi_name_echo(self):
+    def test_postprocess_replaces_unsupported_numeric_echo_with_supported_fallback(self):
         def fake_generate(prompt, *, model=None, timeout=None, extra_params=None):
             return {
                 "text": '{"detected_text":"25"}',
@@ -119,7 +198,7 @@ class TextRoiLlmFusionTests(unittest.TestCase):
                 },
             )
 
-        self.assertEqual(out["p11:r0:25"], "")
+        self.assertEqual(out["p11:r0:25"], "4")
 
     def test_postprocess_keeps_numeric_value_when_supported_by_ocr(self):
         def fake_generate(prompt, *, model=None, timeout=None, extra_params=None):

@@ -2,3 +2,4 @@ output
 testing/output
 input data/
 __pycache__/
+*.pyc

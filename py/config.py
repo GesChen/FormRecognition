@@ -33,8 +33,13 @@ PATHS = {
 LLM = {
     "host": "192.168.182.1",  # Model server host/IP (shared by LLM + VLM OCR unless overridden).
     "port": 11434,  # Model server port.
-    "model": "llama3.2",  # Default text model for llm_client/testing scripts.
+    # "model": "qwen3.5:9b",  # Default text model for llm_client/testing scripts.
+    "model": "llama3.2:latest",  # Default text model for llm_client/testing scripts.
     "keep_alive": 20,  # Seconds to keep model loaded between calls (0 disables).
+}
+
+LLM_POSTPROCESS = {
+    "enabled": True,  # Global toggle for optional LLM cleanup passes; does not disable required OCR/header LLM steps.
 }
 
 ROI_PROMPT_CREATOR = {
@@ -71,7 +76,8 @@ XLSX_MAPPING_AUTO_GENERATE = {
 
 TEXT_ROI_LLM = {
     "enabled": True,  # LLM post-step for non-header text ROIs (after default OCR extraction).
-    "model": "qwen3.5:9b",  # None => use LLM["model"].
+    # "model": "qwen3.5:9b",  # None => use LLM["model"].
+    "model": "llama3.2:latest",  # None => use LLM["model"].
     "timeout_sec": 120,  # Timeout per ROI post-step call.
     "max_reruns": 3,  # Retry count when model output does not conform to {"detected_text": string|null}.
     "extra_params": {"think": False},  # Prefer concise deterministic outputs.
@@ -133,6 +139,7 @@ OCR_ENGINE = {
     "vlm_repeat_tail_max_unit_chars": 240,  # Largest repeated suffix unit considered a loop.
     "vlm_repeat_tail_repeats": 3,  # Required exact suffix repetitions before cutting off.
     "vlm_repeat_tail_min_total_chars": 80,  # Minimum accumulated stream size before tail-loop detection.
+    "vlm_roi_prompt_template": '请按下列JSON格式输 出图中信息: {"{query}":""}',  # Per-ROI VLM prompt template; {query} is inserted exactly.
     "jpeg_quality": 20,  # JPEG quality used for VLM image payload.
     "stream": True,  # Stream VLM responses so completed JSON can be detected mid-call.
     "extra_params": 
@@ -143,6 +150,7 @@ OCR_ENGINE = {
 }
 
 HEADER_RECOGNITION = {
+    "model": "qwen3.5:9b",  # Dedicated text model for form-type inference.
     "crop_top_percent": 15.0,  # Top portion of page used for ID/form_type OCR.
     "crop_write_debug_image": False,  # Write top-crop debug PNGs.
     "crop_debug_dir": PATHS["output"] / "debug_images" / "id_crop",  # Debug output dir for top-crops.
@@ -246,6 +254,12 @@ IMAGE_NORMALIZE = {
 }
 
 ROI_PAGE_RECOGNITION = {
+    "text_roi_expand_px": 0,  # Expand each text ROI crop by N pixels before OCR.
+    # Remove long form rules from text crops before the shared VLM/Paddle OCR call.
+    "text_roi_horizontal_line_suppression_enabled": True,
+    "text_roi_horizontal_line_min_len": 80,  # Minimum detected rule length in crop pixels.
+    "text_roi_horizontal_line_thickness": 2,  # Vertical mask dilation used to cover the full rule.
+    "text_roi_horizontal_line_inpaint_radius": 3,  # OpenCV Telea inpaint radius in pixels.
     "mcq_subroi_expand_px": 5,  # Expand each MCQ sub-ROI by N pixels.
     "mcq_eps": 0.05,  # Ignore tiny residual darkness as noise.
     "mcq_print_suppression_k": 5.0,  # Higher = stronger suppression of pre-printed dark pixels.
@@ -258,6 +272,7 @@ ROI_PAGE_RECOGNITION = {
     # Regex-gated OCR redo loop for text ROIs (applied after deferred LLM normalization).
     # If a text ROI defines `ocr_output_regex` in schema metadata and normalized text does
     # not match, each step below is attempted in order until match or steps are exhausted.
+    "ocr_regex_check_enabled": False,  # Master toggle for checking/enforcing schema `ocr_output_regex`.
     "ocr_regex_retry_enabled": True,
     # After all regex retry steps are exhausted, clear values that still do not match
     # their schema-provided `ocr_output_regex`. This is generic schema enforcement,
@@ -268,20 +283,12 @@ ROI_PAGE_RECOGNITION = {
         "pad_8px",
         "clahe_light",
         "fsrcnn_x2",
-        "adaptive_binarize",
-        "adaptive_mean",
-        "adaptive_gauss",
         "pad_8px_clahe_light",
-        "pad_8px_adaptive_gauss",
     ],
     # Small set of tunables used by retry methods.
     "ocr_regex_retry_pad_px": 8,
     "ocr_regex_retry_clahe_clip": 2.0,
     "ocr_regex_retry_clahe_tile": 8,
-    "ocr_regex_retry_adaptive_block": 31,
-    "ocr_regex_retry_adaptive_c_mean": 8,
-    "ocr_regex_retry_adaptive_c_gauss": 10,
-    "ocr_regex_retry_adaptive_c_binarize": 9,
     # FSRCNN super-resolution retry step:
     # - If model path is empty or unavailable, the step is skipped safely.
     # - Typical model file is OpenCV FSRCNN_x2.pb.
@@ -296,5 +303,10 @@ XLSX_DATA_ENTRY = {
     "mapping_dir": PATHS["xlsx_mappings_root"],  # Directory with <form_type>.json mapping files.
     "output_dir": PATHS["output"] / "xlsx",  # Final XLSX output directory.
     "staging_dir": PATHS["cache"] / "xlsx_staging",  # Temporary filled workbook staging area.
+    "force_text_cells": True,  # Write mapped values as explicit Excel text; disable to retain inferred types.
     "include_original_sheet": False,  # Add pre-normalization "(Original)" sheets when items_original is available.
+    "confidence_heatmap": {
+        "enabled": True,  # Shade text ROI cells by OCR confidence.
+        "max_red": "F4B6B6",  # Fill at confidence=0; kept light enough for readable black text.
+    },
 }

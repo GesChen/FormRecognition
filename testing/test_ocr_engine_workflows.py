@@ -79,6 +79,21 @@ class OcrEngineWorkflowTests(unittest.TestCase):
             },
         )
 
+    def test_fusion_uses_same_image_for_paddle_and_vlm(self):
+        with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
+            image_path = Path(tmp.name)
+            old_workflow = OCR_ENGINE.get("workflow_default")
+            OCR_ENGINE["workflow_default"] = "paddle_vlm_fusion"
+            try:
+                with patch.object(ocr_engine, "_run_vision_stage", wraps=self._fake_vision_stage) as vision_call:
+                    with patch.object(ocr_engine, "_run_paddle_stage", wraps=self._fake_paddle_stage) as paddle_call:
+                        ocr_engine.ocr_raw(image_path)
+            finally:
+                OCR_ENGINE["workflow_default"] = old_workflow
+
+        self.assertEqual(Path(vision_call.call_args.args[0]), image_path)
+        self.assertEqual(Path(paddle_call.call_args.args[0]), image_path)
+
     def test_paddle_only_dispatch_uses_paddle_without_vision_fallback(self):
         with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
             image_path = Path(tmp.name)
@@ -189,7 +204,7 @@ class OcrEngineWorkflowTests(unittest.TestCase):
             self.assertFalse(result["needs_human_review"])
             self.assertEqual(result["paddle_confidence"]["error"], "Forced Paddle failure for testing.")
 
-    def test_empty_parsed_detected_text_does_not_fall_back_to_json_wrapper(self):
+    def test_empty_parsed_detected_text_stays_empty(self):
         with tempfile.NamedTemporaryFile(suffix=".png") as tmp:
             image_path = Path(tmp.name)
 

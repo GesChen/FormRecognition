@@ -629,6 +629,7 @@ def _form_type_llm_meta(allowed_form_types: list[str]) -> dict[str, dict[str, An
         }
     return {
         "form_type": {
+            "llm_model": cfg.get("model"),
             "llm_field_data_type": "form_type",
             "llm_validation_rules": validation,
             "llm_prompt_instruction": "Normalize header OCR text into canonical form_type value.",

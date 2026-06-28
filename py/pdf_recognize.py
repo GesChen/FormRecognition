@@ -131,6 +131,29 @@ def _sanitize_output_filename(value: str | None) -> str:
     return safe or ""
 
 
+def _llm_postprocess_enabled() -> bool:
+    """
+    Global switch for optional LLM cleanup passes.
+
+    This intentionally does not gate required LLM/VLM steps such as header/form
+    detection or OCR extraction fallbacks.
+    """
+    cfg = getattr(_config_module, "LLM_POSTPROCESS", {})
+    if not isinstance(cfg, dict):
+        return True
+    value = cfg.get("enabled", True)
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return bool(value)
+    s = str(value).strip().lower()
+    if s in {"false", "0", "no", "n", "off"}:
+        return False
+    if s in {"true", "1", "yes", "y", "on"}:
+        return True
+    return True
+
+
 def _rel_from_project_root(full: Path) -> str:
     """Path relative to project root for JSON portability."""
     root = Path(__file__).resolve().parent.parent
@@ -903,11 +926,7 @@ _OCR_REGEX_RETRY_STEP_METHODS = {
     "pad_8px": _ocr_retry_step_pad_8px,
     "clahe_light": _ocr_retry_step_clahe_light,
     "fsrcnn_x2": _ocr_retry_step_fsrcnn_x2,
-    "adaptive_binarize": _ocr_retry_step_adaptive_binarize,
-    "adaptive_mean": _ocr_retry_step_adaptive_mean,
-    "adaptive_gauss": _ocr_retry_step_adaptive_gauss,
     "pad_8px_clahe_light": _ocr_retry_step_pad_8px_clahe_light,
-    "pad_8px_adaptive_gauss": _ocr_retry_step_pad_8px_adaptive_gauss,
 }
 
 
@@ -962,6 +981,9 @@ def _run_ocr_regex_retry_step_queue(
             tmp_path = Path(tmp.name)
         try:
             cv2.imwrite(str(tmp_path), transformed)
+            # Paddle and VLM intentionally receive the exact same retry crop.
+            # Configured retry steps are grayscale-only; binary variants are
+            # excluded so neither engine sees a thresholded ROI.
             raw = ocr_raw(tmp_path)
             raw_out = raw if isinstance(raw, dict) else {}
             out[uid] = _normalize_text_value(raw_out.get("detected_text", ""))
@@ -971,6 +993,22 @@ def _run_ocr_regex_retry_step_queue(
             except OSError:
                 pass
     return out
+
+
+def _strip_text_llm_internal_metadata(all_page_data: list[list[dict[str, Any]]]) -> None:
+    """Remove internal text-LLM/retry metadata before output assembly."""
+    for page_rows in all_page_data:
+        for row in page_rows or []:
+            if not isinstance(row, dict):
+                continue
+            row.pop("_llm_field_data_type", None)
+            row.pop("_llm_validation_rules", None)
+            row.pop("_llm_prompt_instruction", None)
+            row.pop("_llm_prompt_override", None)
+            row.pop("_ocr_paddle_confidence", None)
+            row.pop("_ocr_output_regex", None)
+            row.pop("_ocr_retry_image_path", None)
+            row.pop("_ocr_retry_bbox_xyxy", None)
 
 
 def _run_deferred_text_llm_postprocess(
@@ -986,6 +1024,16 @@ def _run_deferred_text_llm_postprocess(
       2) LLM normalize all those OCR outputs together
       3) re-check regex; keep unresolved rows queued for next step
     """
+    if not _llm_postprocess_enabled():
+        if isinstance(debug_out, dict):
+            debug_out["text_llm_deferred"] = {
+                "enabled": False,
+                "reason": "global_llm_postprocess_disabled",
+            }
+        _strip_text_llm_internal_metadata(all_page_data)
+        _log("      Skipped deferred text-LLM postprocess (global toggle disabled).", verbose)
+        return
+
     from text_roi_llm import postprocess_text_rois
 
     text_by_uid: dict[str, str] = {}
@@ -1052,6 +1100,7 @@ def _run_deferred_text_llm_postprocess(
         current_values[uid] = _normalize_text_value(value)
 
     retry_cfg = _regex_retry_cfg()
+    regex_check_enabled = bool(retry_cfg.get("ocr_regex_check_enabled", True))
     retry_enabled = bool(retry_cfg.get("ocr_regex_retry_enabled", True))
     clear_on_final_mismatch = bool(retry_cfg.get("ocr_regex_retry_clear_on_final_mismatch", True))
     configured_steps = retry_cfg.get("ocr_regex_retry_steps") or []
@@ -1062,14 +1111,15 @@ def _run_deferred_text_llm_postprocess(
 
     regex_by_uid: dict[str, re.Pattern[str]] = {}
     invalid_regex_uids: list[str] = []
-    for uid, ctx in retry_ctx_by_uid.items():
-        pat = _compile_output_regex(ctx.get("ocr_output_regex"))
-        if pat is not None:
-            regex_by_uid[uid] = pat
-            continue
-        raw = str(ctx.get("ocr_output_regex", "") or "").strip()
-        if raw:
-            invalid_regex_uids.append(uid)
+    if regex_check_enabled:
+        for uid, ctx in retry_ctx_by_uid.items():
+            pat = _compile_output_regex(ctx.get("ocr_output_regex"))
+            if pat is not None:
+                regex_by_uid[uid] = pat
+                continue
+            raw = str(ctx.get("ocr_output_regex", "") or "").strip()
+            if raw:
+                invalid_regex_uids.append(uid)
 
     pending = [
         uid for uid, pat in regex_by_uid.items()
@@ -1231,6 +1281,7 @@ def _run_deferred_text_llm_postprocess(
             "model": details.get("model"),
             "details": details,
             "regex_retry": {
+                "check_enabled": regex_check_enabled,
                 "enabled": retry_enabled,
                 "clear_on_final_mismatch": clear_on_final_mismatch,
                 "configured_steps": retry_steps,
@@ -1254,19 +1305,7 @@ def _run_deferred_text_llm_postprocess(
             },
         }
 
-    # Remove internal metadata from rows before output assembly.
-    for page_rows in all_page_data:
-        for row in page_rows or []:
-            if not isinstance(row, dict):
-                continue
-            row.pop("_llm_field_data_type", None)
-            row.pop("_llm_validation_rules", None)
-            row.pop("_llm_prompt_instruction", None)
-            row.pop("_llm_prompt_override", None)
-            row.pop("_ocr_paddle_confidence", None)
-            row.pop("_ocr_output_regex", None)
-            row.pop("_ocr_retry_image_path", None)
-            row.pop("_ocr_retry_bbox_xyxy", None)
+    _strip_text_llm_internal_metadata(all_page_data)
 
 
 def _build_pair_items(
@@ -1735,7 +1774,10 @@ def _run_workflow(
             }
             for ft, fields in sorted(enabled_fields.items())
         }
-        if not enabled_fields:
+        if not _llm_postprocess_enabled():
+            post_normalize_payload["skipped_reason"] = "global_llm_postprocess_disabled"
+            _log("      Skipped (global LLM postprocess toggle disabled).", verbose)
+        elif not enabled_fields:
             post_normalize_payload["skipped_reason"] = "no_enabled_rois"
             _log("      Skipped (no ROI has post_normalize=true).", verbose)
         else:

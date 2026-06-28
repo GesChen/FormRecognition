@@ -45,6 +45,29 @@ def test_normalize_items_skips_without_matching_enabled_fields(monkeypatch):
     assert normalized == original == _items()
 
 
+def test_normalize_items_respects_global_llm_postprocess_toggle(monkeypatch):
+    called = False
+
+    def fake_generate(*args, **kwargs):
+        nonlocal called
+        called = True
+        return {"text": "{}"}
+
+    monkeypatch.setattr(post_normalize, "generate", fake_generate)
+    monkeypatch.setitem(post_normalize.LLM_POSTPROCESS, "enabled", False)
+    debug: dict = {}
+    normalized, original = post_normalize.normalize_items(
+        _items(),
+        {"form_a": {"field_alpha"}},
+        debug_out=debug,
+    )
+
+    assert called is False
+    assert normalized == original == _items()
+    assert debug["enabled"] is False
+    assert debug["skipped_reason"] == "disabled"
+
+
 def test_normalize_items_applies_mapping_response(monkeypatch):
     def fake_generate(*args, **kwargs):
         return {"text": json.dumps({"Value One": "Value One", "Valu One": "Value One"})}

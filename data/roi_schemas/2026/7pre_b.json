@@ -37,7 +37,7 @@
       "y": 128
     },
     {
-      "h": 29,
+      "h": 60,
       "id": "ra490c7c76",
       "name": "16a",
       "w": 77,
@@ -149,31 +149,34 @@
       "y": 359
     },
     {
-      "h": 29,
+      "h": 60,
       "id": "r9d4d5513a",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: Pharmacy->A, IUD->B, Emergency contraception->C, Abstinence->D, The shot->E, The ring->F, The pill->G, Dental dam->H, Health center->I, Condoms->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "21",
-      "w": 1060,
-      "x": 80,
-      "y": 610
+      "vlm_query": "21. A latex square that prevents STI transmission during oral sex on the vulva or anus.",
+      "w": 1080,
+      "x": 60,
+      "y": 581
     },
     {
-      "h": 31,
+      "h": 62,
       "id": "r45a2d541f",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: Pharmacy->A, IUD->B, Emergency contraception->C, Abstinence->D, The shot->E, The ring->F, The pill->G, Dental dam->H, Health center->I, Condoms->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "22",
-      "w": 1115,
-      "x": 78,
-      "y": 663
+      "vlm_query": "22. Methods that can be used in the event of unprotected sex to prevent pregnancy which can be found at a pharmacy.",
+      "w": 1133,
+      "x": 60,
+      "y": 632
     },
     {
-      "h": 28,
+      "h": 59,
       "id": "r233dba0db",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: Pharmacy->A, IUD->B, Emergency contraception->C, Abstinence->D, The shot->E, The ring->F, The pill->G, Dental dam->H, Health center->I, Condoms->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "23",
-      "w": 675,
-      "x": 75,
-      "y": 718
+      "vlm_query": "23. Only place where hormonal birth control methods can be obtained.",
+      "w": 690,
+      "x": 60,
+      "y": 687
     },
     {
       "h": 42,
@@ -226,14 +229,15 @@
     {
       "h": 38,
       "id": "r39b41a521",
-      "llm_prompt_override": "You are a strict age extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the age box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget age format:\nOne or two digits only, normally 10 through 19 for these school forms.\n\nRules:\n1. Extract only the student's written age from the OCR text.\n2. Strip labels such as \"Age:\", punctuation, whitespace, and surrounding words.\n3. If OCR text contains exactly one clear one- or two-digit age, return digits only.\n4. If OCR text is empty, unreadable, crossed out, or does not contain a clear age, return {\"detected_text\":null}.\n5. Do not use the ROI/question number as the age. For example, if this field is named 21, 25, 27, or 31, that number is not evidence of the student's age.\n6. Do not repair or guess digits from unrelated marks, answer choices, form labels, page numbers, or OCR artifacts.\n7. Do not add any extra keys or text.",
-      "name": "25",
-      "w": 156,
-      "x": 262,
-      "y": 828,
       "llm_field_data_type": "age",
+      "llm_prompt_override": "You are a strict age extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the age box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget age format:\nOne or two digits only, normally 10 through 19 for these school forms.\n\nRules:\n1. Extract only the student's written age from the OCR text.\n2. Strip labels such as \"Age:\", punctuation, whitespace, and surrounding words.\n3. If OCR text contains exactly one clear one- or two-digit age, return digits only.\n4. If OCR text is empty, unreadable, crossed out, or does not contain a clear age, return {\"detected_text\":null}.\n5. Do not use the ROI/question number as the age. For example, if this field is named 21, 25, 27, or 31, that number is not evidence of the student's age.\n6. Do not repair or guess digits from unrelated marks, answer choices, form labels, page numbers, or OCR artifacts.\n7. Do not add any extra keys or text.",
       "llm_validation_rules": "Must be one or two digits only, or null. Do not use the ROI/question number as the value.",
-      "ocr_output_regex": "^[0-9]{1,2}$"
+      "name": "25",
+      "ocr_output_regex": "^[0-9]{1,2}$",
+      "vlm_query": "25. What is your age?",
+      "w": 357,
+      "x": 61,
+      "y": 828
     },
     {
       "h": 119,

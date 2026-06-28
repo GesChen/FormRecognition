@@ -137,8 +137,9 @@
       "id": "r0abdaca3f",
       "llm_prompt_override": "You are a strict text normalizer for ROI age extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be digits only (0-9), or null.\n- Remove surrounding words/symbols if a clear numeric age exists.\n- Do not output units, explanations, or placeholders.\n- If unreadable/unclear, return detected_text as null.\nTask:\n- Normalize OCR text into age digits.",
       "name": "17",
-      "w": 208,
-      "x": 251,
+      "vlm_query": "17. What is your age?",
+      "w": 429,
+      "x": 59,
       "y": 385
     },
     {

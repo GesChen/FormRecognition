@@ -5,31 +5,34 @@
   "image_height": 1650,
   "rois": [
     {
-      "h": 28,
+      "h": 56,
       "id": "rd879dab08",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "21",
-      "w": 730,
-      "x": 98,
-      "y": 214
+      "vlm_query": "21. A latex square that prevents STI transmission during oral sex on the vulva or anus.",
+      "w": 780,
+      "x": 49,
+      "y": 186
     },
     {
-      "h": 28,
+      "h": 56,
       "id": "rf51707331",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "22",
-      "w": 1000,
-      "x": 98,
-      "y": 261
+      "vlm_query": "22. Methods that can be used in the event of unprotected sex to prevent pregnancy which can be found at a pharmacy.",
+      "w": 1049,
+      "x": 49,
+      "y": 233
     },
     {
-      "h": 27,
+      "h": 55,
       "id": "rabcf73dd2",
       "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "23",
-      "w": 605,
-      "x": 99,
-      "y": 306
+      "vlm_query": "23. Only place where hormonal birth control methods can be obtained.",
+      "w": 655,
+      "x": 49,
+      "y": 278
     },
     {
       "h": 33,
@@ -331,14 +334,15 @@
     {
       "h": 30,
       "id": "r298766db4",
-      "llm_prompt_override": "You are a strict age extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the age box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget age format:\nOne or two digits only, normally 10 through 19 for these school forms.\n\nRules:\n1. Extract only the student's written age from the OCR text.\n2. Strip labels such as \"Age:\", punctuation, whitespace, and surrounding words.\n3. If OCR text contains exactly one clear one- or two-digit age, return digits only.\n4. If OCR text is empty, unreadable, crossed out, or does not contain a clear age, return {\"detected_text\":null}.\n5. Do not use the ROI/question number as the age. For example, if this field is named 21, 25, 27, or 31, that number is not evidence of the student's age.\n6. Do not repair or guess digits from unrelated marks, answer choices, form labels, page numbers, or OCR artifacts.\n7. Do not add any extra keys or text.",
-      "name": "31",
-      "w": 229,
-      "x": 224,
-      "y": 1113,
       "llm_field_data_type": "age",
+      "llm_prompt_override": "You are a strict age extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the age box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget age format:\nOne or two digits only, normally 10 through 19 for these school forms.\n\nRules:\n1. Extract only the student's written age from the OCR text.\n2. Strip labels such as \"Age:\", punctuation, whitespace, and surrounding words.\n3. If OCR text contains exactly one clear one- or two-digit age, return digits only.\n4. If OCR text is empty, unreadable, crossed out, or does not contain a clear age, return {\"detected_text\":null}.\n5. Do not use the ROI/question number as the age. For example, if this field is named 21, 25, 27, or 31, that number is not evidence of the student's age.\n6. Do not repair or guess digits from unrelated marks, answer choices, form labels, page numbers, or OCR artifacts.\n7. Do not add any extra keys or text.",
       "llm_validation_rules": "Must be one or two digits only, or null. Do not use the ROI/question number as the value.",
-      "ocr_output_regex": "^[0-9]{1,2}$"
+      "name": "31",
+      "ocr_output_regex": "^[0-9]{1,2}$",
+      "vlm_query": "31. What is your age?",
+      "w": 404,
+      "x": 49,
+      "y": 1113
     },
     {
       "h": 31,

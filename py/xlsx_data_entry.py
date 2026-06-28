@@ -40,11 +40,13 @@ from form_sheet_map import form_sheet_name, workbook_template_path
 
 try:
     from openpyxl.comments import Comment
+    from openpyxl.styles import PatternFill
     from openpyxl.utils import column_index_from_string
     from openpyxl.worksheet.worksheet import Worksheet
     from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 except ImportError as e:  # pragma: no cover
     Comment = None  # type: ignore
+    PatternFill = None  # type: ignore
     column_index_from_string = None  # type: ignore
     Worksheet = None  # type: ignore
     ILLEGAL_CHARACTERS_RE = None  # type: ignore
@@ -191,16 +193,32 @@ def _col_letter_to_idx(letter: str) -> int:
     return column_index_from_string(letter.strip().upper())
 
 
-def _write_cell(ws: Worksheet, row: int, col_letter: str, value: Any):
+def _write_cell(
+    ws: Worksheet,
+    row: int,
+    col_letter: str,
+    value: Any,
+    cfg: Mapping[str, Any] | None = None,
+):
     if value is None:
         return None
+    force_text = bool(
+        (cfg or {}).get(
+            "force_text_cells",
+            XLSX_DATA_ENTRY.get("force_text_cells", True),
+        )
+    )
     # Guard against control characters that Excel/openpyxl reject.
-    if isinstance(value, str):
-        txt = value
+    if force_text or isinstance(value, str):
+        txt = str(value)
         if ILLEGAL_CHARACTERS_RE is not None:
             txt = ILLEGAL_CHARACTERS_RE.sub("", txt)
         value = txt
-    return ws.cell(row=row, column=_col_letter_to_idx(col_letter), value=value)
+    cell = ws.cell(row=row, column=_col_letter_to_idx(col_letter), value=value)
+    if force_text:
+        cell.data_type = "s"
+        cell.number_format = "@"
+    return cell
 
 
 def _parse_date(v: Any) -> Any:
@@ -271,6 +289,65 @@ def _format_confidence(row_meta: Mapping[str, Any] | None, item: Mapping[str, An
     if label and score_text:
         return f"{label} ({score_text})", score_text, label
     return label or score_text, score_text, label
+
+
+def _parse_hex_rgb(value: Any, default: str) -> tuple[int, int, int]:
+    raw = str(value or default).strip().lstrip("#")
+    if len(raw) == 8:
+        raw = raw[2:]
+    if len(raw) != 6 or not re.fullmatch(r"[0-9A-Fa-f]{6}", raw):
+        raw = default
+    return int(raw[0:2], 16), int(raw[2:4], 16), int(raw[4:6], 16)
+
+
+def _confidence_score_for_text_roi(item: Mapping[str, Any], source: str) -> float | None:
+    row_meta = _find_data_entry(item, source)
+    if not row_meta or str(row_meta.get("kind", "")).strip().lower() != "text":
+        return None
+    for key in ("ocr_confidence_score", "ocr_min_score"):
+        raw = row_meta.get(key)
+        if raw is None:
+            continue
+        try:
+            score = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if score != score:
+            continue
+        return max(0.0, min(1.0, score))
+    return None
+
+
+def _confidence_heatmap_fill(score: float, cfg: Mapping[str, Any]) -> Any:
+    if PatternFill is None:
+        _require_openpyxl()
+    heatmap_cfg = cfg.get("confidence_heatmap") if isinstance(cfg, Mapping) else None
+    if not isinstance(heatmap_cfg, Mapping):
+        heatmap_cfg = {}
+    max_red = _parse_hex_rgb(heatmap_cfg.get("max_red"), "F4B6B6")
+    # confidence=1 -> white, confidence=0 -> configured light red.
+    t = 1.0 - max(0.0, min(1.0, float(score)))
+    rgb = tuple(round(255 + (channel - 255) * t) for channel in max_red)
+    color = "".join(f"{channel:02X}" for channel in rgb)
+    return PatternFill(fill_type="solid", fgColor=f"FF{color}")
+
+
+def _apply_confidence_heatmap(
+    cell: Any,
+    item: Mapping[str, Any],
+    source: str,
+    cfg: Mapping[str, Any] | None,
+) -> None:
+    if cell is None:
+        return
+    cfg = cfg or XLSX_DATA_ENTRY
+    heatmap_cfg = cfg.get("confidence_heatmap") if isinstance(cfg, Mapping) else None
+    if not isinstance(heatmap_cfg, Mapping) or not bool(heatmap_cfg.get("enabled", False)):
+        return
+    score = _confidence_score_for_text_roi(item, source)
+    if score is None:
+        return
+    cell.fill = _confidence_heatmap_fill(score, cfg)
 
 
 def _comment_template_and_replacements(comment_cfg: Any) -> tuple[str, dict[str, str]]:
@@ -389,13 +466,14 @@ def apply_mapping_entry(
     item: Mapping[str, Any],
     *,
     context: Mapping[str, Any] | None = None,
+    cfg: Mapping[str, Any] | None = None,
 ) -> None:
     """Apply one mapping entry to a worksheet row for a given pipeline item."""
     mtype = str(entry.get("type", "")).strip().lower()
 
     if mtype == "static":
         value = entry.get("value")
-        cell = _write_cell(ws, row, str(entry["column"]), value)
+        cell = _write_cell(ws, row, str(entry["column"]), value, cfg)
         _apply_cell_comment(cell, entry, item, source="", raw=value, value=value, context=context)
         return
 
@@ -417,7 +495,8 @@ def apply_mapping_entry(
             value = _parse_number(raw)
         elif transform == "date":
             value = _parse_date(raw) or raw
-        cell = _write_cell(ws, row, str(entry["column"]), value)
+        cell = _write_cell(ws, row, str(entry["column"]), value, cfg)
+        _apply_confidence_heatmap(cell, item, str(source), cfg)
         _apply_cell_comment(cell, entry, item, source=str(source), raw=raw, value=value, context=context)
         return
 
@@ -428,7 +507,8 @@ def apply_mapping_entry(
         if result is None:
             result = entry.get("default")
         if result is not None:
-            cell = _write_cell(ws, row, str(entry["column"]), result)
+            cell = _write_cell(ws, row, str(entry["column"]), result, cfg)
+            _apply_confidence_heatmap(cell, item, str(source), cfg)
             _apply_cell_comment(cell, entry, item, source=str(source), raw=raw, value=result, context=context)
         return
 
@@ -440,11 +520,12 @@ def apply_mapping_entry(
 
         if blank is not None:
             for col in choices.values():
-                _write_cell(ws, row, str(col), blank)
+                _write_cell(ws, row, str(col), blank, cfg)
 
         if raw is None:
             if no_answer_col:
-                cell = _write_cell(ws, row, str(no_answer_col), mark)
+                cell = _write_cell(ws, row, str(no_answer_col), mark, cfg)
+                _apply_confidence_heatmap(cell, item, str(source), cfg)
                 _apply_cell_comment(
                     cell, entry, item, source=str(source), raw=raw, value=mark, context=context
                 )
@@ -453,7 +534,8 @@ def apply_mapping_entry(
         key = raw.strip().lower()
         target_col = choices.get(key) or choices.get(raw)
         if target_col:
-            cell = _write_cell(ws, row, str(target_col), mark)
+            cell = _write_cell(ws, row, str(target_col), mark, cfg)
+            _apply_confidence_heatmap(cell, item, str(source), cfg)
             _apply_cell_comment(cell, entry, item, source=str(source), raw=raw, value=mark, context=context)
         return
 
@@ -467,11 +549,12 @@ def fill_row(
     item: Mapping[str, Any],
     *,
     context: Mapping[str, Any] | None = None,
+    cfg: Mapping[str, Any] | None = None,
 ) -> None:
     """Apply all mappings to one row for a single pipeline item."""
     for entry in mapping.get("mappings") or []:
         if isinstance(entry, Mapping):
-            apply_mapping_entry(ws, row, entry, item, context=context)
+            apply_mapping_entry(ws, row, entry, item, context=context, cfg=cfg)
 
 
 # ---------------------------------------------------------------------------
@@ -632,7 +715,7 @@ def fill_template(
         _copy_sheet_structure(src_ws, dst_ws, start_row=start_row, row_count=len(items))
 
         for i, item in enumerate(items):
-            fill_row(dst_ws, start_row + i, mapping, item, context=context)
+            fill_row(dst_ws, start_row + i, mapping, item, context=context, cfg=cfg)
 
         out.parent.mkdir(parents=True, exist_ok=True)
         dst_wb.save(out)
@@ -684,12 +767,12 @@ def fill_template_pair(
         norm_ws.title = sheet_name
         _copy_sheet_structure(src_ws, norm_ws, start_row=start_row, row_count=len(items))
         for i, item in enumerate(items):
-            fill_row(norm_ws, start_row + i, mapping, item, context=context)
+            fill_row(norm_ws, start_row + i, mapping, item, context=context, cfg=cfg)
 
         original_ws = dst_wb.create_sheet(title=original_name)
         _copy_sheet_structure(src_ws, original_ws, start_row=start_row, row_count=len(original_items))
         for i, item in enumerate(original_items):
-            fill_row(original_ws, start_row + i, mapping, item, context=context)
+            fill_row(original_ws, start_row + i, mapping, item, context=context, cfg=cfg)
 
         out.parent.mkdir(parents=True, exist_ok=True)
         dst_wb.save(out)

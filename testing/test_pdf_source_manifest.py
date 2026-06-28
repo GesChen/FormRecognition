@@ -194,6 +194,70 @@ class PdfSourceManifestTests(unittest.TestCase):
         self.assertFalse(retry["clear_on_final_mismatch"])
         self.assertEqual(retry["cleared_final_mismatch_count"], 0)
 
+    def test_deferred_text_llm_skips_regex_check_when_disabled(self):
+        page_data = [
+            [
+                {
+                    "name": "date",
+                    "kind": "text",
+                    "text": "4/20/26",
+                    "_llm_prompt_override": "Return a date.",
+                    "_ocr_output_regex": r"^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$",
+                }
+            ]
+        ]
+
+        def fake_postprocess(text_by_uid, **kwargs):
+            return {uid: "04/20/26" for uid in text_by_uid}
+
+        with patch.dict(
+            pdf_recognize.ROI_PAGE_RECOGNITION,
+            {
+                "ocr_regex_check_enabled": False,
+                "ocr_regex_retry_steps": [],
+                "ocr_regex_retry_clear_on_final_mismatch": True,
+            },
+            clear=False,
+        ):
+            with patch("text_roi_llm.postprocess_text_rois", fake_postprocess):
+                debug: dict = {}
+                pdf_recognize._run_deferred_text_llm_postprocess(page_data, verbose=False, debug_out=debug)
+
+        self.assertEqual(page_data[0][0]["text"], "04/20/26")
+        retry = debug["text_llm_deferred"]["regex_retry"]
+        self.assertFalse(retry["check_enabled"])
+        self.assertEqual(retry["rows_with_regex"], 0)
+        self.assertEqual(retry["cleared_final_mismatch_count"], 0)
+
+    def test_deferred_text_llm_global_toggle_skips_postprocess_and_cleans_metadata(self):
+        page_data = [
+            [
+                {
+                    "name": "date",
+                    "kind": "text",
+                    "text": "4/20/26",
+                    "_llm_prompt_override": "Return a date.",
+                    "_ocr_output_regex": r"^\d{2}/\d{2}/\d{4}$",
+                    "_ocr_retry_image_path": "page.png",
+                    "_ocr_retry_bbox_xyxy": [0, 0, 10, 10],
+                }
+            ]
+        ]
+
+        def fail_postprocess(*args, **kwargs):
+            raise AssertionError("postprocess_text_rois should not be called")
+
+        with patch.dict(pdf_recognize._config_module.LLM_POSTPROCESS, {"enabled": False}, clear=False):
+            with patch("text_roi_llm.postprocess_text_rois", fail_postprocess):
+                debug: dict = {}
+                pdf_recognize._run_deferred_text_llm_postprocess(page_data, verbose=False, debug_out=debug)
+
+        self.assertEqual(page_data[0][0], {"name": "date", "kind": "text", "text": "4/20/26"})
+        self.assertEqual(
+            debug["text_llm_deferred"]["reason"],
+            "global_llm_postprocess_disabled",
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -90,7 +90,7 @@ class DateRoiSchemaPromptTests(unittest.TestCase):
                 self.assertIn("strict date extractor", prompt)
                 self.assertIn("MM/DD/YYYY", prompt)
                 self.assertIn("must match this regex exactly", prompt)
-                self.assertIn("return null", prompt)
+                self.assertIn("Zero-pad one-digit month or day", prompt)
 
 
 if __name__ == "__main__":
