@@ -247,13 +247,18 @@ class OcrEngineWorkflowTests(unittest.TestCase):
                 OCR_ENGINE["workflow_default"] = old_workflow
 
             self.assertEqual(result["detected_text"], "vision text")
+            self.assertEqual(result["vlm_detected_text"], "vision text")
             self.assertEqual(result["workflow"], "paddle_vlm_fusion")
             self.assertEqual(result["text_source"], "vision")
             self.assertEqual(result["paddle_confidence"]["detected_text"], "paddle text")
+            self.assertTrue(result["fusion"]["deferred"])
             self.assertEqual(
                 result["fusion"]["normalizer_inputs"],
-                ["vlm_detected_text", "paddle_confidence.detected_text"],
+                ["deferred_fusion.detected_text"],
             )
+            self.assertEqual(result["fusion"]["vlm_detected_text"], "vision text")
+            self.assertEqual(result["fusion"]["paddle_detected_text"], "paddle text")
+            self.assertNotIn("llm", result["fusion"])
 
     def test_confidence_stats_preserve_source_and_paddle_sidecar(self):
         raw = {

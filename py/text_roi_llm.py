@@ -59,20 +59,6 @@ def _extra_params() -> dict[str, Any]:
     return raw if isinstance(raw, dict) else {"think": False}
 
 
-def _paddle_vlm_fusion_enabled() -> bool:
-    v = _cfg().get("paddle_vlm_fusion_enabled", True)
-    if isinstance(v, bool):
-        return v
-    if isinstance(v, (int, float)):
-        return bool(v)
-    s = str(v).strip().lower()
-    if s in {"false", "0", "no", "n", "off"}:
-        return False
-    if s in {"true", "1", "yes", "y", "on"}:
-        return True
-    return True
-
-
 def _meta_str(meta: dict[str, Any], *keys: str) -> str:
     for key in keys:
         value = meta.get(key)
@@ -111,36 +97,17 @@ def _looks_internal_uid(value: Any) -> bool:
     return re.fullmatch(r"p\d+:r\d+:[^:\s]+", str(value or "").strip()) is not None
 
 
-def _paddle_text(sidecar: dict[str, Any] | None) -> str:
-    if not isinstance(sidecar, dict):
-        return ""
-    text = " ".join(str(sidecar.get("detected_text") or "").split())
-    if text:
-        return text
-    rec_texts = sidecar.get("rec_texts")
-    if isinstance(rec_texts, list):
-        return " ".join(str(t).strip() for t in rec_texts if str(t).strip())
-    return ""
-
-
-def _has_ocr_evidence(value: Any) -> bool:
-    text = " ".join(str(value or "").split()).strip().lower()
-    return bool(text) and text not in {"null", "none", "n/a", "na", "unknown", "unreadable"}
-
-
 def _candidate_echoes_numeric_roi_name(
     *,
     candidate: str,
     roi_name: str,
     ocr_text: str,
-    paddle_sidecar: dict[str, Any] | None,
 ) -> bool:
     value = str(candidate or "").strip()
     prompt_name = str(roi_name or "").strip()
     if not value or value != prompt_name or not re.fullmatch(r"\d{1,3}", prompt_name):
         return False
-    evidence = f"{ocr_text or ''} {_paddle_text(paddle_sidecar)}"
-    return re.search(rf"(?<!\d){re.escape(value)}(?!\d)", evidence) is None
+    return re.search(rf"(?<!\d){re.escape(value)}(?!\d)", str(ocr_text or "")) is None
 
 
 def _paddle_sidecar(meta: dict[str, Any]) -> dict[str, Any] | None:
@@ -162,52 +129,6 @@ def _paddle_sidecar(meta: dict[str, Any]) -> dict[str, Any] | None:
             return None
         return parsed if isinstance(parsed, dict) else None
     return None
-
-
-def _format_paddle_sidecar(sidecar: dict[str, Any] | None) -> str:
-    if not isinstance(sidecar, dict):
-        return ""
-    text = _paddle_text(sidecar)
-
-    bits = [f"PaddleOCR extracted text: {text if _has_ocr_evidence(text) else 'null'}"]
-    score = sidecar.get("confidence_score")
-    if score is None:
-        score = sidecar.get("min_rec_score")
-    if score is not None:
-        try:
-            bits.append(f"PaddleOCR confidence_score: {float(score):.4f}")
-        except (TypeError, ValueError):
-            bits.append(f"PaddleOCR confidence_score: {score}")
-    label = str(sidecar.get("confidence_label") or "").strip()
-    if label:
-        bits.append(f"PaddleOCR confidence_label: {label}")
-    review = sidecar.get("needs_human_review")
-    if review is not None:
-        bits.append(f"PaddleOCR needs_human_review: {bool(review)}")
-    return "\n".join(bits)
-
-
-def _fusion_suffix(*, ocr_text: str, paddle_sidecar: dict[str, Any] | None) -> str:
-    if not _paddle_vlm_fusion_enabled():
-        return ""
-    paddle_block = _format_paddle_sidecar(paddle_sidecar)
-    if not paddle_block:
-        return ""
-    return (
-        "\nPaddle/VLM fusion inputs:\n"
-        f"VLM extracted text: {ocr_text}\n"
-        f"{paddle_block}\n"
-        "Fusion instructions:\n"
-        "- Treat VLM and PaddleOCR as independent OCR guesses for the same ROI.\n"
-        "- Always return the best supported interpretation when either guess contains text.\n"
-        "- Prefer an interpretation supported by both guesses, but use the stronger single guess when they disagree or only one has text.\n"
-        "- Apply the ROI normalization rules to partial formatting, separators, and clear OCR confusions when the source text supports the result.\n"
-        "- Do not return null, an empty string, or a null-like word when either OCR guess contains text.\n"
-        "- Return null only when BOTH VLM and PaddleOCR are empty or null.\n"
-        "- Confidence and needs_human_review are tie-breaking context; they do not permit null when source text exists.\n"
-        "- Do not invent unsupported characters or components. Every returned component must be grounded in at least one OCR guess.\n"
-        "- Do not combine unrelated fragments from the two guesses into invented content.\n"
-    )
 
 
 def _parse_format_override(value: Any) -> Any:
@@ -346,6 +267,20 @@ def _build_default_prompt(
     )
 
 
+_OCR_TEXT_PLACEHOLDERS = ("<ocr_text>", "{{ocr_text}}")
+
+
+def _inject_ocr_text(prompt_override: str, ocr_text: str) -> tuple[str, bool]:
+    """Allow prompt overrides to choose exactly where OCR text is inserted."""
+    prompt = str(prompt_override or "")
+    injected = False
+    for placeholder in _OCR_TEXT_PLACEHOLDERS:
+        if placeholder in prompt:
+            prompt = prompt.replace(placeholder, ocr_text)
+            injected = True
+    return prompt, injected
+
+
 def _build_prompt(
     *,
     roi_name: str,
@@ -354,45 +289,33 @@ def _build_prompt(
     instruction: str,
     prompt_override: str,
     ocr_text: str,
-    paddle_sidecar: dict[str, Any] | None = None,
 ) -> str:
-    fusion = _fusion_suffix(ocr_text=ocr_text, paddle_sidecar=paddle_sidecar)
     if prompt_override:
-        return (
-            "You are a strict text normalizer for one OCR ROI field.\n"
-            "You are NOT reading an image. You only receive OCR-extracted text.\n"
-            "Apply the custom instructions below.\n"
-            "Return ONE valid JSON object only, no markdown and no extra text.\n"
-            "Required schema:\n"
-            "{\n"
-            '  "detected_text": "string"\n'
-            "}\n"
-            "Custom instructions:\n"
-            f"{prompt_override}\n\n"
-            f"ROI name: {roi_name}\n"
-            f"Field data type: {field_data_type or 'text'}\n"
-            f"Validation rules: {validation_rules or '(none)'}\n"
-            f"Creator instruction: {instruction or '(none)'}\n\n"
-            "OCR extracted text:\n"
-            f"{ocr_text}\n"
-            f"{fusion}"
-        )
-    return (
-        _build_default_prompt(
-            roi_name=roi_name,
-            field_data_type=field_data_type,
-            validation_rules=validation_rules,
-            instruction=instruction,
-            ocr_text=ocr_text,
-        )
-        + fusion
+        custom_instructions, _injected_ocr_text = _inject_ocr_text(prompt_override, ocr_text)
+        return custom_instructions
+    return _build_default_prompt(
+        roi_name=roi_name,
+        field_data_type=field_data_type,
+        validation_rules=validation_rules,
+        instruction=instruction,
+        ocr_text=ocr_text,
     )
+
+
+def _single_output_value(parsed: Any) -> tuple[bool, Any]:
+    if not isinstance(parsed, dict):
+        return False, None
+    if "detected_text" in parsed:
+        return True, parsed.get("detected_text")
+    if len(parsed) == 1:
+        return True, next(iter(parsed.values()))
+    return False, None
 
 
 def _coerce_detected_text(parsed: Any, raw_text: str, fallback: str) -> str:
     if isinstance(parsed, dict):
-        if "detected_text" in parsed:
-            value = parsed.get("detected_text")
+        has_value, value = _single_output_value(parsed)
+        if has_value:
             if value is None:
                 return ""
             normalized = " ".join(str(value).split())
@@ -407,15 +330,16 @@ def _coerce_detected_text(parsed: Any, raw_text: str, fallback: str) -> str:
 
 def _is_conforming_detected_text_json(parsed: Any) -> bool:
     """
-    Strict conformance check for required output schema:
-      {"detected_text": "string or null"}
+    Conformance check for an LLM JSON scalar response.
+
+    Preferred shape is {"detected_text": "string or null"}, but schema-specific
+    prompts may return a single alternate key such as {"date": "..."} or
+    {"age": 12}. Treat any one-key JSON object as the extracted value.
     """
-    if not isinstance(parsed, dict):
+    has_value, value = _single_output_value(parsed)
+    if not has_value:
         return False
-    if "detected_text" not in parsed:
-        return False
-    val = parsed.get("detected_text")
-    return val is None or isinstance(val, str)
+    return value is None or isinstance(value, (str, int, float, bool))
 
 
 def postprocess_text_rois(
@@ -486,17 +410,10 @@ def postprocess_text_rois(
             instruction=instruction,
             prompt_override=prompt_override,
             ocr_text=ocr_text,
-            paddle_sidecar=paddle_sidecar,
         )
 
         attempts: list[dict[str, Any]] = []
-        paddle_text = _paddle_text(paddle_sidecar)
-        fusion_active = _paddle_vlm_fusion_enabled() and isinstance(paddle_sidecar, dict)
-        fusion_has_evidence = fusion_active and (
-            _has_ocr_evidence(ocr_text) or _has_ocr_evidence(paddle_text)
-        )
-        supported_fallback = ocr_text if _has_ocr_evidence(ocr_text) else paddle_text
-        final_value = supported_fallback if fusion_has_evidence else ocr_text
+        final_value = ocr_text
         retry_prompt = prompt
         for attempt in range(_max_reruns() + 1):
             out = generate(
@@ -515,16 +432,14 @@ def postprocess_text_rois(
                 candidate=candidate,
                 roi_name=prompt_roi_name,
                 ocr_text=ocr_text,
-                paddle_sidecar=paddle_sidecar,
             ):
                 candidate = ""
-            unsupported_null = bool(schema_ok and fusion_has_evidence and not _has_ocr_evidence(candidate))
-            parsed_ok = bool(schema_ok and not unsupported_null)
+            parsed_ok = bool(schema_ok)
             attempts.append(
                 {
                     "attempt": attempt + 1,
                     "parsed_ok": bool(parsed_ok),
-                    "rejection_reason": "null_with_fusion_evidence" if unsupported_null else None,
+                    "rejection_reason": None,
                     "elapsed": out.get("elapsed"),
                     "eval_count": out.get("eval_count"),
                     "eval_duration": out.get("eval_duration"),
@@ -534,14 +449,6 @@ def postprocess_text_rois(
             final_value = candidate
             if parsed_ok:
                 break
-            if unsupported_null:
-                final_value = supported_fallback
-                retry_prompt = (
-                    f"{prompt}\n\n"
-                    "Your previous response was rejected because at least one OCR source contains text. "
-                    "Return the best interpretation supported by the VLM and/or PaddleOCR text. "
-                    "You must not return null or empty, and you must not invent unsupported data.\n"
-                )
 
         result[name] = final_value
         all_debug_rows.append(
@@ -550,7 +457,8 @@ def postprocess_text_rois(
                 "roi_name": prompt_roi_name,
                 "prompt": prompt,
                 "used_prompt_override": bool(prompt_override),
-                "used_paddle_vlm_fusion": bool(_format_paddle_sidecar(paddle_sidecar)),
+                "used_paddle_vlm_fusion": False,
+                "preserved_ocr_paddle_confidence": isinstance(paddle_sidecar, dict),
                 "field_data_type": field_data_type or None,
                 "llm_extra_params": per_roi_extra,
                 "attempts": attempts,

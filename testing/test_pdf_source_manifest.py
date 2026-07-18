@@ -149,7 +149,15 @@ class PdfSourceManifestTests(unittest.TestCase):
         def fake_postprocess(text_by_uid, **kwargs):
             return {uid: "04/20/26" for uid in text_by_uid}
 
-        with patch.dict(pdf_recognize.ROI_PAGE_RECOGNITION, {"ocr_regex_retry_steps": []}, clear=False):
+        with patch.dict(
+            pdf_recognize.ROI_PAGE_RECOGNITION,
+            {
+                "ocr_regex_check_enabled": True,
+                "ocr_regex_retry_steps": [],
+                "ocr_regex_retry_clear_on_final_mismatch": True,
+            },
+            clear=False,
+        ):
             with patch("text_roi_llm.postprocess_text_rois", fake_postprocess):
                 debug: dict = {}
                 pdf_recognize._run_deferred_text_llm_postprocess(page_data, verbose=False, debug_out=debug)
@@ -180,6 +188,7 @@ class PdfSourceManifestTests(unittest.TestCase):
         with patch.dict(
             pdf_recognize.ROI_PAGE_RECOGNITION,
             {
+                "ocr_regex_check_enabled": True,
                 "ocr_regex_retry_steps": [],
                 "ocr_regex_retry_clear_on_final_mismatch": False,
             },
@@ -193,6 +202,137 @@ class PdfSourceManifestTests(unittest.TestCase):
         retry = debug["text_llm_deferred"]["regex_retry"]
         self.assertFalse(retry["clear_on_final_mismatch"])
         self.assertEqual(retry["cleared_final_mismatch_count"], 0)
+
+    def test_deferred_paddle_vlm_fusion_runs_before_text_llm(self):
+        page_data = [
+            [
+                {
+                    "name": "id",
+                    "kind": "text",
+                    "text": "12345674",
+                    "_ocr_workflow": "paddle_vlm_fusion",
+                    "_ocr_paddle_confidence": {
+                        "detected_text": "1234567A",
+                        "confidence_score": 0.97,
+                    },
+                }
+            ]
+        ]
+        seen_text_by_uid: dict[str, str] = {}
+
+        def fake_generate(prompt, **kwargs):
+            return {"text": '{"detected_text":"1234567A"}', "elapsed": 0.01}
+
+        def fake_postprocess(text_by_uid, **kwargs):
+            seen_text_by_uid.update(text_by_uid)
+            return dict(text_by_uid)
+
+        with patch.dict(
+            pdf_recognize.ROI_PAGE_RECOGNITION,
+            {"ocr_regex_check_enabled": True, "ocr_regex_retry_steps": []},
+            clear=False,
+        ):
+            with patch("llm_client.generate", fake_generate):
+                with patch("text_roi_llm.postprocess_text_rois", fake_postprocess):
+                    debug: dict = {}
+                    pdf_recognize._run_deferred_text_llm_postprocess(
+                        page_data,
+                        verbose=False,
+                        debug_out=debug,
+                    )
+
+        self.assertEqual(page_data[0][0]["text"], "1234567A")
+        uid = next(iter(seen_text_by_uid))
+        self.assertEqual(seen_text_by_uid[uid], "1234567A")
+        fusion = debug["text_llm_deferred"]["paddle_vlm_fusion"]
+        self.assertEqual(fusion["processed_rows"], 1)
+        self.assertEqual(fusion["per_roi"][0]["inputs"]["vlm_detected_text"], "12345674")
+        self.assertEqual(fusion["per_roi"][0]["inputs"]["paddle_detected_text"], "1234567A")
+
+    def test_deferred_text_llm_retry_debug_preserves_raw_ocr(self):
+        page_data = [
+            [
+                {
+                    "name": "date",
+                    "kind": "text",
+                    "text": "bad",
+                    "_ocr_output_regex": r"^\d{2}/\d{2}/\d{4}$",
+                    "_ocr_retry_image_path": "page.png",
+                    "_ocr_retry_bbox_xyxy": [0, 0, 10, 10],
+                }
+            ]
+        ]
+
+        def fake_postprocess(text_by_uid, **kwargs):
+            return dict(text_by_uid)
+
+        def fake_retry_queue(pending_entries, **kwargs):
+            uid = pending_entries[0]["uid"]
+            return {
+                "texts": {uid: "04/20/2026"},
+                "raw_ocr": {
+                    uid: {
+                        "detected_text": "4/20/26",
+                        "workflow": "paddle_vlm_fusion",
+                        "vlm_detected_text": "4/20/26",
+                        "paddle_confidence": {
+                            "detected_text": "04/20/2026",
+                            "confidence_score": 0.97,
+                        },
+                        "fusion": {
+                            "deferred": True,
+                            "detected_text": None,
+                            "vlm_detected_text": "4/20/26",
+                            "paddle_detected_text": "04/20/2026",
+                        },
+                    }
+                },
+            }
+
+        def fake_generate(prompt, **kwargs):
+            return {
+                "text": '{"detected_text":"04/20/2026"}',
+                "elapsed": 0.01,
+                "eval_count": 1,
+                "eval_duration": 1,
+            }
+
+        with patch.dict(
+            pdf_recognize.ROI_PAGE_RECOGNITION,
+            {
+                "ocr_regex_check_enabled": True,
+                "ocr_regex_retry_steps": ["pad_8px"],
+                "ocr_regex_retry_clear_on_final_mismatch": True,
+            },
+            clear=False,
+        ):
+            with patch("text_roi_llm.postprocess_text_rois", fake_postprocess):
+                with patch.object(
+                    pdf_recognize,
+                    "_run_ocr_regex_retry_step_queue",
+                    fake_retry_queue,
+                ):
+                    with patch("llm_client.generate", fake_generate):
+                        debug: dict = {}
+                        pdf_recognize._run_deferred_text_llm_postprocess(
+                            page_data,
+                            verbose=False,
+                            debug_out=debug,
+                        )
+
+        retry = debug["text_llm_deferred"]["regex_retry"]
+        trace = next(iter(retry["per_roi"].values()))
+        step = trace["steps"][0]
+        self.assertEqual(step["ocr_text_before_llm"], "04/20/2026")
+        self.assertEqual(step["raw_ocr"]["workflow"], "paddle_vlm_fusion")
+        self.assertEqual(
+            step["raw_ocr"]["deferred_fusion"]["raw_response"],
+            '{"detected_text":"04/20/2026"}',
+        )
+        self.assertEqual(
+            retry["rounds"][0]["paddle_vlm_fusion"]["per_roi"][0]["inputs"]["paddle_detected_text"],
+            "04/20/2026",
+        )
 
     def test_deferred_text_llm_skips_regex_check_when_disabled(self):
         page_data = [

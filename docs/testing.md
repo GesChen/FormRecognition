@@ -27,7 +27,7 @@ python3 testing/test_xlsx_data_entry.py --staging --form-type 6post
 
 | Flag | Purpose |
 |---|---|
-| `--form-type` | Form type — resolves to `data/xlsx/mappings/<release>/<TYPE>.json` mapping (default `6post`). |
+| `--form-type` | Form type — resolves to `data/xlsx/mappings/<xlsx_template_name>/<TYPE>.json` mapping (default `6post`). |
 | `-r`, `--records` | Pipeline output JSON with `items[]`. |
 | `-o`, `--out` | Output `.xlsx` (default under `testing/output/`). With `--staging`, omit for auto path. |
 | `--staging` | Call `fill_staging`; `staging_dir` forced to `testing/output/`. |

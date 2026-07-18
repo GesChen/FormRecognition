@@ -295,26 +295,26 @@
       "y": 1026
     },
     {
-      "h": 53,
+      "h": 94,
       "id": "r689183490",
-      "llm_prompt_override": "You are a strict text normalizer for ROI '25'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the written response text for what could have made the experience better.\n- Preserve wording conservatively.\n- Do not invent, infer, summarize, or explain.\n- If OCR text is empty, crossed out, or unreadable, return detected_text as null.\nTask:\n- Normalize the optional written response only.",
+      "llm_prompt_override": "You are given two strings:\n\nSAMPLE_TEXT:\n\"25. Optional question: What, if anything, could have made this experience better for you?\"\n\nTARGET_TEXT:\n\"<ocr_text>\"\n\nRemove from TARGET_TEXT as much text as can reasonably be matched to SAMPLE_TEXT.\n\nMatching rules:\n\n* Match exact text first.\n* Also match differences in capitalization, whitespace, punctuation, line breaks, and minor OCR errors.\n* Remove only text clearly derived from SAMPLE_TEXT.\n* Preserve the original order and wording of all remaining TARGET_TEXT.\n* Do not rewrite, summarize, correct, or infer text.\n* If no meaningful text remains, return null.\n\nOutput exactly one valid JSON object and nothing else:\n\n{\"detected_text\":\"remaining target text\"}\n\nor:\n\n{\"detected_text\":null}",
       "name": "25",
       "w": 1275,
       "x": 0,
-      "y": 1105
+      "y": 1064
     },
     {
       "h": 32,
       "id": "r7f2f6cdc5",
       "llm_field_data_type": "age",
-      "llm_prompt_override": "You are a strict age extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the age box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget age format:\nOne or two digits only, normally 10 through 19 for these school forms.\n\nRules:\n1. Extract only the student's written age from the OCR text.\n2. Strip labels such as \"Age:\", punctuation, whitespace, and surrounding words.\n3. If OCR text contains exactly one clear one- or two-digit age, return digits only.\n4. If OCR text is empty, unreadable, crossed out, or does not contain a clear age, return {\"detected_text\":null}.\n5. Do not use the ROI/question number as the age. For example, if this field is named 21, 25, 27, or 31, that number is not evidence of the student's age.\n6. Do not repair or guess digits from unrelated marks, answer choices, form labels, page numbers, or OCR artifacts.\n7. Do not add any extra keys or text.",
+      "llm_prompt_override": "You are an information extraction model.\n\nTask:\nExtract exactly one age number from the input text.\n\nInput:\n\"<ocr_text>\"\n\nOutput requirements:\n\n* Return exactly one JSON object.\n* No markdown.\n* No explanations.\n* No extra text.\n\nOutput schema:\n{\"age\":\"integer or null\"}\n\nExtraction rules:\n\n1. Extract only the person\u2019s age as a whole number.\n2. The OCR input may include part or all of the question, such as \"Age:\", \"How old are you?\", \"Student age\", or other surrounding text.\n3. Ignore labels, question text, punctuation, and unrelated words.\n4. Accept forms such as \"12\", \"12 years\", \"Age: 12\", or \"I am 12 years old\".\n5. Correct only obvious OCR mistakes when the intended number is unambiguous, such as \"l2\" meaning \"12\" or \"I5\" meaning \"15\".\n6. Do not infer an age from a birth date, grade, school year, or any other indirect information.\n7. Do not invent missing digits.\n8. If exactly one unambiguous age is present, return it as an integer.\n9. If no age is present, multiple possible ages are present, or the result is ambiguous, return:\n   {\"age\":null}\n10. Always produce valid JSON.",
       "llm_validation_rules": "Must be one or two digits only, or null. Do not use the ROI/question number as the value.",
       "name": "27",
       "ocr_output_regex": "^[0-9]{1,2}$",
       "vlm_query": "27. What is your age?",
       "w": 383,
       "x": 52,
-      "y": 1208
+      "y": 1210
     },
     {
       "h": 114,

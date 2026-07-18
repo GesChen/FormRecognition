@@ -325,13 +325,13 @@
       "y": 968
     },
     {
-      "h": 41,
+      "h": 82,
       "id": "r066d3f1a4",
-      "llm_prompt_override": "You are a strict text normalizer for ROI 'experience_better'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the respondent's written answer for what could have made the experience better.\n- Remove prompt text, labels, and stray punctuation when clearly not part of the answer.\n- Preserve the student's wording conservatively.\n- If blank, unreadable, or no response, return detected_text as null.\nTask:\n- Normalize the free-response text conservatively.",
+      "llm_prompt_override": "You are given two strings:\n\nSAMPLE_TEXT:\n\"25. Optional question: What, if anything, could have made this experience better for you?\"\n\nTARGET_TEXT:\n<ocr_text>\n\nRemove from TARGET_TEXT as much text as can reasonably be matched to SAMPLE_TEXT.\n\nMatching rules:\n\n* Match exact text first.\n* Also match differences in capitalization, whitespace, punctuation, line breaks, and minor OCR errors.\n* Remove only text clearly derived from SAMPLE_TEXT.\n* Preserve the original order and wording of all remaining TARGET_TEXT.\n* Do not rewrite, summarize, correct, or infer text.\n* If no meaningful text remains, return null.\n\nOutput exactly one valid JSON object and nothing else:\n\n{\"detected_text\":\"remaining target text\"}\n\nor:\n\n{\"detected_text\":null}",
       "name": "21",
-      "w": 1092,
-      "x": 58,
-      "y": 1051
+      "w": 1264,
+      "x": 11,
+      "y": 1019
     },
     {
       "h": 32,

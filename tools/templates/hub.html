@@ -219,7 +219,7 @@
       cursor: pointer;
       background: var(--cli-bg);
       transition: border-color 0.15s, background 0.15s;
-      margin-bottom: 16px;
+      margin: 0;
     }
     .dropzone:hover, .dropzone.dragover {
       border-color: var(--accent);
@@ -231,6 +231,31 @@
       color: var(--accent);
       font-weight: 600;
       word-break: break-all;
+    }
+    .pdf-picker-row {
+      display: flex;
+      gap: 12px;
+      align-items: stretch;
+      margin-bottom: 16px;
+    }
+    .pdf-picker-row .dropzone { flex: 1; min-width: 0; }
+    .folder-picker {
+      width: 132px;
+      flex: 0 0 132px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      background: var(--secondary-btn);
+      color: var(--text);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+    .folder-picker:hover { background: var(--secondary-btn-hover); border-color: var(--accent); }
+    @media (max-width: 520px) {
+      .pdf-picker-row { align-items: stretch; }
+      .folder-picker { width: 104px; flex-basis: 104px; }
     }
     input[type="file"] { display: none; }
     label.opt {
@@ -377,16 +402,20 @@
     <p class="sub">Run PDF recognition from the browser; CLI output streams below (tqdm refreshes in place like a terminal). Use the sidebar (or dropdown on narrow screens) to switch tools.</p>
 
     <h2>PDF recognition</h2>
-    <p class="path-hint">Same options as <code>python3 py/pdf_recognize.py</code>. Drop a PDF here or click to choose a file. Or set a project-relative path (e.g. <code>data/myform.pdf</code>) and leave the file empty.</p>
+    <p class="path-hint">Same options as <code>python3 py/pdf_recognize.py</code>. Drop PDFs here, choose files, or choose a folder to include every PDF in its subfolders. Or set a project-relative path (e.g. <code>data/myform.pdf</code>) and leave the file empty.</p>
 
     <div class="panel">
       <div class="recognition-grid">
         <div class="recognition-main">
-          <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose PDF(s) or drop here">
-            <p><strong>Drop PDF(s) here</strong> or click to browse</p>
-            <p class="file-name" id="file-label" style="display:none;"></p>
+          <div class="pdf-picker-row">
+            <div class="dropzone" id="dropzone" tabindex="0" role="button" aria-label="Choose PDF(s) or drop here">
+              <p><strong>Drop PDF(s) here</strong> or click to browse</p>
+              <p class="file-name" id="file-label" aria-live="polite" style="display:none;"></p>
+            </div>
+            <button type="button" class="folder-picker" id="folder-picker" aria-label="Choose a folder and recursively find PDFs">Choose PDF folder</button>
           </div>
           <input type="file" id="file-input" accept=".pdf,application/pdf" multiple />
+          <input type="file" id="folder-input" accept=".pdf,application/pdf" webkitdirectory directory multiple />
 
           <div class="field" style="max-width:100%; margin-bottom:12px;">
             <label for="pdf_rel_path">Project-relative PDF path (optional)</label>
@@ -507,6 +536,8 @@
 
   const dropzone = document.getElementById("dropzone");
   const fileInput = document.getElementById("file-input");
+  const folderInput = document.getElementById("folder-input");
+  const folderPicker = document.getElementById("folder-picker");
   const fileLabel = document.getElementById("file-label");
   const cliOut = document.getElementById("cli-out");
   const btnRun = document.getElementById("btn-run");
@@ -515,10 +546,12 @@
   let currentJobId = null;
   let isProcessing = false;
 
-  function setFiles(files) {
+  function setFiles(files, previewText) {
     selectedFiles = Array.isArray(files) ? files : [];
     if (selectedFiles.length) {
-      if (selectedFiles.length === 1) {
+      if (previewText) {
+        fileLabel.textContent = previewText;
+      } else if (selectedFiles.length === 1) {
         fileLabel.textContent = selectedFiles[0].name;
       } else {
         fileLabel.textContent = selectedFiles.length + " PDFs selected";
@@ -594,8 +627,8 @@
     });
   }
 
-  function selectFiles(files) {
-    setFiles(files || []);
+  function selectFiles(files, previewText) {
+    setFiles(files || [], previewText);
     try {
       if (files && files.length) {
         const dt = new DataTransfer();
@@ -613,6 +646,22 @@
     selectFiles(files);
   }
 
+  function handleFolderFiles(fileList) {
+    const files = extractPdfFiles(fileList).sort(function (a, b) {
+      const aPath = a.webkitRelativePath || a.name || "";
+      const bPath = b.webkitRelativePath || b.name || "";
+      return aPath.localeCompare(bPath);
+    });
+    const firstPath = fileList && fileList.length ? (fileList[0].webkitRelativePath || "") : "";
+    const folderName = firstPath ? firstPath.split("/")[0] : "selected folder";
+    if (!files.length) {
+      selectFiles([], "No PDFs found in " + folderName);
+      fileLabel.style.display = "block";
+      return;
+    }
+    selectFiles(files, files.length + (files.length === 1 ? " PDF found in " : " PDFs found in ") + folderName);
+  }
+
   dropzone.addEventListener("click", function () {
     fileInput.click();
   });
@@ -624,6 +673,14 @@
   });
   fileInput.addEventListener("change", function () {
     handleIncomingFiles(fileInput.files);
+  });
+  folderPicker.addEventListener("click", function () {
+    folderInput.click();
+  });
+  folderInput.addEventListener("change", function () {
+    handleFolderFiles(folderInput.files);
+    // Permit choosing the same folder again after its contents change.
+    folderInput.value = "";
   });
 
   ["dragenter", "dragover"].forEach(function (ev) {

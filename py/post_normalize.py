@@ -121,6 +121,35 @@ def _looks_placeholder(value: str, roi_name: str | None = None) -> bool:
     }
 
 
+def _is_optional_experience_question(form_type: str, roi_name: str) -> bool:
+    ft = _norm_text(form_type).lower()
+    name = _norm_text(roi_name)
+    return ft in {"6post", "7post", "8post", "hpost"} and name in {"21", "25", "29"}
+
+
+_OPTIONAL_EXPERIENCE_HEADER_RE = re.compile(
+    r"^\s*(?:2[159]\s*[\.)]\s*)?(?:optional\s+question\s*[:\-–—]?\s*)?"
+    r"(?:(?:what|vvhat|wbat)\s*,?\s*)?(?:if\s+anything\s+)?"
+    r"(?:could\s+have\s+made\s+this\s+experience\s+better\s+for\s+you|"
+    r"could\s+have\s+made\s+this\s+better|"
+    r"would\s+have\s+made\s+this\s+experience\s+better\s+for\s+you)"
+    r"\s*\??\s*[:;\-–—.,]*\s*",
+    flags=re.IGNORECASE,
+)
+
+
+def _strip_optional_experience_header(value: Any) -> str:
+    """Remove the printed optional question header while preserving real answers."""
+    text = _norm_text(value)
+    if not text:
+        return ""
+    previous = None
+    while previous != text:
+        previous = text
+        text = _OPTIONAL_EXPERIENCE_HEADER_RE.sub("", text, count=1).strip(" \t\r\n:-–—;,.")
+    return text
+
+
 def _alpha_signature(value: str) -> str:
     return "".join(ch.lower() for ch in _norm_text(value) if ch.isalpha())
 
@@ -295,6 +324,19 @@ def _attempt_guidance(attempt_index: int, mode: str) -> str:
 def _build_prompt(*, form_type: str, roi_name: str, values: list[str], attempt_index: int, mode: str) -> str:
     counts = Counter(values)
     unique_values = sorted(counts)
+    optional_experience_guidance = ""
+    if _is_optional_experience_question(form_type, roi_name):
+        optional_experience_guidance = (
+            "SPECIAL RULE FOR THIS FIELD:\n"
+            "This is the optional written-response question: "
+            "\"What, if anything, could have made this experience better for you?\"\n"
+            "The printed question/header is never a student answer. Treat it as boilerplate to delete, never as content.\n"
+            "Remove any part of the header text that appears, including partial fragments like \"what\", \"if anything\", or \"could have made this experience better for you\".\n"
+            "If OCR contains only header text, or the input reduces to a header fragment after stripping, return null.\n"
+            "If a real answer remains after removing that header, preserve the remaining answer exactly except for obvious OCR spacing/casing cleanup.\n"
+            "Do not paraphrase, summarize, improve, or infer missing words.\n"
+            "Do not delete unrelated real answers just because they start with the word \"if\"; for example, preserve \"if it never existed\".\n"
+        )
     return (
         "You normalize repeated OCR/handwriting text values for one data field.\n"
         "You are NOT reading an image. You only receive OCR-extracted strings.\n"
@@ -311,6 +353,7 @@ def _build_prompt(*, form_type: str, roi_name: str, values: list[str], attempt_i
         "- If a value is already clean or cannot be improved, return it unchanged.\n"
         f"- Normalization mode: {_normalize_mode(mode)}.\n"
         f"- {_attempt_guidance(attempt_index, mode)}\n"
+        f"{optional_experience_guidance}"
         f"Form type: {form_type}\n"
         f"ROI field name: {roi_name}\n"
         "Observed value counts JSON object:\n"
@@ -517,14 +560,31 @@ def normalize_items(
                 normalized_map.update(cluster_map)
             group_debug["aggressive_clusters"] = cluster_detail
 
+        optional_experience = _is_optional_experience_question(form_type, roi_name)
+        if optional_experience:
+            normalized_map = {
+                key: _strip_optional_experience_header(normalized_map.get(key, key))
+                for key in expected_keys
+            }
+
         for key in expected_keys:
-            if not normalized_map.get(key) and not _looks_placeholder(key, roi_name):
+            stripped_key = _strip_optional_experience_header(key) if optional_experience else key
+            if not normalized_map.get(key) and not _looks_placeholder(key, roi_name) and stripped_key:
                 normalized_map[key] = key
 
         group_debug["normalized_map"] = dict(sorted(normalized_map.items()))
         for i, (row, original) in enumerate(zip(rows, values)):
             normalized = normalized_map.get(original, original)
+            if optional_experience:
+                normalized = _strip_optional_experience_header(normalized)
             if not normalized:
+                if optional_experience:
+                    row["text"] = ""
+                    group_debug["applied"].append(
+                        {"index": i, "original": original, "normalized": normalized}
+                    )
+                    status["applied_count"] += 1
+                    continue
                 group_debug["skipped"].append(
                     {"index": i, "original": original, "normalized": normalized, "skip_reason": "empty_normalized"}
                 )

@@ -110,7 +110,7 @@ def main() -> int:
 
     tpl = resolve_template_path(cfg)
     print(f"Template:  {tpl}")
-    print(f"Mapping:   data/xlsx/mappings/<release>/{args.form_type}.json → sheet {mapping['sheet']!r}")
+    print(f"Mapping:   data/xlsx/mappings/<xlsx_template_name>/{args.form_type}.json → sheet {mapping['sheet']!r}")
     print(f"  {len(mapping.get('mappings', []))} mapping entries")
 
     if args.staging:

@@ -1,0 +1,297 @@
+{
+  "form_type": "hpre",
+  "sheet": "HS Pre-Assessment Data",
+  "start_row": 4,
+  "mappings": [
+    {
+      "type": "direct",
+      "source": "id",
+      "column": "A",
+      "comment": {
+        "text": "OCR confidence: {ocr_confidence}\nFile name: {file_name}\nPDF pages: {pdf_pages}"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "date",
+      "column": "B",
+      "transform": "date",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
+    },
+    {
+      "type": "static",
+      "column": "C",
+      "value": "NPS"
+    },
+    {
+      "type": "static",
+      "column": "D",
+      "value": "In-Person"
+    },
+    {
+      "type": "static",
+      "column": "F",
+      "value": "ODU"
+    },
+    {
+      "type": "static",
+      "column": "L",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "M",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "N",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "O",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "P",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "Q",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "R",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "S",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "T",
+      "value": "Yes"
+    },
+    {
+      "type": "direct",
+      "source": "teacher",
+      "column": "Z",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "1",
+      "column": "AA",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "2",
+      "column": "AB",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "3",
+      "column": "AC",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "4",
+      "column": "AD",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "5",
+      "column": "AE",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "6",
+      "column": "AF",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "7",
+      "column": "AG",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "8",
+      "column": "AH",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "9",
+      "column": "AI",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "10",
+      "column": "AJ",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "11",
+      "column": "AK",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "12",
+      "column": "AL",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "13",
+      "column": "AM",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "14",
+      "column": "AN",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "15",
+      "column": "AO",
+      "transform": "upper"
+    },
+    {
+      "type": "lookup",
+      "source": "16",
+      "column": "AP",
+      "map": {
+        "a": "6th Grade",
+        "b": "7th Grade",
+        "c": "8th Grade",
+        "d": "9th Grade",
+        "e": "Other Grade"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "17",
+      "column": "AQ",
+      "transform": "number",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
+    },
+    {
+      "type": "multi_column",
+      "source": "18",
+      "choices": {
+        "a": "AR",
+        "b": "AS",
+        "c": "AT",
+        "d": "AU",
+        "e": "AV",
+        "f": "AW",
+        "g": "AX",
+        "h": "AY"
+      },
+      "mark": "Yes",
+      "no_answer": "AY"
+    },
+    {
+      "type": "multi_column",
+      "source": "19",
+      "choices": {
+        "a": "AZ",
+        "A": "AZ",
+        "b": "BA",
+        "B": "BA",
+        "c": "BB",
+        "C": "BB",
+        "d": "BB",
+        "D": "BB",
+        "e": "BB",
+        "E": "BB"
+      },
+      "mark": "Yes",
+      "no_answer": "BB"
+    },
+    {
+      "type": "static",
+      "column": "BC",
+      "value": "Unknown/Not Reported"
+    },
+    {
+      "type": "static",
+      "column": "G",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "H",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "I",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "J",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "K",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "U",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "V",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "W",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "X",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "Y",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "BD",
+      "value": ""
+    }
+  ]
+}

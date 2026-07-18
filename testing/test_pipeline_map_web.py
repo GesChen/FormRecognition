@@ -28,6 +28,7 @@ def _write_json(path: Path, data: dict) -> None:
 
 def _build_fixture(root: Path) -> Path:
     release = "2099"
+    template_name = "fixture template"
     form = "tpre"
     for side in ("a", "b"):
         tpl = root / "data" / "templates" / release / f"{form}_{side}.png"
@@ -67,7 +68,7 @@ def _build_fixture(root: Path) -> Path:
             {"source": "page_odd", "column": "F", "type": "direct"},
         ],
     }
-    _write_json(root / "data" / "xlsx" / "mappings" / release / f"{form}.json", mapping)
+    _write_json(root / "data" / "xlsx" / "mappings" / template_name / f"{form}.json", mapping)
 
     try:
         from openpyxl import Workbook
@@ -93,6 +94,7 @@ def _patch_roots(root: Path) -> dict[str, object]:
         "ROI_SCHEMAS_ROOT": pm.ROI_SCHEMAS_ROOT,
         "MAPPINGS_ROOT": pm.MAPPINGS_ROOT,
         "DATA_RELEASE": pm.DATA_RELEASE,
+        "ACTIVE_XLSX_TEMPLATE_NAME": pm.ACTIVE_XLSX_TEMPLATE_NAME,
     }
     pm.PROJECT_ROOT = root
     pm.DATA_ROOT = root / "data"
@@ -100,6 +102,7 @@ def _patch_roots(root: Path) -> dict[str, object]:
     pm.ROI_SCHEMAS_ROOT = root / "data" / "roi_schemas"
     pm.MAPPINGS_ROOT = root / "data" / "xlsx" / "mappings"
     pm.DATA_RELEASE = "2099"
+    pm.ACTIVE_XLSX_TEMPLATE_NAME = "fixture template"
     return old
 
 

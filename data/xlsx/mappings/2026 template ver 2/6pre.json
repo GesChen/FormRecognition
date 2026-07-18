@@ -1,0 +1,360 @@
+{
+  "form_type": "6pre",
+  "sheet": "6th Grade Pre-Assessment Data",
+  "start_row": 4,
+  "mappings": [
+    {
+      "type": "static",
+      "column": "C",
+      "value": "NPS"
+    },
+    {
+      "type": "static",
+      "column": "D",
+      "value": "In-Person"
+    },
+    {
+      "type": "static",
+      "column": "F",
+      "value": "ODU"
+    },
+    {
+      "type": "static",
+      "column": "L",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "M",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "N",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "O",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "P",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "Q",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "R",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "S",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "T",
+      "value": "Yes"
+    },
+    {
+      "type": "static",
+      "column": "BG",
+      "value": "Unknown/Not Reported"
+    },
+    {
+      "type": "direct",
+      "source": "id",
+      "column": "A",
+      "comment": {
+        "text": "OCR confidence: {ocr_confidence}\nFile name: {file_name}\nPDF pages: {pdf_pages}"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "date",
+      "column": "B",
+      "transform": "date",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "teacher",
+      "column": "Z",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "1",
+      "column": "AA",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "2",
+      "column": "AB",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "3",
+      "column": "AC",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "4",
+      "column": "AD",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "5",
+      "column": "AE",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "6",
+      "column": "AF",
+      "transform": "upper"
+    },
+    {
+      "type": "lookup",
+      "source": "7",
+      "column": "AG",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "8",
+      "column": "AH",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "9",
+      "column": "AI",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "10",
+      "column": "AJ",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "11",
+      "column": "AK",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "12",
+      "column": "AL",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "13",
+      "column": "AM",
+      "transform": "upper",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "14",
+      "column": "AN",
+      "transform": "upper",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "15",
+      "column": "AO",
+      "transform": "upper",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "16",
+      "column": "AP",
+      "transform": "upper",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "17",
+      "column": "AQ",
+      "transform": "upper",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "18",
+      "column": "AR",
+      "transform": "upper",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "19",
+      "column": "AS",
+      "transform": "upper",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "20",
+      "column": "AT",
+      "map": {
+        "a": "6th Grade",
+        "b": "7th Grade",
+        "c": "8th Grade",
+        "d": "9th Grade",
+        "e": "Other Grade"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "21",
+      "column": "AU",
+      "transform": "number",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
+    },
+    {
+      "type": "multi_column",
+      "source": "22",
+      "choices": {
+        "a": "AV",
+        "b": "AW",
+        "c": "AX",
+        "d": "AY",
+        "e": "AZ",
+        "f": "BA",
+        "g": "BB",
+        "h": "BC"
+      },
+      "mark": "Yes",
+      "no_answer": "BC"
+    },
+    {
+      "type": "multi_column",
+      "source": "23",
+      "choices": {
+        "a": "BD",
+        "A": "BD",
+        "b": "BE",
+        "B": "BE",
+        "c": "BF",
+        "C": "BF",
+        "d": "BF",
+        "D": "BF",
+        "e": "BF",
+        "E": "BF"
+      },
+      "mark": "Yes",
+      "no_answer": "BF"
+    },
+    {
+      "type": "static",
+      "column": "G",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "H",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "I",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "J",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "K",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "U",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "V",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "W",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "X",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "Y",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "BH",
+      "value": ""
+    }
+  ]
+}

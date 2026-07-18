@@ -733,7 +733,7 @@
         <div class="field-group" style="margin-top:0;">
           <label for="roi-prompt-override">Final LLM prompt (editable)</label>
           <textarea class="prompt" id="roi-prompt-override" placeholder="Generated prompt appears here. You can edit it."></textarea>
-          <div class="field-hint">Saved per ROI as <code>llm_prompt_override</code>.</div>
+          <div class="field-hint">Saved per ROI as <code>llm_prompt_override</code>. Use <code>&lt;ocr_text&gt;</code> or <code>{{ocr_text}}</code> to inject the OCR string exactly where you want it; otherwise the OCR text is appended automatically.</div>
           <div class="stream-status" id="roi-prompt-stream-status">Idle.</div>
         </div>
         <div class="btn-grid">

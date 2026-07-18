@@ -22,16 +22,18 @@ from flask import Flask, jsonify, request, send_file
 from form_sheet_map import form_sheet_name, workbook_template_path
 
 try:
-    from config import DATA_RELEASE, PATHS, PROJECT_ROOT
+    from config import DATA_RELEASE, PATHS, PROJECT_ROOT, XLSX_DATA_ENTRY, XLSX_TEMPLATE_NAME
 except Exception:  # pragma: no cover
     PROJECT_ROOT = ROOT
     DATA_RELEASE = "2025"
+    XLSX_TEMPLATE_NAME = "2026 template ver 1"
     PATHS = {
         "data": ROOT / "data",
         "templates_root": ROOT / "data" / "templates" / DATA_RELEASE,
         "roi_schemas_root": ROOT / "data" / "roi_schemas" / DATA_RELEASE,
-        "xlsx_mappings_root": ROOT / "data" / "xlsx" / "mappings" / DATA_RELEASE,
+        "xlsx_mappings_root": ROOT / "data" / "xlsx" / "mappings" / XLSX_TEMPLATE_NAME,
     }
+    XLSX_DATA_ENTRY = {"template_name": XLSX_TEMPLATE_NAME}
 
 try:
     from xlsx_mapping_auto_generator import extract_sheet_structure
@@ -40,6 +42,7 @@ except Exception:  # pragma: no cover
 
 SERVER_INSTANCE_ID = uuid.uuid4().hex
 FORM_NAME_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+TEMPLATE_NAME_RE = re.compile(r"^[^/\\]+$")
 RESERVED_SOURCES = {"id", "form_type", "page_odd", "page_even"}
 VALID_TYPES = {"direct", "lookup", "multi_column", "static"}
 
@@ -66,6 +69,7 @@ MAPPINGS_ROOT = _resolve_collection_root(
     PATHS.get("xlsx_mappings_root", DATA_ROOT / "xlsx" / "mappings"),
     "mappings",
 )
+ACTIVE_XLSX_TEMPLATE_NAME = str(XLSX_DATA_ENTRY.get("template_name") or XLSX_TEMPLATE_NAME).strip()
 
 
 def _rel(path: Path) -> str:
@@ -79,6 +83,13 @@ def _safe_name(value: str | None, label: str) -> str:
     name = str(value or "").strip()
     if not name or not FORM_NAME_RE.match(name):
         raise ValueError(f"Invalid {label}")
+    return name
+
+
+def _safe_template_name(value: str | None = None) -> str:
+    name = str(value or ACTIVE_XLSX_TEMPLATE_NAME or "").strip()
+    if not name or not TEMPLATE_NAME_RE.match(name) or name in {".", ".."}:
+        raise ValueError("Invalid XLSX template name")
     return name
 
 
@@ -101,7 +112,7 @@ def _load_json(path: Path) -> Any:
 def _available_releases() -> list[str]:
     ignored = {"example", "examples", ".backups"}
     releases: set[str] = set()
-    for root in (TEMPLATES_ROOT, ROI_SCHEMAS_ROOT, MAPPINGS_ROOT):
+    for root in (TEMPLATES_ROOT, ROI_SCHEMAS_ROOT):
         if root.is_dir():
             releases.update(
                 p.name for p in root.iterdir()
@@ -128,7 +139,7 @@ def _available_forms(release: str) -> list[str]:
     forms: set[str] = set()
     forms.update(_forms_from_release_root(TEMPLATES_ROOT, release, (".png",)))
     forms.update(_forms_from_release_root(ROI_SCHEMAS_ROOT, release, (".json",)))
-    forms.update(_forms_from_release_root(MAPPINGS_ROOT, release, (".json",)))
+    forms.update(p.stem for p in _mapping_dir().glob("*.json") if p.is_file())
     forms.discard("schema_sidea")
     forms.discard("schema_sideb")
     return sorted(forms, key=str.lower)
@@ -194,8 +205,15 @@ def _template_info_from_path(raw: str | None) -> dict[str, str]:
     return {"release": release, "form": _safe_name(form, "form"), "side": side, "path": _rel(p)}
 
 
+def _mapping_dir(template_name: str | None = None) -> Path:
+    path = (MAPPINGS_ROOT / _safe_template_name(template_name)).resolve()
+    path.relative_to(MAPPINGS_ROOT.resolve())
+    return path
+
+
 def _mapping_path(release: str, form: str) -> Path:
-    path = (MAPPINGS_ROOT / release / f"{form}.json").resolve()
+    _safe_name(release, "release")
+    path = (_mapping_dir() / f"{form}.json").resolve()
     path.relative_to(MAPPINGS_ROOT.resolve())
     return path
 
@@ -317,7 +335,7 @@ def _load_roi_nodes(release: str, form: str, side: str, issues: list[dict[str, A
 def _load_workbook_columns(
     workbook_path: Path | None,
     *,
-    release: str,
+    template_name: str,
     form: str,
     mapping: dict[str, Any],
     issues: list[dict[str, Any]],
@@ -326,7 +344,7 @@ def _load_workbook_columns(
         issues.append({
             "severity": "warning",
             "code": "missing_workbook",
-            "message": "Release workbook template unavailable; spreadsheet nodes use mapping column letters only.",
+            "message": "Workbook template unavailable; spreadsheet nodes use mapping column letters only.",
         })
         return [], set(), None
     if extract_sheet_structure is None:
@@ -338,7 +356,7 @@ def _load_workbook_columns(
         structure = extract_sheet_structure(
             workbook_path,
             form=form,
-            release=release,
+            template_name=template_name,
             sheet_hint=sheet,
             start_row_hint=start_row,
         )
@@ -504,24 +522,24 @@ def build_visualization(
     issues: list[dict[str, Any]] = []
     if workbook_path is None:
         try:
-            workbook_path = workbook_template_path(release)
+            workbook_path = workbook_template_path(_safe_template_name())
         except Exception as exc:
             workbook_path = None
             issues.append({
                 "severity": "warning",
-                "code": "missing_release_workbook",
-                "message": f"Release workbook template unavailable: {exc}",
+                "code": "missing_workbook_template",
+                "message": f"Workbook template unavailable: {exc}",
             })
     mapping_path = _mapping_path(release, form)
     if mapping_path.is_file():
         mapping = _load_json(mapping_path)
         if not isinstance(mapping, dict):
-            mapping = {"form_type": form, "sheet": form_sheet_name(form, release) or "", "start_row": 4, "mappings": []}
+            mapping = {"form_type": form, "sheet": form_sheet_name(form, _safe_template_name()) or "", "start_row": 4, "mappings": []}
             issues.append({"severity": "error", "code": "invalid_mapping", "message": f"Mapping root is not an object: {_rel(mapping_path)}"})
     else:
-        mapping = {"form_type": form, "sheet": form_sheet_name(form, release) or "", "start_row": 4, "mappings": []}
+        mapping = {"form_type": form, "sheet": form_sheet_name(form, _safe_template_name()) or "", "start_row": 4, "mappings": []}
         issues.append({"severity": "warning", "code": "missing_mapping", "message": f"Missing mapping: {_rel(mapping_path)}"})
-    configured_sheet = form_sheet_name(form, release)
+    configured_sheet = form_sheet_name(form, _safe_template_name())
     if configured_sheet:
         mapping["sheet"] = configured_sheet
 
@@ -535,7 +553,7 @@ def build_visualization(
 
     column_nodes, workbook_columns, workbook_structure = _load_workbook_columns(
         workbook_path,
-        release=release,
+        template_name=_safe_template_name(),
         form=form,
         mapping=mapping,
         issues=issues,
@@ -680,6 +698,7 @@ def build_visualization(
     unmapped_roi_count = sum(1 for n in roi_nodes if not n.get("mapped") and n.get("kind") != "mcq_choice")
     return {
         "release": release,
+        "template_name": _safe_template_name(),
         "form": form,
         "mapping_path": _rel(mapping_path),
         "mapping": {
@@ -742,11 +761,12 @@ def create_app() -> Flask:
         forms = _available_forms(selected_release)
         selected_form = form_arg if form_arg in forms else (forms[0] if forms else "")
         try:
-            workbook = _rel(workbook_template_path(selected_release)) if selected_release else None
+            workbook = _rel(workbook_template_path(_safe_template_name())) if selected_release else None
         except Exception:
             workbook = None
         return jsonify({
             "active_release": active_release,
+            "active_template_name": _safe_template_name(),
             "selected_release": selected_release,
             "selected_form": selected_form,
             "releases": [
@@ -758,6 +778,7 @@ def create_app() -> Flask:
                 "templates": _rel(TEMPLATES_ROOT),
                 "roi_schemas": _rel(ROI_SCHEMAS_ROOT),
                 "mappings": _rel(MAPPINGS_ROOT),
+                "mapping_dir": _rel(_mapping_dir()),
             },
         })
 

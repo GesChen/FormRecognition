@@ -25,21 +25,24 @@ from flask import Flask, jsonify, request, send_file
 from form_sheet_map import form_sheet_name
 
 try:
-    from config import DATA_RELEASE, PATHS, PROJECT_ROOT, XLSX_MAPPING_AUTO_GENERATE
+    from config import DATA_RELEASE, PATHS, PROJECT_ROOT, XLSX_DATA_ENTRY, XLSX_MAPPING_AUTO_GENERATE, XLSX_TEMPLATE_NAME
 except Exception:  # pragma: no cover
     PROJECT_ROOT = ROOT
     DATA_RELEASE = "2025"
+    XLSX_TEMPLATE_NAME = "2026 template ver 1"
     PATHS = {
         "data": ROOT / "data",
-        "xlsx_mappings_root": ROOT / "data" / "xlsx" / "mappings" / DATA_RELEASE,
+        "xlsx_mappings_root": ROOT / "data" / "xlsx" / "mappings" / XLSX_TEMPLATE_NAME,
         "roi_schemas_root": ROOT / "data" / "roi_schemas" / DATA_RELEASE,
     }
+    XLSX_DATA_ENTRY = {"template_name": XLSX_TEMPLATE_NAME}
     XLSX_MAPPING_AUTO_GENERATE = {}
 
 from xlsx_mapping_auto_generator import generate_xlsx_mapping
 
 SERVER_INSTANCE_ID = uuid.uuid4().hex
 FORM_NAME_RE = re.compile(r"^[A-Za-z0-9_-]+$")
+TEMPLATE_NAME_RE = re.compile(r"^[^/\\]+$")
 COLUMN_RE = re.compile(r"^[A-Z]{1,3}$")
 VALID_TYPES = {"direct", "lookup", "multi_column", "static"}
 VALID_TRANSFORMS = {"", "upper", "lower", "number", "date"}
@@ -84,6 +87,7 @@ TEMPLATES_ROOT = _resolve_collection_root(
     "templates",
 )
 UPLOADS_DIR = Path(PROJECT_ROOT).resolve() / "output" / "uploads"
+ACTIVE_XLSX_TEMPLATE_NAME = str(XLSX_DATA_ENTRY.get("template_name") or XLSX_TEMPLATE_NAME).strip()
 
 
 def _rel(path: Path) -> str:
@@ -100,6 +104,13 @@ def _safe_release(value: str | None) -> str:
     return release
 
 
+def _safe_template_name(value: str | None = None) -> str:
+    name = str(value or ACTIVE_XLSX_TEMPLATE_NAME or "").strip()
+    if not name or not TEMPLATE_NAME_RE.match(name) or name in {".", ".."}:
+        raise ValueError("Invalid XLSX template name")
+    return name
+
+
 def _safe_form(value: str | None) -> str:
     form = str(value or "").strip()
     if not form or not FORM_NAME_RE.match(form):
@@ -107,8 +118,15 @@ def _safe_form(value: str | None) -> str:
     return form
 
 
+def _mapping_dir(template_name: str | None = None) -> Path:
+    path = (MAPPINGS_ROOT / _safe_template_name(template_name)).resolve()
+    path.relative_to(MAPPINGS_ROOT.resolve())
+    return path
+
+
 def _mapping_path(release: str, form: str) -> Path:
-    path = (MAPPINGS_ROOT / release / f"{form}.json").resolve()
+    _safe_release(release)
+    path = (_mapping_dir() / f"{form}.json").resolve()
     path.relative_to(MAPPINGS_ROOT.resolve())
     return path
 
@@ -128,8 +146,9 @@ def _resolve_mapping_relpath(rel_path: str) -> Path | None:
 def _mapping_info_from_path(path: Path) -> tuple[str, str]:
     rel = path.resolve().relative_to(MAPPINGS_ROOT.resolve())
     if len(rel.parts) < 2:
-        raise ValueError("Mapping path must be inside a release directory")
-    release = _safe_release(rel.parts[0])
+        raise ValueError("Mapping path must be inside a template mapping directory")
+    _safe_template_name(rel.parts[0])
+    release = _safe_release(DATA_RELEASE)
     form = _safe_form(Path(rel.parts[-1]).stem)
     return release, form
 
@@ -141,15 +160,13 @@ def _load_json(path: Path) -> Any:
 def _available_releases() -> list[str]:
     ignored = {"example", "examples", ".backups"}
     releases: set[str] = set()
-    if MAPPINGS_ROOT.exists():
-        releases.update(p.name for p in MAPPINGS_ROOT.iterdir() if p.is_dir() and p.name not in ignored)
     if TEMPLATES_ROOT.exists():
         releases.update(p.name for p in TEMPLATES_ROOT.iterdir() if p.is_dir() and p.name not in ignored)
     return sorted(releases)
 
 
 def _available_forms(release: str) -> list[str]:
-    root = MAPPINGS_ROOT / release
+    root = _mapping_dir()
     if not root.is_dir():
         return []
     return sorted(p.stem for p in root.glob("*.json"))
@@ -226,7 +243,10 @@ def _coverage_for_dir(rel_dir: str = "") -> dict[str, Any]:
     releases = _available_releases()
     if rel.parts:
         candidate = rel.parts[0]
-        releases = [candidate] if candidate in releases or (TEMPLATES_ROOT / candidate).is_dir() else []
+        if candidate in releases or (TEMPLATES_ROOT / candidate).is_dir():
+            releases = [candidate]
+        else:
+            releases = [DATA_RELEASE] if DATA_RELEASE in releases else releases
     checks = [_coverage_for_release(r) for r in releases]
     missing_total = sum(int(c["missing_count"]) for c in checks)
     return {
@@ -241,7 +261,7 @@ def _coverage_for_dir(rel_dir: str = "") -> dict[str, Any]:
 def _blank_mapping(form: str) -> dict[str, Any]:
     return {
         "form_type": form,
-        "sheet": form_sheet_name(form) or f"{form} Data",
+        "sheet": form_sheet_name(form, _safe_template_name()) or f"{form} Data",
         "start_row": 4,
         "mappings": [],
     }
@@ -543,11 +563,13 @@ def create_app() -> Flask:
         active = DATA_RELEASE if DATA_RELEASE in releases else (releases[0] if releases else DATA_RELEASE)
         return jsonify({
             "active_release": active,
+            "active_template_name": _safe_template_name(),
             "releases": [
                 {"release": rel, "forms": _available_forms(rel)}
                 for rel in releases
             ],
             "root": _rel(MAPPINGS_ROOT),
+            "mapping_dir": _rel(_mapping_dir()),
         })
 
     @app.route("/api/browse-root")
@@ -701,6 +723,7 @@ def create_app() -> Flask:
                 last_result = generate_xlsx_mapping(
                     release=release,
                     form=form,
+                    template_name=_safe_template_name(),
                     sheet_hint=sheet_hint,
                     start_row_hint=start_row_hint,
                     validation_feedback=feedback,

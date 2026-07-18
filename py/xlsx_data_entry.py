@@ -27,9 +27,11 @@ CLI::
 
 from __future__ import annotations
 
+import colorsys
 import json
 import re
 import time
+import xml.etree.ElementTree as ET
 from datetime import date, datetime
 from collections import OrderedDict
 from pathlib import Path
@@ -40,12 +42,16 @@ from form_sheet_map import form_sheet_name, workbook_template_path
 
 try:
     from openpyxl.comments import Comment
-    from openpyxl.styles import PatternFill
+    from openpyxl.styles import Border, Color, PatternFill
+    from openpyxl.styles.colors import COLOR_INDEX
     from openpyxl.utils import column_index_from_string
     from openpyxl.worksheet.worksheet import Worksheet
     from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
 except ImportError as e:  # pragma: no cover
+    Border = None  # type: ignore
     Comment = None  # type: ignore
+    Color = None  # type: ignore
+    COLOR_INDEX = None  # type: ignore
     PatternFill = None  # type: ignore
     column_index_from_string = None  # type: ignore
     Worksheet = None  # type: ignore
@@ -73,7 +79,7 @@ def load_mapping(
     """
     Load a mapping file for *form_type* from ``cfg["mapping_dir"]``.
 
-    Resolves to ``<mapping_dir>/<form_type>.json`` (e.g. ``data/xlsx/mappings/2026/6post.json``).
+    Resolves to ``<mapping_dir>/<form_type>.json`` (e.g. ``data/xlsx/mappings/2026 template ver 1/6post.json``).
     """
     cfg = cfg or XLSX_DATA_ENTRY
     root = Path(cfg.get("mapping_dir", PATHS["data"] / "xlsx" / "mappings"))
@@ -90,10 +96,13 @@ def load_mapping(
     for key in ("form_type", "sheet", "start_row", "mappings"):
         if key not in data:
             raise ValueError(f"Mapping file missing required key {key!r}: {p}")
-    configured_sheet = form_sheet_name(str(data.get("form_type") or form_type))
+    configured_sheet = form_sheet_name(
+        str(data.get("form_type") or form_type),
+        str(cfg.get("template_name") or p.parent.name or "").strip() or None,
+    )
     if configured_sheet:
         data["sheet"] = configured_sheet
-    data["_mapping_release"] = p.parent.name
+    data["_mapping_template_name"] = p.parent.name
     return data
 
 
@@ -139,11 +148,12 @@ def items_from_payload(
 def resolve_template_path(
     cfg: Mapping[str, Any] | None = None,
     *,
-    release: str | None = None,
+    template_name: str | None = None,
 ) -> Path:
-    """Resolve the release-scoped master template workbook from data/."""
+    """Resolve the configured master template workbook from data/."""
     _require_openpyxl()
-    return workbook_template_path(release)
+    cfg = cfg or XLSX_DATA_ENTRY
+    return workbook_template_path(template_name or str(cfg.get("template_name") or "").strip() or None)
 
 
 # ---------------------------------------------------------------------------
@@ -193,6 +203,25 @@ def _col_letter_to_idx(letter: str) -> int:
     return column_index_from_string(letter.strip().upper())
 
 
+def _dimension_bounds(dim: Any, fallback_key: str) -> tuple[int, int]:
+    start = getattr(dim, "min", None)
+    end = getattr(dim, "max", None)
+    if start is None or end is None:
+        idx = _col_letter_to_idx(str(getattr(dim, "index", None) or fallback_key))
+        start = idx if start is None else start
+        end = idx if end is None else end
+    return int(start), int(end)
+
+
+def _column_is_unprocessed(ws: Worksheet, col_letter: str) -> bool:
+    col_idx = _col_letter_to_idx(col_letter)
+    for key, dim in ws.column_dimensions.items():
+        start, end = _dimension_bounds(dim, str(key))
+        if start <= col_idx <= end:
+            return bool(getattr(dim, "hidden", False)) or getattr(dim, "width", None) == 0
+    return False
+
+
 def _write_cell(
     ws: Worksheet,
     row: int,
@@ -201,6 +230,8 @@ def _write_cell(
     cfg: Mapping[str, Any] | None = None,
 ):
     if value is None:
+        return None
+    if _column_is_unprocessed(ws, col_letter):
         return None
     force_text = bool(
         (cfg or {}).get(
@@ -330,6 +361,131 @@ def _confidence_heatmap_fill(score: float, cfg: Mapping[str, Any]) -> Any:
     rgb = tuple(round(255 + (channel - 255) * t) for channel in max_red)
     color = "".join(f"{channel:02X}" for channel in rgb)
     return PatternFill(fill_type="solid", fgColor=f"FF{color}")
+
+
+_THEME_COLOR_ORDER = (
+    "lt1",
+    "dk1",
+    "lt2",
+    "dk2",
+    "accent1",
+    "accent2",
+    "accent3",
+    "accent4",
+    "accent5",
+    "accent6",
+    "hlink",
+    "folHlink",
+)
+
+
+def _workbook_theme_colors(wb: Any) -> dict[int, str]:
+    """Return workbook theme colors as ARGB hex strings keyed by theme index."""
+    loaded_theme = getattr(wb, "loaded_theme", None)
+    if not loaded_theme:
+        return {}
+    root = ET.fromstring(loaded_theme)
+    ns = {"a": "http://schemas.openxmlformats.org/drawingml/2006/main"}
+    scheme = root.find(".//a:clrScheme", ns)
+    if scheme is None:
+        return {}
+
+    colors: dict[int, str] = {}
+    for idx, name in enumerate(_THEME_COLOR_ORDER):
+        node = scheme.find(f"a:{name}", ns)
+        if node is None:
+            continue
+        srgb = node.find("a:srgbClr", ns)
+        if srgb is not None and srgb.get("val"):
+            colors[idx] = f"FF{srgb.get('val', '').upper()}"
+            continue
+        sys_clr = node.find("a:sysClr", ns)
+        if sys_clr is not None and sys_clr.get("lastClr"):
+            colors[idx] = f"FF{sys_clr.get('lastClr', '').upper()}"
+    return colors
+
+
+def _apply_excel_tint(argb: str, tint: float) -> str:
+    """Apply Excel tint to an ARGB color using Excel's HLS luminance convention."""
+    rgb = argb[-6:]
+    red, green, blue = [int(rgb[i : i + 2], 16) / 255.0 for i in range(0, 6, 2)]
+    hue, luminance, saturation = colorsys.rgb_to_hls(red, green, blue)
+    if tint < 0:
+        luminance = luminance * (1.0 + tint)
+    elif tint > 0:
+        luminance = luminance * (1.0 - tint) + tint
+    red, green, blue = colorsys.hls_to_rgb(hue, max(0.0, min(1.0, luminance)), saturation)
+    channels = [round(channel * 255) for channel in (red, green, blue)]
+    channels = [max(0, min(255, channel)) for channel in channels]
+    return "FF" + "".join(f"{channel:02X}" for channel in channels)
+
+
+def _resolved_color(color: Any, theme_colors: Mapping[int, str]) -> Any:
+    """Copy an openpyxl color, replacing theme/indexed colors with RGB colors."""
+    from copy import copy
+
+    if color is None:
+        return None
+    color_type = getattr(color, "type", None)
+    if color_type == "rgb":
+        return copy(color)
+    if Color is None:
+        _require_openpyxl()
+
+    rgb: str | None = None
+    if color_type == "theme":
+        theme_idx = getattr(color, "theme", None)
+        if theme_idx is not None:
+            rgb = theme_colors.get(int(theme_idx))
+    elif color_type == "indexed" and COLOR_INDEX is not None:
+        indexed = getattr(color, "indexed", None)
+        if indexed is not None and int(indexed) < len(COLOR_INDEX):
+            rgb = str(COLOR_INDEX[int(indexed)]).upper()
+
+    if not rgb:
+        return copy(color)
+    tint = float(getattr(color, "tint", 0.0) or 0.0)
+    if tint:
+        rgb = _apply_excel_tint(rgb, tint)
+    return Color(rgb=rgb)
+
+
+def _copy_fill_with_resolved_colors(fill: Any, theme_colors: Mapping[int, str]) -> Any:
+    from copy import copy
+
+    copied = copy(fill)
+    fg = _resolved_color(getattr(fill, "fgColor", None), theme_colors)
+    bg = _resolved_color(getattr(fill, "bgColor", None), theme_colors)
+    if fg is not None:
+        copied.fgColor = fg
+    if bg is not None:
+        copied.bgColor = bg
+    return copied
+
+
+def _copy_cell_style(
+    src_cell: Any,
+    dst_cell: Any,
+    theme_colors: Mapping[int, str],
+    *,
+    copy_border: bool = True,
+) -> None:
+    from copy import copy
+
+    if src_cell.has_style:
+        dst_cell.font = copy(src_cell.font)
+        if copy_border:
+            dst_cell.border = copy(src_cell.border)
+        else:
+            if Border is None:
+                _require_openpyxl()
+            dst_cell.border = Border()
+        dst_cell.fill = _copy_fill_with_resolved_colors(src_cell.fill, theme_colors)
+        dst_cell.number_format = src_cell.number_format
+        dst_cell.protection = copy(src_cell.protection)
+        dst_cell.alignment = copy(src_cell.alignment)
+    if src_cell.comment:
+        dst_cell.comment = copy(src_cell.comment)
 
 
 def _apply_confidence_heatmap(
@@ -577,7 +733,13 @@ def make_staging_output_path(
 # High-level fill
 # ---------------------------------------------------------------------------
 
-def _stamp_data_rows(dst_ws: Worksheet, src_ws: Worksheet, start_row: int, count: int) -> None:
+def _stamp_data_rows(
+    dst_ws: Worksheet,
+    src_ws: Worksheet,
+    start_row: int,
+    count: int,
+    theme_colors: Mapping[int, str],
+) -> None:
     """
     Copy the start row's cell values, styles, and row height from *src_ws*
     into *dst_ws* for *count* consecutive rows beginning at *start_row*.
@@ -585,8 +747,6 @@ def _stamp_data_rows(dst_ws: Worksheet, src_ws: Worksheet, start_row: int, count
     Rows that already exist in *dst_ws* are overwritten with the template
     row so every data row has identical formatting before data is filled.
     """
-    from copy import copy
-
     max_col = src_ws.max_column or 1
     src_dim = src_ws.row_dimensions.get(start_row)
 
@@ -597,15 +757,7 @@ def _stamp_data_rows(dst_ws: Worksheet, src_ws: Worksheet, start_row: int, count
         for col_idx in range(1, max_col + 1):
             src_cell = src_ws.cell(row=start_row, column=col_idx)
             dst_cell = dst_ws.cell(row=dst_row, column=col_idx, value=src_cell.value)
-            if src_cell.has_style:
-                dst_cell.font = copy(src_cell.font)
-                dst_cell.border = copy(src_cell.border)
-                dst_cell.fill = copy(src_cell.fill)
-                dst_cell.number_format = src_cell.number_format
-                dst_cell.protection = copy(src_cell.protection)
-                dst_cell.alignment = copy(src_cell.alignment)
-            if src_cell.comment:
-                dst_cell.comment = copy(src_cell.comment)
+            _copy_cell_style(src_cell, dst_cell, theme_colors, copy_border=False)
 
 
 def _freeze_header_rows(ws: Worksheet, start_row: int) -> None:
@@ -638,6 +790,7 @@ def _copy_sheet_structure(
     *,
     start_row: int,
     row_count: int,
+    theme_colors: Mapping[int, str],
 ) -> None:
     """
     Copy source worksheet cells/styles/dimensions into destination and stamp data rows.
@@ -647,25 +800,17 @@ def _copy_sheet_structure(
     for row in src_ws.iter_rows():
         for cell in row:
             dst_cell = dst_ws.cell(row=cell.row, column=cell.column, value=cell.value)
-            if cell.has_style:
-                dst_cell.font = copy(cell.font)
-                dst_cell.border = copy(cell.border)
-                dst_cell.fill = copy(cell.fill)
-                dst_cell.number_format = cell.number_format
-                dst_cell.protection = copy(cell.protection)
-                dst_cell.alignment = copy(cell.alignment)
-            if cell.comment:
-                dst_cell.comment = copy(cell.comment)
+            _copy_cell_style(cell, dst_cell, theme_colors)
 
     for merged in src_ws.merged_cells.ranges:
         dst_ws.merge_cells(str(merged))
 
     for i, dim in src_ws.column_dimensions.items():
-        dst_ws.column_dimensions[i].width = dim.width
+        dst_ws.column_dimensions[i] = copy(dim)
     for i, dim in src_ws.row_dimensions.items():
-        dst_ws.row_dimensions[i].height = dim.height
+        dst_ws.row_dimensions[i] = copy(dim)
 
-    _stamp_data_rows(dst_ws, src_ws, start_row, row_count)
+    _stamp_data_rows(dst_ws, src_ws, start_row, row_count, theme_colors)
     _freeze_header_rows(dst_ws, start_row)
 
 
@@ -692,7 +837,7 @@ def fill_template(
     context = context or {}
     tpl = Path(template_path).resolve() if template_path else resolve_template_path(
         cfg,
-        release=str(mapping.get("_mapping_release") or "").strip() or None,
+        template_name=str(mapping.get("_mapping_template_name") or cfg.get("template_name") or "").strip() or None,
     )
     out = Path(output_path).resolve()
 
@@ -704,6 +849,7 @@ def fill_template(
 
     src_wb = load_workbook(tpl)
     try:
+        theme_colors = _workbook_theme_colors(src_wb)
         if sheet_name not in src_wb.sheetnames:
             raise KeyError(f"No sheet {sheet_name!r} in workbook; have {src_wb.sheetnames}")
         src_ws = src_wb[sheet_name]
@@ -712,7 +858,13 @@ def fill_template(
         dst_ws = dst_wb.active
         dst_ws.title = sheet_name
 
-        _copy_sheet_structure(src_ws, dst_ws, start_row=start_row, row_count=len(items))
+        _copy_sheet_structure(
+            src_ws,
+            dst_ws,
+            start_row=start_row,
+            row_count=len(items),
+            theme_colors=theme_colors,
+        )
 
         for i, item in enumerate(items):
             fill_row(dst_ws, start_row + i, mapping, item, context=context, cfg=cfg)
@@ -745,7 +897,7 @@ def fill_template_pair(
     context = context or {}
     tpl = Path(template_path).resolve() if template_path else resolve_template_path(
         cfg,
-        release=str(mapping.get("_mapping_release") or "").strip() or None,
+        template_name=str(mapping.get("_mapping_template_name") or cfg.get("template_name") or "").strip() or None,
     )
     out = Path(output_path).resolve()
 
@@ -758,6 +910,7 @@ def fill_template_pair(
 
     src_wb = load_workbook(tpl)
     try:
+        theme_colors = _workbook_theme_colors(src_wb)
         if sheet_name not in src_wb.sheetnames:
             raise KeyError(f"No sheet {sheet_name!r} in workbook; have {src_wb.sheetnames}")
         src_ws = src_wb[sheet_name]
@@ -765,12 +918,24 @@ def fill_template_pair(
         dst_wb = Workbook()
         norm_ws = dst_wb.active
         norm_ws.title = sheet_name
-        _copy_sheet_structure(src_ws, norm_ws, start_row=start_row, row_count=len(items))
+        _copy_sheet_structure(
+            src_ws,
+            norm_ws,
+            start_row=start_row,
+            row_count=len(items),
+            theme_colors=theme_colors,
+        )
         for i, item in enumerate(items):
             fill_row(norm_ws, start_row + i, mapping, item, context=context, cfg=cfg)
 
         original_ws = dst_wb.create_sheet(title=original_name)
-        _copy_sheet_structure(src_ws, original_ws, start_row=start_row, row_count=len(original_items))
+        _copy_sheet_structure(
+            src_ws,
+            original_ws,
+            start_row=start_row,
+            row_count=len(original_items),
+            theme_colors=theme_colors,
+        )
         for i, item in enumerate(original_items):
             fill_row(original_ws, start_row + i, mapping, item, context=context, cfg=cfg)
 
@@ -830,6 +995,7 @@ def merge_workbooks(
     for _form_type, src_path in staging_paths.items():
         src_wb = load_workbook(src_path)
         try:
+            theme_colors = _workbook_theme_colors(src_wb)
             for src_ws in src_wb.worksheets:
                 if src_ws is None:
                     continue
@@ -845,22 +1011,14 @@ def merge_workbooks(
                         dst_cell = dst_ws.cell(
                             row=cell.row, column=cell.column, value=cell.value,
                         )
-                        if cell.has_style:
-                            dst_cell.font = copy(cell.font)
-                            dst_cell.border = copy(cell.border)
-                            dst_cell.fill = copy(cell.fill)
-                            dst_cell.number_format = cell.number_format
-                            dst_cell.protection = copy(cell.protection)
-                            dst_cell.alignment = copy(cell.alignment)
-                        if cell.comment:
-                            dst_cell.comment = copy(cell.comment)
+                        _copy_cell_style(cell, dst_cell, theme_colors)
 
                 for merged in src_ws.merged_cells.ranges:
                     dst_ws.merge_cells(str(merged))
                 for i, dim in src_ws.column_dimensions.items():
-                    dst_ws.column_dimensions[i].width = dim.width
+                    dst_ws.column_dimensions[i] = copy(dim)
                 for i, dim in src_ws.row_dimensions.items():
-                    dst_ws.row_dimensions[i].height = dim.height
+                    dst_ws.row_dimensions[i] = copy(dim)
                 dst_ws.freeze_panes = src_ws.freeze_panes
         finally:
             src_wb.close()
@@ -984,7 +1142,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "form_type",
-        help="Form type (resolves to data/xlsx/mappings/<release>/<form_type>.json mapping file)",
+        help="Form type (resolves to data/xlsx/mappings/<xlsx_template_name>/<form_type>.json mapping file)",
     )
     parser.add_argument(
         "pipeline_json",

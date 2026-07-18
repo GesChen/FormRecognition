@@ -275,13 +275,13 @@
       "y": 942
     },
     {
-      "h": 42,
+      "h": 85,
       "id": "rbc419813b",
-      "llm_prompt_override": "You are a strict text normalizer for ROI '29'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the respondent's written feedback for what could have made the experience better.\n- Remove printed question text when present.\n- Preserve wording conservatively.\n- If empty, crossed out, or unreadable, return detected_text as null.",
+      "llm_prompt_override": "You are given two strings:\n\nSAMPLE_TEXT:\n\"25. Optional question: What, if anything, could have made this experience better for you?\"\n\nTARGET_TEXT:\n<ocr_text>\n\nRemove from TARGET_TEXT as much text as can reasonably be matched to SAMPLE_TEXT.\n\nMatching rules:\n\n* Match exact text first.\n* Also match differences in capitalization, whitespace, punctuation, line breaks, and minor OCR errors.\n* Remove only text clearly derived from SAMPLE_TEXT.\n* Preserve the original order and wording of all remaining TARGET_TEXT.\n* Do not rewrite, summarize, correct, or infer text.\n* If no meaningful text remains, return null.\n\nOutput exactly one valid JSON object and nothing else:\n\n{\"detected_text\":\"remaining target text\"}\n\nor:\n\n{\"detected_text\":null}",
       "name": "29",
-      "w": 1186,
-      "x": 44,
-      "y": 1021
+      "w": 1275,
+      "x": 0,
+      "y": 978
     },
     {
       "h": 33,

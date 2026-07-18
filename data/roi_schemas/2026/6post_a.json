@@ -8,7 +8,7 @@
       "h": 34,
       "id": "r436ae571e",
       "llm_field_data_type": "id",
-      "llm_prompt_override": "You are a strict ID extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the ID box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget ID format:\nExactly 7 digits followed by A or B, for example 7011606A or 8011638B.\n\nRules:\n1. If OCR text is JSON and key \"id\" exists, inspect that value first.\n2. From the chosen text, extract only a complete ID token matching ^[0-9]{7}[AB]$.\n3. Strip surrounding labels such as \"Record ID:\", \"ID:\", \"Student ID\", quotes, colons, and whitespace.\n4. If the text contains exactly one complete matching ID token, return it exactly as the 8-character token.\n5. If there are multiple matching tokens, or none, return {\"detected_text\":null}.\n6. Do not repair OCR mistakes: do not convert / to B, 8 to B, O to 0, I/l to 1, U to 0, or add/delete characters.\n7. Reject internal pipeline IDs such as p702:r1:id; never return them.\n8. Reject dates, page numbers, answer choices, form labels, school names, teacher names, and explanatory text.\n9. Do not add any extra keys or text.",
+      "llm_prompt_override": "You are a strict ID extractor for one OCR ROI field.\n\nOCR text to analyze:\n\"<ocr_text>\"\n\nReturn ONE valid JSON object only, no markdown and no extra text.\n\nRequired output schema:\n{\"id\":\"\"}\n\nTarget ID format:\nExactly 7 digits followed by A or B, for example 7011606A or 8011638B.\n\nRules:\n1. If OCR text is JSON and key \"id\" exists, inspect that value first.\n2. From the chosen text, extract only a complete ID token matching ^[0-9]{7}[AB]$.\n3. Strip surrounding labels such as \"Record ID:\", \"ID:\", \"Student ID\", quotes, colons, and whitespace.\n4. If the text contains exactly one complete matching ID token, return it exactly as the 8-character token.\n5. If there are multiple matching tokens, or none, return `{\"detected_text\":null}`.\n6. Do not add any extra keys or text.",
       "llm_validation_rules": "Must be exactly 7 digits followed by A or B, or null.",
       "name": "id",
       "ocr_output_regex": "^[0-9]{7}[AB]$",
@@ -21,19 +21,19 @@
       "h": 40,
       "id": "rab62d9245",
       "llm_field_data_type": "date",
-      "llm_prompt_override": "You are a strict date extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the date box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget date format:\nMM/DD/YYYY, with a four-digit year from 2000 through 2099.\nThe final detected_text must match this regex exactly:\n^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$\n\nRules:\n1. Extract only the date written in this ROI.\n2. If OCR text contains a date with a two-digit year YY, interpret it as 20YY only when the month and day are clear.\n3. Zero-pad one-digit month or day.\n4. Return only a valid date-shaped value in MM/DD/YYYY that matches the regex above.\n5. If the date is missing, ambiguous, unreadable, incomplete, or cannot be made to match the regex using only visible OCR evidence, return null as {\"detected_text\":null}.\n6. Do not invent missing digits, do not guess a date from context, and do not use page numbers, IDs, question numbers, or form labels.\n7. Reject impossible or malformed OCR dates such as 02/80/2026, 04/79/2026, 0413126, 04/13, or 04/13/1926 by returning null.\n8. Do not add any extra keys or text.",
+      "llm_prompt_override": "You are an information extraction model.\n\nTask:\nExtract exactly one date from the input text.\n\nInput:\n\"<ocr_text>\"\n\nOutput requirements:\n* Return exactly one JSON object.\n* No markdown.\n* No explanations.\n* No extra text.\n\nOutput schema:\n{\"date\":\"MM-DD-YYYY\"}\n\nExtraction rules:\n1. Find exactly one complete date.\n2. Output the date in MM-DD-YYYY format.\n3. Dates are commonly written as MM/DD/YY, but other separators or slightly malformed OCR output may appear. Correct minor OCR mistakes such as numbers misidentified as letters.\n4. You may normalize separators (/, -, ., spaces) when the intended date is unambiguous.\n5. If the year has two digits, interpret it as 20YY.\n6. If the year is missing but month and day are present, use 2026.\n7. Never invent a missing month or day.\n8. Only correct obvious OCR or formatting errors when there is a single unambiguous interpretation.\n9. Verify that the final date is a valid calendar date.\n10. If no valid date can be extracted, return: {\"date\":null}\n11. If multiple valid dates are present or the result is ambiguous, return: {\"date\":null}\n12. Always produce valid JSON.\n13. Output MUST be in \"MM-DD-YYYY\" form",
       "llm_validation_rules": "Must match ^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$ exactly, or null.",
       "name": "date",
-      "ocr_output_regex": "^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$",
+      "ocr_output_regex": "^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])-(20[0-9]{2})$",
       "vlm_query": "Today's Date:",
       "w": 418,
-      "x": 56,
+      "x": 58,
       "y": 183
     },
     {
       "h": 36,
       "id": "r66d484627",
-      "llm_prompt_override": "You are a strict text normalizer for ROI 'school'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the school name text from OCR input.\n- Do not invent, infer, or explain.\n- If OCR text is empty/unreadable, return detected_text as null.\nTask:\n- Normalize school name text conservatively.",
+      "llm_prompt_override": "You are an information extraction model.\n\nTask:\nExtract and normalize exactly one school name from the input text.\n\nInput:\n\"<ocr_text>\"\n\nOutput requirements:\n\n* Return exactly one JSON object.\n* No markdown.\n* No explanations.\n* No extra text.\n\nOutput schema:\n{\"detected_text\":\"string or null\"}\n\nExtraction rules:\n\n1. Extract only the school name from the input text.\n2. Remove surrounding labels such as \"School:\", \"School Name:\", \"Institution:\", or similar field labels.\n3. Preserve the school name conservatively.\n4. Normalize unnecessary surrounding punctuation and whitespace.\n5. Do not invent, infer, expand, translate, or explain any part of the name.\n6. Do not add words such as \"School\", \"Academy\", \"Elementary\", \"Middle\", or \"High\" unless they are present in the input.\n7. Only correct obvious OCR spacing or formatting errors when the intended school name is unambiguous.\n8. If exactly one unambiguous school name is present, return it as detected_text.\n9. If the input is empty, unreadable, ambiguous, contains multiple possible school names, or does not contain a school name, return:\n   {\"detected_text\":null}\n10. Always produce valid JSON.",
       "name": "school",
       "vlm_query": "Name of School:",
       "w": 528,
@@ -43,7 +43,7 @@
     {
       "h": 40,
       "id": "rb82092764",
-      "llm_prompt_override": "You are a strict text normalizer for ROI 'teacher'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the teacher name text from OCR input.\n- Remove titles (Mr., Mrs., Ms., Dr.) when present.\n- Do not invent, infer, or explain.\n- If OCR text is empty/unreadable, return detected_text as null.\nTask:\n- Normalize teacher name text conservatively.",
+      "llm_prompt_override": "You are an information extraction model.\n\nTask:\nExtract and normalize exactly one teacher name from the input text.\n\nInput:\n\"<ocr_text>\"\n\nOutput requirements:\n\n* Return exactly one JSON object.\n* No markdown.\n* No explanations.\n* No extra text.\n\nOutput schema:\n{\"detected_text\":\"string or null\"}\n\nExtraction rules:\n\n1. Extract only the teacher name from the input text.\n2. Remove surrounding labels such as \"Teacher:\", \"Instructor:\", \"Name:\", or similar field labels.\n3. Remove titles such as \"Mr.\", \"Mrs.\", \"Ms.\", \"Miss\", and \"Dr.\" when present.\n4. Preserve the remaining name conservatively.\n5. Normalize unnecessary surrounding punctuation and whitespace.\n6. Do not invent, infer, expand, or repair missing name information.\n7. Only correct obvious OCR spacing or formatting errors when the intended name is unambiguous.\n8. If exactly one unambiguous teacher name is present, return it as detected_text.\n9. If the input is empty, unreadable, ambiguous, contains multiple possible teacher names, or does not contain a teacher name, return:\n   {\"detected_text\":null}\n10. Always produce valid JSON.",
       "name": "teacher",
       "post_normalize": true,
       "post_normalize_mode": "aggressive",
@@ -454,7 +454,7 @@
       "vlm_query": "14. The two folds of the skin that surround the opening to the vagina.",
       "w": 681,
       "x": 55,
-      "y": 1526
+      "y": 1528
     }
   ]
 }

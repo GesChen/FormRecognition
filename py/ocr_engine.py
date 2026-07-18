@@ -6,7 +6,7 @@ Workflows:
 - ocr_raw_paddle_only: Paddle OCR only, no vision fallback.
 - ocr_raw_paddle_then_vision: Paddle first (min-confidence gate), then local vision fallback.
 - ocr_raw_vision_with_paddle_confidence: vision text with Paddle confidence.
-- ocr_raw_paddle_vlm_fusion: vision text plus Paddle sidecar for downstream LLM fusion.
+- ocr_raw_paddle_vlm_fusion: vision text plus Paddle sidecar for deferred LLM fusion.
 
 Default ocr_raw() uses the configured default workflow.
 """
@@ -34,13 +34,6 @@ _LABEL_TO_SCORE = {
     "medium": 0.6,
     "high": 0.9,
 }
-
-_TEMP_TEXT_VLM_PROMPT = """Text recognition:
-```json
-{
-"text":""
-}
-```"""
 
 _paddle_engine = None
 
@@ -86,6 +79,32 @@ def _cfg_bool(key: str, default: bool) -> bool:
     if s in {"false", "0", "no", "n", "off"}:
         return False
     return bool(default)
+
+
+def _repeat_cfg() -> dict[str, Any]:
+    v = _cfg().get("vlm_repeat_stop", {})
+    return v if isinstance(v, dict) else {}
+
+
+def _repeat_cfg_bool(key: str, default: bool) -> bool:
+    v = _repeat_cfg().get(key, default)
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return bool(v)
+    s = str(v).strip().lower()
+    if s in {"true", "1", "yes", "y", "on"}:
+        return True
+    if s in {"false", "0", "no", "n", "off"}:
+        return False
+    return bool(default)
+
+
+def _repeat_cfg_int(key: str, default: int) -> int:
+    try:
+        return int(_repeat_cfg().get(key, default))
+    except (TypeError, ValueError):
+        return int(default)
 
 
 def _llm_host() -> str:
@@ -413,11 +432,16 @@ def _build_prompt() -> str:
 
 def default_text_prompt() -> str:
     """Public accessor for the base OCR text prompt template."""
-    return _build_prompt()
+    return _cfg_str(
+        "vlm_default_query_prompt",
+        "Text recognition:\n```json\n{\n\"text\":\"\"\n}\n```",
+    )
 
 
 def build_vlm_roi_prompt(query: str | None) -> str | None:
     """Build the configured custom VLM prompt for a per-ROI query."""
+    if not _cfg_bool("vlm_custom_query_enabled", True):
+        return None
     q = str(query or "").strip()
     if not q:
         return None
@@ -547,7 +571,7 @@ def _stream_text_json_repeat_completion(text: str) -> dict[str, int | str] | Non
     so downstream parsing keeps the first answer and discards repeated tails.
     """
     blocks = _stream_text_json_blocks(text)
-    if len(blocks) < max(2, _cfg_int("vlm_repeat_json_min_blocks", 2)):
+    if len(blocks) < max(2, _repeat_cfg_int("json_min_blocks", 2)):
         return None
 
     first = blocks[0]
@@ -571,14 +595,14 @@ def _stream_repeated_tail_completion(text: str) -> dict[str, int | str] | None:
     JSON object. It is intentionally conservative: the repeated unit must be
     reasonably long and repeated several times at the end of the stream.
     """
-    if not _cfg_bool("vlm_repeat_tail_stop_enabled", True):
+    if not _repeat_cfg_bool("tail_enabled", True):
         return None
 
     s = str(text or "")
-    min_unit = max(8, _cfg_int("vlm_repeat_tail_min_unit_chars", 24))
-    max_unit = max(min_unit, _cfg_int("vlm_repeat_tail_max_unit_chars", 240))
-    repeats = max(2, _cfg_int("vlm_repeat_tail_repeats", 3))
-    min_total = max(min_unit * repeats, _cfg_int("vlm_repeat_tail_min_total_chars", 80))
+    min_unit = max(8, _repeat_cfg_int("tail_min_unit_chars", 24))
+    max_unit = max(min_unit, _repeat_cfg_int("tail_max_unit_chars", 240))
+    repeats = max(2, _repeat_cfg_int("tail_repeats", 3))
+    min_total = max(min_unit * repeats, _repeat_cfg_int("tail_min_total_chars", 80))
     if len(s) < min_total:
         return None
 
@@ -609,7 +633,7 @@ def _stream_stop_completion(text: str) -> dict[str, int | str] | None:
         json_completion["stop_reason"] = "json_completion"
         return json_completion
 
-    if _cfg_bool("vlm_repeat_json_stop_enabled", True):
+    if _repeat_cfg_bool("json_enabled", True):
         repeated_json = _stream_text_json_repeat_completion(text)
         if repeated_json is not None:
             repeated_json = dict(repeated_json)
@@ -654,7 +678,8 @@ def _local_vision_call(
     stream: bool,
     extra_params: dict[str, Any] | None,
 ) -> tuple[str, dict[str, Any]]:
-    effective_prompt = str(prompt or "").strip() or _TEMP_TEXT_VLM_PROMPT
+    effective_prompt = str(prompt or "").strip() or default_text_prompt()
+    used_default_prompt = effective_prompt == default_text_prompt()
     payload: dict[str, Any] = {
         "model": model,
         "prompt": effective_prompt,
@@ -728,9 +753,9 @@ def _local_vision_call(
             "returned_response_chars": len(text),
         }
         body["prompt_override"] = {
-            "temporary_text_vlm_prompt": effective_prompt == _TEMP_TEXT_VLM_PROMPT,
+            "default_query_prompt": used_default_prompt,
             "ignored_passed_prompt": False,
-            "custom_prompt": effective_prompt != _TEMP_TEXT_VLM_PROMPT,
+            "custom_prompt": not used_default_prompt,
         }
         return text, body
 
@@ -745,9 +770,9 @@ def _local_vision_call(
     if isinstance(body, dict):
         body["streaming"] = {"enabled": False}
         body["prompt_override"] = {
-            "temporary_text_vlm_prompt": effective_prompt == _TEMP_TEXT_VLM_PROMPT,
+            "default_query_prompt": used_default_prompt,
             "ignored_passed_prompt": False,
-            "custom_prompt": effective_prompt != _TEMP_TEXT_VLM_PROMPT,
+            "custom_prompt": not used_default_prompt,
         }
     return text, body
 
@@ -923,7 +948,7 @@ def _run_vision_stage(
         "vlm_slow_dropped_attempts": [],
     }
 
-    prompt_text = str(prompt_override or "").strip() or _TEMP_TEXT_VLM_PROMPT
+    prompt_text = str(prompt_override or "").strip() or default_text_prompt()
     stage["prompt_source"] = "roi_override" if str(prompt_override or "").strip() else "default"
     stage["prompt"] = prompt_text
 
@@ -1265,11 +1290,11 @@ def ocr_raw_paddle_vlm_fusion(
     prompt_override: str | None = None,
 ) -> dict[str, Any]:
     """
-    Run both VLM and Paddle so the downstream text ROI LLM can see both guesses.
+    Run VLM and Paddle, carrying both guesses for deferred text-ROI fusion.
 
-    The OCR result still exposes the VLM text as detected_text. Paddle output is
-    carried in the existing paddle_confidence sidecar, which text_roi_llm uses
-    as a second OCR hypothesis during normalization.
+    The OCR result exposes VLM text as detected_text. Paddle output is preserved
+    in paddle_confidence so pdf_recognize can run one deferred fusion pass before
+    the deferred ROI-specific LLM normalizer.
     """
     out = ocr_raw_vision_with_paddle_confidence(
         image_path,
@@ -1278,10 +1303,23 @@ def ocr_raw_paddle_vlm_fusion(
         force_paddle_failure=force_paddle_failure,
         prompt_override=prompt_override,
     )
+    vlm_detected_text = str(out.get("detected_text", "") or "").strip()
+    paddle_confidence = out.get("paddle_confidence")
     out["workflow"] = "paddle_vlm_fusion"
+    out["vlm_detected_text"] = vlm_detected_text
+    out["text_source"] = "vision"
     out["fusion"] = {
         "enabled": True,
-        "normalizer_inputs": ["vlm_detected_text", "paddle_confidence.detected_text"],
+        "deferred": True,
+        "normalizer_inputs": ["deferred_fusion.detected_text"],
+        "downstream_raw_ocr_source": "deferred_text_llm_input",
+        "detected_text": None,
+        "vlm_detected_text": vlm_detected_text,
+        "paddle_detected_text": str(
+            (paddle_confidence or {}).get("detected_text", "")
+            if isinstance(paddle_confidence, dict)
+            else ""
+        ).strip(),
     }
     return out
 
@@ -1494,6 +1532,8 @@ def ocr_confidence_stats(raw_result: dict[str, Any] | None) -> dict[str, Any]:
         out["confidence_source"] = raw.get("confidence_source")
     if "text_source" in raw:
         out["text_source"] = raw.get("text_source")
+    if "workflow" in raw:
+        out["workflow"] = raw.get("workflow")
     if isinstance(raw.get("paddle_confidence"), dict):
         out["paddle_confidence"] = raw.get("paddle_confidence")
     return out

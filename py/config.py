@@ -5,12 +5,13 @@ from pathlib import Path
 # Root directory containing data/, output/, py/, docs/.
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 DATA_RELEASE = "2026"
+XLSX_TEMPLATE_NAME = "2026 template ver 2"
 DATA_DIR = PROJECT_ROOT / "data"
 DATA_XLSX_ROOT = DATA_DIR / "xlsx"
 DATA_TEMPLATES_ROOT = DATA_DIR / "templates" / DATA_RELEASE
 DATA_ROI_SCHEMAS_ROOT = DATA_DIR / "roi_schemas" / DATA_RELEASE
-DATA_XLSX_MAPPINGS_ROOT = DATA_XLSX_ROOT / "mappings" / DATA_RELEASE
-DATA_XLSX_WORKBOOK_TEMPLATES_ROOT = DATA_XLSX_ROOT / "workbook_templates" / DATA_RELEASE
+DATA_XLSX_MAPPINGS_ROOT = DATA_XLSX_ROOT / "mappings" / XLSX_TEMPLATE_NAME
+DATA_XLSX_WORKBOOK_TEMPLATES_ROOT = DATA_XLSX_ROOT / "workbook_templates"
 
 # Canonical project paths (absolute).
 PATHS = {
@@ -18,8 +19,8 @@ PATHS = {
     "xlsx_root": DATA_XLSX_ROOT,  # XLSX-related assets root.
     "templates_root": DATA_TEMPLATES_ROOT,  # Active template root for current data release.
     "roi_schemas_root": DATA_ROI_SCHEMAS_ROOT,  # Active ROI schema root for current data release.
-    "xlsx_mappings_root": DATA_XLSX_MAPPINGS_ROOT,  # Active XLSX mapping root for current data release.
-    "xlsx_workbook_templates_root": DATA_XLSX_WORKBOOK_TEMPLATES_ROOT,  # Active workbook templates root.
+    "xlsx_mappings_root": DATA_XLSX_MAPPINGS_ROOT,  # Active XLSX mapping root for configured workbook template.
+    "xlsx_workbook_templates_root": DATA_XLSX_WORKBOOK_TEMPLATES_ROOT,  # Base workbook templates root.
     "output": PROJECT_ROOT / "output",  # Pipeline outputs (json/xlsx/debug).
     "docs": PROJECT_ROOT / "docs",  # Documentation.
     "cache": PROJECT_ROOT / "output" / "cache",  # Intermediate cache root.
@@ -33,8 +34,8 @@ PATHS = {
 LLM = {
     "host": "192.168.182.1",  # Model server host/IP (shared by LLM + VLM OCR unless overridden).
     "port": 11434,  # Model server port.
-    # "model": "qwen3.5:9b",  # Default text model for llm_client/testing scripts.
-    "model": "llama3.2:latest",  # Default text model for llm_client/testing scripts.
+    "model": "qwen3.5:9b",  # Default text model for llm_client/testing scripts.
+    # "model": "llama3.2:latest",  # Default text model for llm_client/testing scripts.
     "keep_alive": 20,  # Seconds to keep model loaded between calls (0 disables).
 }
 
@@ -76,12 +77,13 @@ XLSX_MAPPING_AUTO_GENERATE = {
 
 TEXT_ROI_LLM = {
     "enabled": True,  # LLM post-step for non-header text ROIs (after default OCR extraction).
-    # "model": "qwen3.5:9b",  # None => use LLM["model"].
-    "model": "llama3.2:latest",  # None => use LLM["model"].
+    "model": "qwen3.5:9b",  # None => use LLM["model"].
+    # "model": "llama3.2:latest",  # None => use LLM["model"].
     "timeout_sec": 120,  # Timeout per ROI post-step call.
     "max_reruns": 3,  # Retry count when model output does not conform to {"detected_text": string|null}.
     "extra_params": {"think": False},  # Prefer concise deterministic outputs.
-    "paddle_vlm_fusion_enabled": True,  # When Paddle sidecar text exists, give both Paddle + VLM guesses to this normalizer.
+    "paddle_vlm_fusion_enabled": True,  # In paddle_vlm_fusion workflow, defer OCR fusion until just before text ROI LLM normalization.
+    "paddle_vlm_fusion_prompt_template": "",  # Optional exact prompt template; supports {vlm_text}, {paddle_text}, {paddle_confidence_json}.
 }
 
 POST_NORMALIZE = {
@@ -108,7 +110,7 @@ OCR_ENGINE = {
     # - "paddle_only": Paddle only, no vision fallback.
     # - "vision_only": vision only.
     # - "vision_with_paddle_confidence": vision text with Paddle confidence.
-    # - "paddle_vlm_fusion": vision text + Paddle sidecar for downstream LLM fusion.
+    # - "paddle_vlm_fusion": vision text + Paddle sidecar; fusion is deferred before text ROI LLM normalization.
     "workflow_default": "paddle_vlm_fusion",
 
     # Vision OCR model name.
@@ -132,13 +134,17 @@ OCR_ENGINE = {
     "call_timeout_sec": 90,  # Timeout per vision call.
     "vlm_max_call_ms": 2000,  # 0 disables slow-call drop; otherwise drop/retry VLM calls slower than this many ms.
     "vlm_slow_call_retries": 2,  # Extra retries after a slow-call drop.
-    "vlm_repeat_json_stop_enabled": True,  # Stop streamed VLM output if it starts emitting repeated JSON answers.
-    "vlm_repeat_json_min_blocks": 2,  # Number of completed JSON blocks that indicates a JSON-answer loop.
-    "vlm_repeat_tail_stop_enabled": True,  # Fallback: stop malformed streams with exact repeated text tails.
-    "vlm_repeat_tail_min_unit_chars": 24,  # Smallest repeated suffix unit considered a loop.
-    "vlm_repeat_tail_max_unit_chars": 240,  # Largest repeated suffix unit considered a loop.
-    "vlm_repeat_tail_repeats": 3,  # Required exact suffix repetitions before cutting off.
-    "vlm_repeat_tail_min_total_chars": 80,  # Minimum accumulated stream size before tail-loop detection.
+    "vlm_repeat_stop": {
+        "json_enabled": True,  # Stop streamed VLM output if it starts emitting repeated JSON answers.
+        "json_min_blocks": 2,  # Number of completed JSON blocks that indicates a JSON-answer loop.
+        "tail_enabled": True,  # Fallback: stop malformed streams with exact repeated text tails.
+        "tail_min_unit_chars": 24,  # Smallest repeated suffix unit considered a loop.
+        "tail_max_unit_chars": 240,  # Largest repeated suffix unit considered a loop.
+        "tail_repeats": 3,  # Required exact suffix repetitions before cutting off.
+        "tail_min_total_chars": 80,  # Minimum accumulated stream size before tail-loop detection.
+    },
+    "vlm_default_query_prompt": "Text recognition:\n```json\n{\n\"text\":\"\"\n}\n```",  # Default VLM prompt used when no custom ROI query override is active.
+    "vlm_custom_query_enabled": False,  # Global toggle for schema-level custom vlm_query prompt overrides.
     "vlm_roi_prompt_template": '请按下列JSON格式输 出图中信息: {"{query}":""}',  # Per-ROI VLM prompt template; {query} is inserted exactly.
     "jpeg_quality": 20,  # JPEG quality used for VLM image payload.
     "stream": True,  # Stream VLM responses so completed JSON can be detected mid-call.
@@ -300,6 +306,7 @@ ROI_PAGE_RECOGNITION = {
 }
 
 XLSX_DATA_ENTRY = {
+    "template_name": XLSX_TEMPLATE_NAME,  # Workbook template stem and mapping/form-sheet-map folder name.
     "mapping_dir": PATHS["xlsx_mappings_root"],  # Directory with <form_type>.json mapping files.
     "output_dir": PATHS["output"] / "xlsx",  # Final XLSX output directory.
     "staging_dir": PATHS["cache"] / "xlsx_staging",  # Temporary filled workbook staging area.

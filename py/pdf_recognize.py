@@ -690,6 +690,302 @@ def _normalize_text_value(value: Any) -> str:
     return " ".join(str(value or "").split())
 
 
+def _has_ocr_evidence(value: Any) -> bool:
+    text = _normalize_text_value(value).strip().lower()
+    return bool(text) and text not in {"null", "none", "n/a", "na", "unknown", "unreadable"}
+
+
+def _parse_llm_json(text: str) -> Any:
+    s = str(text or "").strip()
+    if not s:
+        return {}
+    m = re.search(r"```(?:json)?\s*([\s\S]*?)\s*```", s, flags=re.IGNORECASE)
+    if m:
+        s = m.group(1).strip()
+    if not s:
+        return {}
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError:
+        pass
+    decoder = json.JSONDecoder()
+    starts = [i for i in (s.find("{"), s.find("[")) if i != -1]
+    if not starts:
+        return {}
+    try:
+        obj, _end = decoder.raw_decode(s[min(starts) :])
+        return obj
+    except json.JSONDecodeError:
+        return {}
+
+
+def _text_roi_llm_cfg() -> dict[str, Any]:
+    cfg = getattr(_config_module, "TEXT_ROI_LLM", {})
+    return cfg if isinstance(cfg, dict) else {}
+
+
+def _paddle_vlm_fusion_enabled() -> bool:
+    v = _text_roi_llm_cfg().get("paddle_vlm_fusion_enabled", True)
+    if isinstance(v, bool):
+        return v
+    if isinstance(v, (int, float)):
+        return bool(v)
+    s = str(v).strip().lower()
+    if s in {"false", "0", "no", "n", "off"}:
+        return False
+    if s in {"true", "1", "yes", "y", "on"}:
+        return True
+    return True
+
+
+def _paddle_text(sidecar: dict[str, Any] | None) -> str:
+    if not isinstance(sidecar, dict):
+        return ""
+    text = _normalize_text_value(sidecar.get("detected_text"))
+    if text:
+        return text
+    rec_texts = sidecar.get("rec_texts")
+    if isinstance(rec_texts, list):
+        return _normalize_text_value(" ".join(str(t).strip() for t in rec_texts if str(t).strip()))
+    return ""
+
+
+def _paddle_sidecar_from_meta(meta: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not isinstance(meta, dict):
+        return None
+    raw = meta.get("ocr_paddle_confidence") or meta.get("_ocr_paddle_confidence")
+    if isinstance(raw, dict):
+        return raw
+    if isinstance(raw, str) and raw.strip():
+        try:
+            parsed = json.loads(raw)
+        except Exception:
+            return None
+        return parsed if isinstance(parsed, dict) else None
+    return None
+
+
+def _fusion_model() -> str | None:
+    cfg = _text_roi_llm_cfg()
+    llm_cfg = getattr(_config_module, "LLM", {})
+    model = str(
+        cfg.get("paddle_vlm_fusion_model")
+        or cfg.get("model")
+        or (llm_cfg.get("model") if isinstance(llm_cfg, dict) else "")
+        or ""
+    ).strip()
+    return model or None
+
+
+def _fusion_timeout_sec() -> int:
+    cfg = _text_roi_llm_cfg()
+    try:
+        return int(cfg.get("paddle_vlm_fusion_timeout_sec") or cfg.get("timeout_sec", 120))
+    except (TypeError, ValueError):
+        return 120
+
+
+def _fusion_extra_params() -> dict[str, Any]:
+    cfg = _text_roi_llm_cfg()
+    raw = cfg.get("paddle_vlm_fusion_extra_params") or cfg.get("extra_params") or {"think": False}
+    out = dict(raw) if isinstance(raw, dict) else {"think": False}
+    opts = out.get("options")
+    if not isinstance(opts, dict):
+        opts = {}
+    opts = dict(opts)
+    opts["temperature"] = 0
+    out["options"] = opts
+    return out
+
+
+def _default_paddle_vlm_fusion_prompt_template() -> str:
+    return (
+        "You are a strict OCR fusion engine for one ROI.\n"
+        "You are NOT reading an image. You only receive two OCR guesses for the same crop.\n"
+        "Return ONE valid JSON object only, no markdown and no extra text.\n"
+        "Required schema: {\"detected_text\":\"string or null\"}\n"
+        "Rules:\n"
+        "- Treat VLM and PaddleOCR as independent OCR guesses.\n"
+        "- Return the best supported raw OCR text, preserving visible characters and order.\n"
+        "- Prefer text supported by both guesses, but use the stronger single guess when only one has text.\n"
+        "- Do not apply ROI-specific validation, formatting, or semantic normalization.\n"
+        "- Do not invent unsupported characters or combine unrelated fragments.\n"
+        "- Return null only when both guesses are empty or null.\n\n"
+        "VLM extracted text:\n"
+        "{vlm_text}\n\n"
+        "PaddleOCR extracted text:\n"
+        "{paddle_text}\n\n"
+        "PaddleOCR confidence/debug JSON:\n"
+        "{paddle_confidence_json}\n"
+    )
+
+
+def _fusion_prompt_template() -> str:
+    cfg = _text_roi_llm_cfg()
+    prompt = str(
+        cfg.get("paddle_vlm_fusion_prompt")
+        or cfg.get("paddle_vlm_fusion_prompt_template")
+        or ""
+    ).strip()
+    return prompt or _default_paddle_vlm_fusion_prompt_template()
+
+
+def _render_fusion_prompt(
+    *,
+    template: str,
+    vlm_text: str,
+    paddle_text: str,
+    paddle_confidence: dict[str, Any] | None,
+) -> str:
+    paddle_json = json.dumps(paddle_confidence or {}, ensure_ascii=False, default=str)
+    prompt = str(template or "")
+    for key, value in {
+        "{vlm_text}": vlm_text,
+        "{ocr_text}": vlm_text,
+        "{paddle_text}": paddle_text,
+        "{paddle_confidence}": paddle_json,
+        "{paddle_confidence_json}": paddle_json,
+    }.items():
+        prompt = prompt.replace(key, value)
+    return prompt
+
+
+def _deferred_fusion_candidate(meta: dict[str, Any] | None, raw_ocr: dict[str, Any] | None = None) -> bool:
+    workflow = ""
+    if isinstance(raw_ocr, dict):
+        workflow = str(raw_ocr.get("workflow", "") or "").strip().lower()
+    if not workflow and isinstance(meta, dict):
+        workflow = str(meta.get("ocr_workflow", "") or meta.get("_ocr_workflow", "") or "").strip().lower()
+    return workflow == "paddle_vlm_fusion"
+
+
+def _run_deferred_paddle_vlm_fusion(
+    text_by_uid: dict[str, str],
+    *,
+    meta_by_uid: dict[str, dict[str, Any]],
+    raw_ocr_by_uid: dict[str, Any] | None = None,
+    debug_out: dict[str, Any] | None = None,
+    use_tqdm: bool = False,
+    tqdm_desc: str = "      Paddle/VLM fusion deferred",
+) -> dict[str, str]:
+    fused = dict(text_by_uid or {})
+    per_roi: list[dict[str, Any]] = []
+    if not _paddle_vlm_fusion_enabled():
+        if debug_out is not None:
+            debug_out.update({"enabled": False, "skipped": "disabled", "per_roi": []})
+        return fused
+
+    from llm_client import generate
+
+    model = _fusion_model()
+    template = _fusion_prompt_template()
+    rows_iter = list((text_by_uid or {}).items())
+    if use_tqdm and rows_iter:
+        rows_iter = tqdm(
+            rows_iter,
+            total=len(rows_iter),
+            desc=tqdm_desc,
+            unit="roi",
+            disable=not _tqdm_enabled(),
+            dynamic_ncols=True,
+            leave=False,
+        )
+    for uid, vlm_text_raw in rows_iter:
+        meta = meta_by_uid.get(uid, {}) if isinstance(meta_by_uid, dict) else {}
+        raw_ocr = (raw_ocr_by_uid or {}).get(uid) if isinstance(raw_ocr_by_uid, dict) else None
+        raw_ocr_obj = raw_ocr if isinstance(raw_ocr, dict) else None
+        if not _deferred_fusion_candidate(meta, raw_ocr_obj):
+            continue
+        paddle_sidecar = (
+            raw_ocr_obj.get("paddle_confidence")
+            if isinstance(raw_ocr_obj, dict) and isinstance(raw_ocr_obj.get("paddle_confidence"), dict)
+            else _paddle_sidecar_from_meta(meta)
+        )
+        vlm_text = _normalize_text_value(
+            raw_ocr_obj.get("vlm_detected_text")
+            if isinstance(raw_ocr_obj, dict) and raw_ocr_obj.get("vlm_detected_text") is not None
+            else vlm_text_raw
+        )
+        paddle_text = _paddle_text(paddle_sidecar)
+        fallback = vlm_text if _has_ocr_evidence(vlm_text) else paddle_text
+        trace: dict[str, Any] = {
+            "uid": uid,
+            "enabled": True,
+            "model": model,
+            "prompt": None,
+            "inputs": {
+                "vlm_detected_text": vlm_text,
+                "paddle_detected_text": paddle_text,
+                "paddle_confidence": paddle_sidecar,
+            },
+            "raw_response": None,
+            "parsed": {},
+            "result": fallback,
+            "error": None,
+            "elapsed": None,
+            "eval_count": None,
+            "eval_duration": None,
+        }
+        if not (_has_ocr_evidence(vlm_text) or _has_ocr_evidence(paddle_text)):
+            trace["skipped"] = "no_ocr_evidence"
+            fused[uid] = ""
+            per_roi.append(trace)
+            continue
+        prompt = _render_fusion_prompt(
+            template=template,
+            vlm_text=vlm_text,
+            paddle_text=paddle_text,
+            paddle_confidence=paddle_sidecar,
+        )
+        trace["prompt"] = prompt
+        try:
+            out = generate(
+                prompt,
+                model=model,
+                timeout=_fusion_timeout_sec(),
+                extra_params=_fusion_extra_params(),
+            )
+            raw_text = str(out.get("text", "") or "")
+            parsed = _parse_llm_json(raw_text)
+            candidate = ""
+            if isinstance(parsed, dict) and "detected_text" in parsed:
+                value = parsed.get("detected_text")
+                candidate = "" if value is None else _normalize_text_value(value)
+            if candidate.lower() in {"null", "none", "n/a", "na", "unknown", "unreadable"}:
+                candidate = ""
+            if not _has_ocr_evidence(candidate) and fallback:
+                candidate = fallback
+                trace["fallback_reason"] = "empty_or_null_fusion_output"
+            trace.update(
+                {
+                    "raw_response": raw_text,
+                    "parsed": parsed,
+                    "result": candidate,
+                    "elapsed": out.get("elapsed"),
+                    "eval_count": out.get("eval_count"),
+                    "eval_duration": out.get("eval_duration"),
+                }
+            )
+            fused[uid] = candidate
+        except Exception as exc:
+            trace["error"] = str(exc)
+            trace["result"] = fallback
+            fused[uid] = fallback
+        per_roi.append(trace)
+
+    if debug_out is not None:
+        debug_out.update(
+            {
+                "enabled": True,
+                "model": model,
+                "processed_rows": len(per_roi),
+                "per_roi": per_roi,
+                "result": dict(fused),
+            }
+        )
+    return fused
+
+
 def _parse_bbox_xyxy(value: Any) -> tuple[int, int, int, int] | None:
     if not isinstance(value, (list, tuple)) or len(value) != 4:
         return None
@@ -936,9 +1232,12 @@ def _run_ocr_regex_retry_step_queue(
     step_name: str,
     use_tqdm: bool = False,
     tqdm_desc: str | None = None,
-) -> dict[str, str]:
+) -> dict[str, Any]:
     """
-    Execute one queued OCR retry step for all pending rows, then return OCR texts by uid.
+    Execute one queued OCR retry step for all pending rows.
+
+    Returns OCR texts and serialized raw OCR outputs by uid so debug can trace
+    the retry OCR evidence used by deferred fusion and retry LLM calls.
     """
     from ocr_engine import ocr_raw
     import cv2
@@ -946,10 +1245,11 @@ def _run_ocr_regex_retry_step_queue(
 
     step_fn = _OCR_REGEX_RETRY_STEP_METHODS.get(step_name)
     if step_fn is None:
-        return {}
+        return {"texts": {}, "raw_ocr": {}}
     cfg = _regex_retry_cfg()
     image_cache: dict[str, Any] = {}
-    out: dict[str, str] = {}
+    texts: dict[str, str] = {}
+    raw_ocr_by_uid: dict[str, Any] = {}
 
     entries_iter = pending_entries
     if use_tqdm and pending_entries:
@@ -986,13 +1286,17 @@ def _run_ocr_regex_retry_step_queue(
             # excluded so neither engine sees a thresholded ROI.
             raw = ocr_raw(tmp_path)
             raw_out = raw if isinstance(raw, dict) else {}
-            out[uid] = _normalize_text_value(raw_out.get("detected_text", ""))
+            texts[uid] = _normalize_text_value(raw_out.get("detected_text", ""))
+            try:
+                raw_ocr_by_uid[uid] = json.loads(json.dumps(raw_out, default=str))
+            except Exception:
+                raw_ocr_by_uid[uid] = {"__repr__": repr(raw_out)}
         finally:
             try:
                 tmp_path.unlink(missing_ok=True)
             except OSError:
                 pass
-    return out
+    return {"texts": texts, "raw_ocr": raw_ocr_by_uid}
 
 
 def _strip_text_llm_internal_metadata(all_page_data: list[list[dict[str, Any]]]) -> None:
@@ -1006,6 +1310,7 @@ def _strip_text_llm_internal_metadata(all_page_data: list[list[dict[str, Any]]])
             row.pop("_llm_prompt_instruction", None)
             row.pop("_llm_prompt_override", None)
             row.pop("_ocr_paddle_confidence", None)
+            row.pop("_ocr_workflow", None)
             row.pop("_ocr_output_regex", None)
             row.pop("_ocr_retry_image_path", None)
             row.pop("_ocr_retry_bbox_xyxy", None)
@@ -1056,6 +1361,7 @@ def _run_deferred_text_llm_postprocess(
                 "llm_prompt_instruction": row.get("_llm_prompt_instruction"),
                 "llm_prompt_override": row.get("_llm_prompt_override"),
                 "ocr_paddle_confidence": row.get("_ocr_paddle_confidence"),
+                "ocr_workflow": row.get("_ocr_workflow") or row.get("ocr_workflow"),
             }
             retry_ctx_by_uid[uid] = {
                 "ocr_output_regex": row.get("_ocr_output_regex"),
@@ -1086,16 +1392,24 @@ def _run_deferred_text_llm_postprocess(
         f"      Deferred text-LLM postprocess on {len(text_by_uid)} text row(s)...",
         verbose,
     )
+    fusion_debug_initial: dict[str, Any] | None = {} if isinstance(debug_out, dict) else None
+    fused_text_by_uid = _run_deferred_paddle_vlm_fusion(
+        text_by_uid,
+        meta_by_uid=meta_by_uid,
+        debug_out=fusion_debug_initial,
+        use_tqdm=bool(verbose and _tqdm_enabled()),
+        tqdm_desc="      Paddle/VLM fusion deferred",
+    )
     llm_debug_initial: dict[str, Any] | None = {} if isinstance(debug_out, dict) else None
     initial_processed = postprocess_text_rois(
-        text_by_uid,
+        fused_text_by_uid,
         roi_meta_by_name=meta_by_uid,
         debug_out=llm_debug_initial,
         use_tqdm=bool(verbose and _tqdm_enabled()),
         tqdm_desc="      Text LLM deferred",
     )
 
-    current_values: dict[str, str] = dict(text_by_uid)
+    current_values: dict[str, str] = dict(fused_text_by_uid)
     for uid, value in (initial_processed or {}).items():
         current_values[uid] = _normalize_text_value(value)
 
@@ -1172,11 +1486,21 @@ def _run_deferred_text_llm_postprocess(
                         "bbox_xyxy": ctx.get("bbox_xyxy"),
                     }
                 )
-            step_ocr_texts = _run_ocr_regex_retry_step_queue(
+            step_ocr_result = _run_ocr_regex_retry_step_queue(
                 queue,
                 step_name=step_name,
                 use_tqdm=bool(verbose),
                 tqdm_desc=f"      OCR retry [{step_name}]",
+            )
+            step_ocr_texts = (
+                step_ocr_result.get("texts", {})
+                if isinstance(step_ocr_result, dict)
+                else {}
+            )
+            step_raw_ocr = (
+                step_ocr_result.get("raw_ocr", {})
+                if isinstance(step_ocr_result, dict)
+                else {}
             )
             queue_uids = [str(q.get("uid", "") or "") for q in queue]
             if not step_ocr_texts:
@@ -1189,6 +1513,7 @@ def _run_deferred_text_llm_postprocess(
                                 "was_pending_at_step_start": True,
                                 "ocr_output_generated": False,
                                 "ocr_text_before_llm": None,
+                                "raw_ocr": step_raw_ocr.get(uid) if isinstance(step_raw_ocr, dict) else None,
                                 "llm_text_after_step": None,
                                 "matched_after_step": False,
                             }
@@ -1198,11 +1523,46 @@ def _run_deferred_text_llm_postprocess(
                         "step": step_name,
                         "pending_in": len(pending),
                         "ocr_outputs": 0,
+                        "raw_ocr": step_raw_ocr if isinstance(step_raw_ocr, dict) else {},
                         "llm_processed": 0,
                         "pending_out": len(pending),
                     }
                 )
                 continue
+            fusion_step_debug: dict[str, Any] | None = {} if isinstance(debug_out, dict) else None
+            step_fusion_meta = {
+                uid: {
+                    **(meta_by_uid.get(uid, {}) if isinstance(meta_by_uid.get(uid, {}), dict) else {}),
+                    "ocr_workflow": (
+                        step_raw_ocr.get(uid, {}).get("workflow")
+                        if isinstance(step_raw_ocr, dict) and isinstance(step_raw_ocr.get(uid), dict)
+                        else (meta_by_uid.get(uid, {}) or {}).get("ocr_workflow")
+                    ),
+                    "ocr_paddle_confidence": (
+                        step_raw_ocr.get(uid, {}).get("paddle_confidence")
+                        if isinstance(step_raw_ocr, dict) and isinstance(step_raw_ocr.get(uid), dict)
+                        else (meta_by_uid.get(uid, {}) or {}).get("ocr_paddle_confidence")
+                    ),
+                }
+                for uid in step_ocr_texts
+            }
+            step_ocr_texts = _run_deferred_paddle_vlm_fusion(
+                step_ocr_texts,
+                meta_by_uid=step_fusion_meta,
+                raw_ocr_by_uid=step_raw_ocr if isinstance(step_raw_ocr, dict) else {},
+                debug_out=fusion_step_debug,
+                use_tqdm=bool(verbose and _tqdm_enabled()),
+                tqdm_desc=f"      Paddle/VLM fusion retry [{step_name}]",
+            )
+            if isinstance(step_raw_ocr, dict) and isinstance(fusion_step_debug, dict):
+                for row_debug in fusion_step_debug.get("per_roi", []) or []:
+                    if not isinstance(row_debug, dict):
+                        continue
+                    uid = str(row_debug.get("uid", "") or "")
+                    raw_entry = step_raw_ocr.get(uid)
+                    if isinstance(raw_entry, dict):
+                        raw_entry["deferred_fusion"] = row_debug
+                        raw_entry["detected_text_after_deferred_fusion"] = step_ocr_texts.get(uid)
             llm_step_debug: dict[str, Any] | None = {} if isinstance(debug_out, dict) else None
             step_meta = {uid: meta_by_uid.get(uid, {}) for uid in step_ocr_texts}
             step_processed = postprocess_text_rois(
@@ -1233,6 +1593,7 @@ def _run_deferred_text_llm_postprocess(
                         "was_pending_at_step_start": True,
                         "ocr_output_generated": uid in step_ocr_texts,
                         "ocr_text_before_llm": step_ocr_texts.get(uid),
+                        "raw_ocr": step_raw_ocr.get(uid) if isinstance(step_raw_ocr, dict) else None,
                         "llm_text_after_step": llm_value,
                         "matched_after_step": matched,
                     }
@@ -1246,6 +1607,8 @@ def _run_deferred_text_llm_postprocess(
                     "step": step_name,
                     "pending_in": len(queue),
                     "ocr_outputs": len(step_ocr_texts),
+                    "raw_ocr": step_raw_ocr if isinstance(step_raw_ocr, dict) else {},
+                    "paddle_vlm_fusion": fusion_step_debug if isinstance(fusion_step_debug, dict) else {},
                     "llm_processed": processed_count,
                     "pending_out": len(pending),
                     "llm_details": llm_step_debug if isinstance(llm_step_debug, dict) else {},
@@ -1279,6 +1642,7 @@ def _run_deferred_text_llm_postprocess(
             "queued_rows": len(text_by_uid),
             "processed_rows": len(current_values),
             "model": details.get("model"),
+            "paddle_vlm_fusion": fusion_debug_initial if isinstance(fusion_debug_initial, dict) else {},
             "details": details,
             "regex_retry": {
                 "check_enabled": regex_check_enabled,

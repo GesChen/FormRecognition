@@ -16,6 +16,7 @@ try:
     from config import (
         PATHS,
         PROJECT_ROOT,
+        XLSX_TEMPLATE_NAME,
         XLSX_DATA_ENTRY,
         XLSX_MAPPING_AUTO_GENERATE,
     )
@@ -27,6 +28,7 @@ except Exception:  # pragma: no cover
         "templates_root": ROOT / "data" / "templates",
         "roi_schemas_root": ROOT / "data" / "roi_schemas",
     }
+    XLSX_TEMPLATE_NAME = "2026 template ver 1"
     XLSX_DATA_ENTRY = {}
     XLSX_MAPPING_AUTO_GENERATE = {
         "use_openai": True,
@@ -90,13 +92,13 @@ def _project_rel(path: Path) -> str:
         return str(path.resolve())
 
 
-def resolve_local_xlsx_path(path_value: str | Path | None = None, *, release: str | None = None) -> Path:
-    """Resolve a backend-readable XLSX path, defaulting to the release template."""
+def resolve_local_xlsx_path(path_value: str | Path | None = None, *, template_name: str | None = None) -> Path:
+    """Resolve a backend-readable XLSX path, defaulting to the configured template."""
     raw = str(path_value or "").strip()
     if not raw:
-        return workbook_template_path(release)
+        return workbook_template_path(template_name or str(XLSX_DATA_ENTRY.get("template_name") or XLSX_TEMPLATE_NAME))
     # Explicit paths are retained for tests and non-UI scripts; web tools use
-    # release-based template resolution instead of manual XLSX selection.
+    # template-name resolution instead of manual XLSX selection.
     if not raw:
         raise FileNotFoundError("No template workbook path provided.")
     p = Path(raw).expanduser()
@@ -110,18 +112,18 @@ def resolve_local_xlsx_path(path_value: str | Path | None = None, *, release: st
     return p
 
 
-def _configured_sheet_name(form: str, release: str | None = None) -> str | None:
-    return form_sheet_name(form, release)
+def _configured_sheet_name(form: str, template_name: str | None = None) -> str | None:
+    return form_sheet_name(form, template_name)
 
 
-def _resolve_sheet_name(workbook_path: Path, form: str, sheet_hint: str | None = None, release: str | None = None) -> str:
+def _resolve_sheet_name(workbook_path: Path, form: str, sheet_hint: str | None = None, template_name: str | None = None) -> str:
     _require_openpyxl()
     wb = load_workbook(workbook_path, read_only=True, data_only=False)
     try:
         sheetnames = list(wb.sheetnames)
     finally:
         wb.close()
-    for candidate in (sheet_hint, _configured_sheet_name(form, release)):
+    for candidate in (sheet_hint, _configured_sheet_name(form, template_name)):
         if candidate and candidate in sheetnames:
             return str(candidate)
     normalized_form = form.lower().replace("_", "")
@@ -146,13 +148,13 @@ def extract_sheet_structure(
     workbook_path: Path,
     *,
     form: str,
-    release: str | None = None,
+    template_name: str | None = None,
     sheet_hint: str | None = None,
     start_row_hint: int | None = None,
 ) -> dict[str, Any]:
     """Return a compact, prompt-friendly structure for one workbook sheet."""
     _require_openpyxl()
-    sheet_name = _resolve_sheet_name(workbook_path, form, sheet_hint=sheet_hint, release=release)
+    sheet_name = _resolve_sheet_name(workbook_path, form, sheet_hint=sheet_hint, template_name=template_name)
     start_row = int(start_row_hint or XLSX_MAPPING_AUTO_GENERATE.get("default_start_row", 4) or 4)
     max_header_row = max(start_row, int(XLSX_MAPPING_AUTO_GENERATE.get("xlsx_context_rows", 6) or 6))
 
@@ -662,6 +664,7 @@ def generate_xlsx_mapping(
     release: str,
     form: str,
     template_workbook_path: str | Path | None = None,
+    template_name: str | None = None,
     sheet_hint: str | None = None,
     start_row_hint: int | None = None,
     validation_feedback: list[dict[str, Any]] | None = None,
@@ -670,7 +673,8 @@ def generate_xlsx_mapping(
     release = _safe_name(release, "release")
     form = _safe_name(form, "form")
     try:
-        workbook_path = resolve_local_xlsx_path(template_workbook_path, release=release)
+        active_template_name = str(template_name or XLSX_DATA_ENTRY.get("template_name") or XLSX_TEMPLATE_NAME).strip()
+        workbook_path = resolve_local_xlsx_path(template_workbook_path, template_name=active_template_name)
     except (FileNotFoundError, ValueError):
         raise
     except Exception as exc:
@@ -679,7 +683,7 @@ def generate_xlsx_mapping(
         target_xlsx = extract_sheet_structure(
             workbook_path,
             form=form,
-            release=release,
+            template_name=active_template_name,
             sheet_hint=sheet_hint,
             start_row_hint=start_row_hint,
         )
@@ -708,6 +712,7 @@ def generate_xlsx_mapping(
     payload = {
         "target": {
             "release": release,
+            "template_name": active_template_name,
             "form": form,
             "template_workbook_path": _project_rel(workbook_path),
             "resolved_sheet": target_xlsx["sheet_name"],

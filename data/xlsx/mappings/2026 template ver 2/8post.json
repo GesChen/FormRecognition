@@ -1,0 +1,449 @@
+{
+  "form_type": "8post",
+  "sheet": "8th Grade Post-Assessment Data",
+  "start_row": 4,
+  "mappings": [
+    {
+      "type": "direct",
+      "source": "id",
+      "column": "A",
+      "comment": {
+        "text": "OCR confidence: {ocr_confidence}\nFile name: {file_name}\nPDF pages: {pdf_pages}"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "date",
+      "column": "B",
+      "transform": "date",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
+    },
+    {
+      "type": "static",
+      "column": "C",
+      "value": "NPS"
+    },
+    {
+      "type": "static",
+      "column": "D",
+      "value": "In-Person"
+    },
+    {
+      "type": "static",
+      "column": "F",
+      "value": "ODU"
+    },
+    {
+      "type": "static",
+      "column": "L",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "M",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "N",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "O",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "P",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "Q",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "R",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "S",
+      "value": "No"
+    },
+    {
+      "type": "static",
+      "column": "T",
+      "value": "Yes"
+    },
+    {
+      "type": "direct",
+      "source": "teacher",
+      "column": "Z",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "1",
+      "column": "AA",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "2",
+      "column": "AB",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "3",
+      "column": "AC",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "4",
+      "column": "AD",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "5",
+      "column": "AE",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "6",
+      "column": "AF",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "7",
+      "column": "AG",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "8",
+      "column": "AH",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "9",
+      "column": "AI",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "10",
+      "column": "AJ",
+      "transform": "upper"
+    },
+    {
+      "type": "direct",
+      "source": "11",
+      "column": "AK",
+      "transform": "upper"
+    },
+    {
+      "type": "lookup",
+      "source": "12",
+      "column": "AL",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "13",
+      "column": "AM",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "14",
+      "column": "AN",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "15",
+      "column": "AO",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "16",
+      "column": "AP",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "17",
+      "column": "AQ",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "18",
+      "column": "AR",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "19",
+      "column": "AS",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "20",
+      "column": "AT",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "21",
+      "column": "AU",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "22",
+      "column": "AV",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "23",
+      "column": "AW",
+      "map": {
+        "a": "TRUE",
+        "b": "FALSE"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "24",
+      "column": "AX",
+      "map": {
+        "a": "Strongly Agree",
+        "b": "Agree",
+        "c": "Neither Agree nor Disagree",
+        "d": "Disagree",
+        "e": "Strongly Disagree"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "25",
+      "column": "AY",
+      "map": {
+        "a": "Strongly Agree",
+        "b": "Agree",
+        "c": "Neither Agree nor Disagree",
+        "d": "Disagree",
+        "e": "Strongly Disagree"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "26",
+      "column": "AZ",
+      "map": {
+        "a": "Strongly Agree",
+        "b": "Agree",
+        "c": "Neither Agree nor Disagree",
+        "d": "Disagree",
+        "e": "Strongly Disagree"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "27",
+      "column": "BA",
+      "map": {
+        "a": "Strongly Agree",
+        "b": "Agree",
+        "c": "Neither Agree nor Disagree",
+        "d": "Disagree",
+        "e": "Strongly Disagree"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "28",
+      "column": "BB",
+      "map": {
+        "a": "Strongly Agree",
+        "b": "Agree",
+        "c": "Neither Agree nor Disagree",
+        "d": "Disagree",
+        "e": "Strongly Disagree"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "29",
+      "column": "BC",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
+    },
+    {
+      "type": "lookup",
+      "source": "30",
+      "column": "BD",
+      "map": {
+        "a": "6th Grade",
+        "b": "7th Grade",
+        "c": "8th Grade",
+        "d": "9th Grade",
+        "e": "Other Grade"
+      }
+    },
+    {
+      "type": "direct",
+      "source": "31",
+      "column": "BE",
+      "transform": "number",
+      "comment": {
+        "text": "Raw: {raw}\nOCR confidence: {ocr_confidence}"
+      }
+    },
+    {
+      "type": "multi_column",
+      "source": "32",
+      "choices": {
+        "a": "BF",
+        "b": "BG",
+        "c": "BH",
+        "d": "BI",
+        "e": "BJ",
+        "f": "BK",
+        "g": "BL",
+        "h": "BM"
+      },
+      "mark": "Yes",
+      "no_answer": "BM"
+    },
+    {
+      "type": "multi_column",
+      "source": "33",
+      "choices": {
+        "a": "BN",
+        "A": "BN",
+        "b": "BO",
+        "B": "BO",
+        "c": "BP",
+        "C": "BP",
+        "d": "BP",
+        "D": "BP",
+        "e": "BP",
+        "E": "BP"
+      },
+      "mark": "Yes",
+      "no_answer": "BP"
+    },
+    {
+      "type": "static",
+      "column": "BQ",
+      "value": "Unknown/Not Reported"
+    },
+    {
+      "type": "static",
+      "column": "G",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "H",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "I",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "J",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "K",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "U",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "V",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "W",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "X",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "Y",
+      "value": ""
+    },
+    {
+      "type": "static",
+      "column": "BR",
+      "value": ""
+    }
+  ]
+}

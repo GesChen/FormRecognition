@@ -1026,6 +1026,7 @@ def analyze_page(
             stage_index = st.get("selected_stage_index")
             confidence_source = st.get("confidence_source")
             text_source = st.get("text_source")
+            workflow = st.get("workflow")
             paddle_confidence = st.get("paddle_confidence")
             if mn is not None:
                 try:
@@ -1046,6 +1047,8 @@ def analyze_page(
                 row["ocr_confidence_source"] = str(confidence_source)
             if text_source is not None:
                 row["ocr_text_source"] = str(text_source)
+            if workflow is not None:
+                row["ocr_workflow"] = str(workflow)
             if review_flag is not None:
                 row["ocr_needs_human_review"] = bool(review_flag)
             if model is not None:
@@ -1078,6 +1081,8 @@ def analyze_page(
             row["_ocr_paddle_confidence"] = json.loads(
                 json.dumps(row.get("ocr_paddle_confidence"), default=str)
             )
+        if row.get("ocr_workflow") is not None:
+            row["_ocr_workflow"] = str(row.get("ocr_workflow"))
         retry_meta = ocr_retry_meta.get(str(name), {})
         if retry_meta:
             row["_ocr_retry_image_path"] = str(retry_meta.get("image_path", "") or "").strip() or None

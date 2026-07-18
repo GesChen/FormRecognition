@@ -61,7 +61,7 @@ Main entry page for the web tools: **PDF recognition** plus links to ROI editor,
 python3 tools/evms_hub_web.py [--port 4999]
 ```
 
-- **PDF**: drag-and-drop onto the zone or click to pick a file (stored under `output/uploads/`). Alternatively enter a **project-relative** path to an existing PDF (no upload).
+- **PDF**: drag-and-drop onto the zone, click to pick files, or choose a folder to recursively include all PDFs in it and its subfolders (stored under `output/uploads/`). Alternatively enter a **project-relative** path to an existing PDF (no upload).
 - **CLI parity**: checkboxes / fields for the same options as `python3 py/pdf_recognize.py` (`--verbose`, `--no-json`, `--max-pages`, `--recache`, `--debug`, `--debug-path`).
 - **Output**: plain **CLI-style** stream in a monospace panel (subprocess stdout/stderr), no separate progress UI. Runs Python with **`-u`** and **`PYTHONUNBUFFERED=1`**; reads the pipe with **`read1`** where available so tqdm flushes often. **Carriage returns** (`\\r`) are preserved (CRLF → LF only); the hub page applies terminal-style line overwrite so tqdm updates the same line instead of spamming newlines. ANSI escapes are stripped server-side for a plain-text preview.
 - **After run**: a highlighted panel shows the expected **XLSX** path (`output/xlsx/<stem>.xlsx` per `XLSX_DATA_ENTRY`) and the **recognition JSON** path (`output/recognition/<stem>.json`).
