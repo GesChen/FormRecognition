@@ -409,6 +409,31 @@ def _field_mode(enabled_fields: Mapping[str, Any] | set[tuple[str, str]], form_t
     return DEFAULT_POST_NORMALIZE_MODE
 
 
+def _restore_original_ocr_snapshot(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """
+    Rewrite copied items so text rows reflect the preserved raw OCR output.
+
+    This is used for XLSX "Original" sheets, which should show the OCR text
+    before deferred LLM cleanup and batch post-normalization.
+    """
+    for item in items or []:
+        if not isinstance(item, dict):
+            continue
+        raw_id_text: str | None = None
+        for row in item.get("data") or []:
+            if not isinstance(row, dict):
+                continue
+            if str(row.get("kind", "")).strip().lower() != "text":
+                continue
+            if "_raw_ocr_text" in row and row.get("_raw_ocr_text") is not None:
+                row["text"] = str(row.get("_raw_ocr_text") or "")
+            if str(row.get("name", "")).strip().lower() == "id":
+                raw_id_text = str(row.get("text") or "").strip()
+        if raw_id_text is not None:
+            item["id"] = raw_id_text
+    return items
+
+
 def normalize_items(
     items: list[dict[str, Any]],
     enabled_fields: Mapping[str, Any] | set[tuple[str, str]],
@@ -423,7 +448,7 @@ def normalize_items(
     ``enabled_fields`` is scoped by form type and ROI name. Only text rows matching
     that scope are candidates for this batch pass.
     """
-    original_items = copy.deepcopy(items or [])
+    original_items = _restore_original_ocr_snapshot(copy.deepcopy(items or []))
     normalized_items = copy.deepcopy(items or [])
 
     status: dict[str, Any] = {

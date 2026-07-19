@@ -141,7 +141,7 @@ class PdfSourceManifestTests(unittest.TestCase):
                     "kind": "text",
                     "text": "4/20/26",
                     "_llm_prompt_override": "Return a date.",
-                    "_ocr_output_regex": r"^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$",
+                    "_output_regex": r"^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$",
                 }
             ]
         ]
@@ -177,7 +177,7 @@ class PdfSourceManifestTests(unittest.TestCase):
                     "kind": "text",
                     "text": "4/20/26",
                     "_llm_prompt_override": "Return a date.",
-                    "_ocr_output_regex": r"^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$",
+                    "_output_regex": r"^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$",
                 }
             ]
         ]
@@ -225,7 +225,7 @@ class PdfSourceManifestTests(unittest.TestCase):
 
         def fake_postprocess(text_by_uid, **kwargs):
             seen_text_by_uid.update(text_by_uid)
-            return dict(text_by_uid)
+            return {uid: "1234567A" for uid in text_by_uid}
 
         with patch.dict(
             pdf_recognize.ROI_PAGE_RECOGNITION,
@@ -242,12 +242,420 @@ class PdfSourceManifestTests(unittest.TestCase):
                     )
 
         self.assertEqual(page_data[0][0]["text"], "1234567A")
+        self.assertEqual(page_data[0][0]["ocr_fusion_text"], "12345674 1234567A")
         uid = next(iter(seen_text_by_uid))
-        self.assertEqual(seen_text_by_uid[uid], "1234567A")
+        self.assertEqual(seen_text_by_uid[uid], "12345674 1234567A")
         fusion = debug["text_llm_deferred"]["paddle_vlm_fusion"]
         self.assertEqual(fusion["processed_rows"], 1)
         self.assertEqual(fusion["per_roi"][0]["inputs"]["vlm_detected_text"], "12345674")
         self.assertEqual(fusion["per_roi"][0]["inputs"]["paddle_detected_text"], "1234567A")
+
+    def test_deferred_paddle_vlm_fusion_repairs_lossy_model_output(self):
+        page_data = [
+            [
+                {
+                    "name": "age",
+                    "kind": "text",
+                    "text": "12",
+                    "_ocr_workflow": "paddle_vlm_fusion",
+                    "_ocr_paddle_confidence": {
+                        "detected_text": "27. What is your age?",
+                        "confidence_score": 0.91,
+                    },
+                }
+            ]
+        ]
+        seen_text_by_uid: dict[str, str] = {}
+
+        def fake_generate(prompt, **kwargs):
+            return {"text": '{"detected_text":"27. What is your age?"}', "elapsed": 0.01}
+
+        def fake_postprocess(text_by_uid, **kwargs):
+            seen_text_by_uid.update(text_by_uid)
+            return dict(text_by_uid)
+
+        with patch("llm_client.generate", fake_generate):
+            with patch("text_roi_llm.postprocess_text_rois", fake_postprocess):
+                debug: dict = {}
+                pdf_recognize._run_deferred_text_llm_postprocess(
+                    page_data,
+                    verbose=False,
+                    debug_out=debug,
+                )
+
+        uid = next(iter(seen_text_by_uid))
+        self.assertEqual(seen_text_by_uid[uid], "12 27. What is your age?")
+        self.assertEqual(page_data[0][0]["text"], "12 27. What is your age?")
+        row = debug["text_llm_deferred"]["paddle_vlm_fusion"]["per_roi"][0]
+        self.assertEqual(row["model_result_before_union_repair"], "27. What is your age?")
+        self.assertEqual(row["fallback_reason"], "fusion_output_dropped_source_text")
+
+    def test_deferred_paddle_vlm_fusion_accepts_clean_near_duplicate(self):
+        page_data = [
+            [
+                {
+                    "name": "13",
+                    "kind": "text",
+                    "text": "ure+hra",
+                    "_ocr_workflow": "paddle_vlm_fusion",
+                    "_ocr_paddle_confidence": {
+                        "detected_text": "urethra",
+                        "confidence_score": 0.91,
+                    },
+                }
+            ]
+        ]
+
+        def fake_generate(prompt, **kwargs):
+            return {"text": '{"detected_text":"urethra"}', "elapsed": 0.01}
+
+        def fake_postprocess(text_by_uid, **kwargs):
+            return dict(text_by_uid)
+
+        with patch("llm_client.generate", fake_generate):
+            with patch("text_roi_llm.postprocess_text_rois", fake_postprocess):
+                debug: dict = {}
+                pdf_recognize._run_deferred_text_llm_postprocess(
+                    page_data,
+                    verbose=False,
+                    debug_out=debug,
+                )
+
+        self.assertEqual(page_data[0][0]["ocr_fusion_text"], "urethra")
+        row = debug["text_llm_deferred"]["paddle_vlm_fusion"]["per_roi"][0]
+        self.assertNotIn("fallback_reason", row)
+
+    def test_deferred_paddle_vlm_fusion_collapses_model_duplicated_near_duplicate(self):
+        page_data = [
+            [
+                {
+                    "name": "13",
+                    "kind": "text",
+                    "text": "ure+hra",
+                    "_ocr_workflow": "paddle_vlm_fusion",
+                    "_ocr_paddle_confidence": {
+                        "detected_text": "urethra",
+                        "confidence_score": 0.91,
+                    },
+                }
+            ]
+        ]
+
+        def fake_generate(prompt, **kwargs):
+            return {"text": '{"detected_text":"ure+hra urethra"}', "elapsed": 0.01}
+
+        def fake_postprocess(text_by_uid, **kwargs):
+            return dict(text_by_uid)
+
+        with patch("llm_client.generate", fake_generate):
+            with patch("text_roi_llm.postprocess_text_rois", fake_postprocess):
+                debug: dict = {}
+                pdf_recognize._run_deferred_text_llm_postprocess(
+                    page_data,
+                    verbose=False,
+                    debug_out=debug,
+                )
+
+        self.assertEqual(page_data[0][0]["ocr_fusion_text"], "urethra")
+        row = debug["text_llm_deferred"]["paddle_vlm_fusion"]["per_roi"][0]
+        self.assertEqual(row["result"], "urethra")
+        self.assertNotIn("fallback_reason", row)
+
+    def test_deferred_paddle_vlm_fusion_prefers_deterministic_merge_over_extra_model_text(self):
+        page_data = [
+            [
+                {
+                    "name": "16",
+                    "kind": "text",
+                    "text": "",
+                    "_ocr_workflow": "paddle_vlm_fusion",
+                    "_ocr_paddle_confidence": {
+                        "detected_text": "uterus",
+                        "confidence_score": 0.91,
+                    },
+                }
+            ]
+        ]
+
+        def fake_generate(prompt, **kwargs):
+            return {"text": '{"detected_text":"uterus utrus"}', "elapsed": 0.01}
+
+        def fake_postprocess(text_by_uid, **kwargs):
+            return dict(text_by_uid)
+
+        with patch("llm_client.generate", fake_generate):
+            with patch("text_roi_llm.postprocess_text_rois", fake_postprocess):
+                debug: dict = {}
+                pdf_recognize._run_deferred_text_llm_postprocess(
+                    page_data,
+                    verbose=False,
+                    debug_out=debug,
+                )
+
+        self.assertEqual(page_data[0][0]["ocr_fusion_text"], "uterus")
+        row = debug["text_llm_deferred"]["paddle_vlm_fusion"]["per_roi"][0]
+        self.assertEqual(row["result"], "uterus")
+
+    def test_deferred_paddle_vlm_fusion_prefers_paddle_when_sources_are_similar(self):
+        page_data = [
+            [
+                {
+                    "name": "15",
+                    "kind": "text",
+                    "text": "CWRV1X",
+                    "_ocr_workflow": "paddle_vlm_fusion",
+                    "_ocr_paddle_confidence": {
+                        "detected_text": "cmVix",
+                        "confidence_score": 0.91,
+                    },
+                }
+            ]
+        ]
+
+        def fake_generate(prompt, **kwargs):
+            return {"text": '{"detected_text":"CWRV1X cmVix"}', "elapsed": 0.01}
+
+        def fake_postprocess(text_by_uid, **kwargs):
+            return dict(text_by_uid)
+
+        with patch("llm_client.generate", fake_generate):
+            with patch("text_roi_llm.postprocess_text_rois", fake_postprocess):
+                debug: dict = {}
+                pdf_recognize._run_deferred_text_llm_postprocess(
+                    page_data,
+                    verbose=False,
+                    debug_out=debug,
+                )
+
+        self.assertEqual(page_data[0][0]["ocr_fusion_text"], "cmVix")
+        row = debug["text_llm_deferred"]["paddle_vlm_fusion"]["per_roi"][0]
+        self.assertEqual(row["result"], "cmVix")
+
+    def test_deferred_paddle_vlm_fusion_drops_duplicate_header_noise_from_supplementary_source(self):
+        page_data = [
+            [
+                {
+                    "name": "date",
+                    "kind": "text",
+                    "text": "Today's Date: 9/27/2016",
+                    "_ocr_workflow": "paddle_vlm_fusion",
+                    "_ocr_paddle_confidence": {
+                        "detected_text": "023126 Today's Date:",
+                        "confidence_score": 0.91,
+                    },
+                }
+            ]
+        ]
+
+        def fake_generate(prompt, **kwargs):
+            return {"text": '{"detected_text":"Today\'s Date: 9/27/2016 023126 Today\'s Date:"}', "elapsed": 0.01}
+
+        def fake_postprocess(text_by_uid, **kwargs):
+            return dict(text_by_uid)
+
+        with patch("llm_client.generate", fake_generate):
+            with patch("text_roi_llm.postprocess_text_rois", fake_postprocess):
+                debug: dict = {}
+                pdf_recognize._run_deferred_text_llm_postprocess(
+                    page_data,
+                    verbose=False,
+                    debug_out=debug,
+                )
+
+        self.assertEqual(page_data[0][0]["ocr_fusion_text"], "Today's Date: 9/27/2016")
+        row = debug["text_llm_deferred"]["paddle_vlm_fusion"]["per_roi"][0]
+        self.assertEqual(row["result"], "Today's Date: 9/27/2016")
+
+    def test_deferred_paddle_vlm_fusion_prefers_single_non_latin_source_over_extra_model_text(self):
+        page_data = [
+            [
+                {
+                    "name": "17",
+                    "kind": "text",
+                    "text": "",
+                    "_ocr_workflow": "paddle_vlm_fusion",
+                    "_ocr_paddle_confidence": {
+                        "detected_text": "土",
+                        "confidence_score": 0.91,
+                    },
+                }
+            ]
+        ]
+
+        def fake_generate(prompt, **kwargs):
+            return {"text": '{"detected_text":"土戴"}', "elapsed": 0.01}
+
+        def fake_postprocess(text_by_uid, **kwargs):
+            return dict(text_by_uid)
+
+        with patch("llm_client.generate", fake_generate):
+            with patch("text_roi_llm.postprocess_text_rois", fake_postprocess):
+                pdf_recognize._run_deferred_text_llm_postprocess(
+                    page_data,
+                    verbose=False,
+                    debug_out={},
+                )
+
+        self.assertEqual(page_data[0][0]["ocr_fusion_text"], "土")
+
+    def test_deferred_paddle_vlm_fusion_fallback_dedupes_malformed_duplicate(self):
+        page_data = [
+            [
+                {
+                    "name": "18",
+                    "kind": "text",
+                    "text": "furskin",
+                    "_ocr_workflow": "paddle_vlm_fusion",
+                    "_ocr_paddle_confidence": {
+                        "detected_text": "foreskin",
+                        "confidence_score": 0.91,
+                    },
+                }
+            ]
+        ]
+
+        def fake_generate(prompt, **kwargs):
+            return {"text": '{"detected_text":null}', "elapsed": 0.01}
+
+        def fake_postprocess(text_by_uid, **kwargs):
+            return dict(text_by_uid)
+
+        with patch("llm_client.generate", fake_generate):
+            with patch("text_roi_llm.postprocess_text_rois", fake_postprocess):
+                debug: dict = {}
+                pdf_recognize._run_deferred_text_llm_postprocess(
+                    page_data,
+                    verbose=False,
+                    debug_out=debug,
+                )
+
+        self.assertEqual(page_data[0][0]["ocr_fusion_text"], "foreskin")
+        row = debug["text_llm_deferred"]["paddle_vlm_fusion"]["per_roi"][0]
+        self.assertEqual(row["skipped"], "near_duplicate")
+
+    def test_paddle_vlm_fusion_near_duplicate_choice_keeps_clean_text(self):
+        self.assertEqual(pdf_recognize._unionize_ocr_texts("ure+hra", "urethra"), "urethra")
+        self.assertEqual(pdf_recognize._unionize_ocr_texts("furskin", "foreskin"), "foreskin")
+        self.assertEqual(pdf_recognize._unionize_ocr_texts("Fertilization", "Fertilzath"), "Fertilization")
+        self.assertEqual(pdf_recognize._unionize_ocr_texts("Labiae", "Labia"), "Labia")
+        self.assertEqual(
+            pdf_recognize._unionize_ocr_texts("12345674", "1234567A"),
+            "12345674 1234567A",
+        )
+
+    def test_paddle_vlm_fusion_merges_question_prefix_with_cleaner_answer_tail(self):
+        self.assertEqual(
+            pdf_recognize._unionize_ocr_texts(
+                "Pre ejaculate",
+                "19.The fluid that gets the urethra ready for the passage of the sperm. Pre wacvate",
+            ),
+            "19.The fluid that gets the urethra ready for the passage of the sperm. Pre ejaculate",
+        )
+
+    def test_paddle_vlm_fusion_ignores_single_character_noise_when_other_side_has_full_prompt(self):
+        self.assertEqual(
+            pdf_recognize._unionize_ocr_texts(
+                "b",
+                "14. The two folds of the skin that surround the opening to the vagina.",
+            ),
+            "14. The two folds of the skin that surround the opening to the vagina.",
+        )
+
+    def test_paddle_vlm_fusion_reorders_label_value_text(self):
+        self.assertEqual(
+            pdf_recognize._unionize_ocr_texts(
+                "Name of Teacher: Mrs.Riedlinger",
+                "Mrs.Riedlinger Name of Teacher:",
+            ),
+            "Name of Teacher: Mrs.Riedlinger",
+        )
+
+    def test_deferred_paddle_vlm_fusion_defaults_to_qwen_model(self):
+        page_data = [
+            [
+                {
+                    "name": "optional",
+                    "kind": "text",
+                    "text": "If it never existed",
+                    "_ocr_workflow": "paddle_vlm_fusion",
+                    "_ocr_paddle_confidence": {
+                        "detected_text": "25. Optional question: LfifneVcVpistd",
+                        "confidence_score": 0.71,
+                    },
+                }
+            ]
+        ]
+        seen_models: list[str | None] = []
+
+        def fake_generate(prompt, **kwargs):
+            seen_models.append(kwargs.get("model"))
+            return {"text": '{"detected_text":"If it never existed"}', "elapsed": 0.01}
+
+        def fake_postprocess(text_by_uid, **kwargs):
+            return dict(text_by_uid)
+
+        with patch.dict(
+            pdf_recognize._config_module.TEXT_ROI_LLM,
+            {"paddle_vlm_fusion_model": "", "model": "llama3.2:latest"},
+            clear=False,
+        ):
+            with patch("llm_client.generate", fake_generate):
+                with patch("text_roi_llm.postprocess_text_rois", fake_postprocess):
+                    pdf_recognize._run_deferred_text_llm_postprocess(
+                        page_data,
+                        verbose=False,
+                        debug_out={},
+                    )
+
+        self.assertEqual(seen_models, ["qwen3.5:9b"])
+
+    def test_deferred_paddle_vlm_fusion_cleans_prompt_artifacts(self):
+        page_data = [
+            [
+                {
+                    "name": "school",
+                    "kind": "text",
+                    "text": "Name of School: Rosemont Middle School",
+                    "_ocr_workflow": "paddle_vlm_fusion",
+                    "_ocr_paddle_confidence": {
+                        "detected_text": "Name of School: Rosemont Middle School",
+                        "confidence_score": 0.99,
+                    },
+                },
+                {
+                    "name": "answer",
+                    "kind": "text",
+                    "text": "",
+                    "_ocr_workflow": "paddle_vlm_fusion",
+                    "_ocr_paddle_confidence": {
+                        "detected_text": "7",
+                        "confidence_score": 0.71,
+                    },
+                },
+            ]
+        ]
+
+        def fake_generate(prompt, **kwargs):
+            if "Rosemont" in prompt:
+                return {
+                    "text": '{"detected_text":"Name of School: Rosemont Middle School Name of School: Rosemont Middle School"}',
+                    "elapsed": 0.01,
+                }
+            return {"text": '{"detected_text":"OCR A: OCR B: 7"}', "elapsed": 0.01}
+
+        def fake_postprocess(text_by_uid, **kwargs):
+            return dict(text_by_uid)
+
+        with patch("llm_client.generate", fake_generate):
+            with patch("text_roi_llm.postprocess_text_rois", fake_postprocess):
+                pdf_recognize._run_deferred_text_llm_postprocess(
+                    page_data,
+                    verbose=False,
+                    debug_out={},
+                )
+
+        self.assertEqual(page_data[0][0]["text"], "Name of School: Rosemont Middle School")
+        self.assertEqual(page_data[0][1]["text"], "7")
 
     def test_deferred_text_llm_retry_debug_preserves_raw_ocr(self):
         page_data = [
@@ -256,7 +664,7 @@ class PdfSourceManifestTests(unittest.TestCase):
                     "name": "date",
                     "kind": "text",
                     "text": "bad",
-                    "_ocr_output_regex": r"^\d{2}/\d{2}/\d{4}$",
+                    "_output_regex": r"^\d{2}/\d{2}/\d{4}$",
                     "_ocr_retry_image_path": "page.png",
                     "_ocr_retry_bbox_xyxy": [0, 0, 10, 10],
                 }
@@ -342,7 +750,7 @@ class PdfSourceManifestTests(unittest.TestCase):
                     "kind": "text",
                     "text": "4/20/26",
                     "_llm_prompt_override": "Return a date.",
-                    "_ocr_output_regex": r"^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$",
+                    "_output_regex": r"^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$",
                 }
             ]
         ]
@@ -377,7 +785,7 @@ class PdfSourceManifestTests(unittest.TestCase):
                     "kind": "text",
                     "text": "4/20/26",
                     "_llm_prompt_override": "Return a date.",
-                    "_ocr_output_regex": r"^\d{2}/\d{2}/\d{4}$",
+                    "_output_regex": r"^\d{2}/\d{2}/\d{4}$",
                     "_ocr_retry_image_path": "page.png",
                     "_ocr_retry_bbox_xyxy": [0, 0, 10, 10],
                 }

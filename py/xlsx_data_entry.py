@@ -193,6 +193,64 @@ def resolve_source(item: Mapping[str, Any], source: str) -> str | None:
     return None
 
 
+def _row_text_value(row_meta: Mapping[str, Any] | None) -> str | None:
+    if not row_meta:
+        return None
+    if "text" not in row_meta:
+        return None
+    text = row_meta.get("text")
+    return "" if text is None else str(text).strip()
+
+
+def _paddle_comment_text(row_meta: Mapping[str, Any] | None) -> str:
+    if not row_meta:
+        return ""
+    raw = row_meta.get("ocr_paddle_confidence")
+    if not isinstance(raw, Mapping):
+        return ""
+    detected = str(raw.get("detected_text") or "").strip()
+    if detected:
+        return " ".join(detected.split())
+    rec_texts = raw.get("rec_texts")
+    if isinstance(rec_texts, list):
+        return " ".join(str(t).strip() for t in rec_texts if str(t).strip())
+    return ""
+
+
+def _xlsx_comment_raw_value(
+    item: Mapping[str, Any],
+    source: str,
+    raw: Any,
+) -> Any:
+    """
+    Return the raw OCR text shown in XLSX comments.
+
+    Text ROIs carry both the original VLM OCR text (``_raw_ocr_text``) and, when
+    available, a Paddle sidecar.  Comments should expose the OCR evidence rather
+    than the postprocessed cell value, especially when that value is blank.
+    """
+    row_meta = _find_data_entry(item, source) if source else None
+    if not row_meta or str(row_meta.get("kind", "")).strip().lower() != "text":
+        return raw
+
+    vlm_text = " ".join(str(row_meta.get("_raw_ocr_text") or "").split())
+    paddle_text = _paddle_comment_text(row_meta)
+    workflow = str(row_meta.get("ocr_workflow") or "").strip().lower()
+    text_source = str(row_meta.get("ocr_text_source") or "").strip().lower()
+
+    if workflow == "paddle_vlm_fusion":
+        fusion_raw = row_meta.get("ocr_fusion_text")
+        fusion_text = "" if fusion_raw is None else str(fusion_raw)
+        if fusion_raw is None:
+            fusion_text = "" if raw is None else str(raw)
+        return f"'{paddle_text}' + '{vlm_text}' = '{fusion_text}'"
+    if text_source == "paddle":
+        return paddle_text or raw
+    if text_source in {"vision", "vlm"}:
+        return vlm_text or raw
+    return vlm_text or paddle_text or raw
+
+
 # ---------------------------------------------------------------------------
 # Cell writers / transforms
 # ---------------------------------------------------------------------------
@@ -636,9 +694,14 @@ def apply_mapping_entry(
     source = entry.get("source")
     if not source:
         return
-    raw = resolve_source(item, str(source))
+    source_text = str(source)
+    row_meta = _find_data_entry(item, source_text)
+    raw = resolve_source(item, source_text)
+    if raw is None and row_meta is not None and str(row_meta.get("kind", "")).strip().lower() == "text":
+        raw = _row_text_value(row_meta)
     if raw is None and mtype != "multi_column":
         return
+    comment_raw = _xlsx_comment_raw_value(item, source_text, raw)
 
     if mtype == "direct":
         value: Any = raw
@@ -653,7 +716,7 @@ def apply_mapping_entry(
             value = _parse_date(raw) or raw
         cell = _write_cell(ws, row, str(entry["column"]), value, cfg)
         _apply_confidence_heatmap(cell, item, str(source), cfg)
-        _apply_cell_comment(cell, entry, item, source=str(source), raw=raw, value=value, context=context)
+        _apply_cell_comment(cell, entry, item, source=str(source), raw=comment_raw, value=value, context=context)
         return
 
     if mtype == "lookup":
@@ -665,7 +728,7 @@ def apply_mapping_entry(
         if result is not None:
             cell = _write_cell(ws, row, str(entry["column"]), result, cfg)
             _apply_confidence_heatmap(cell, item, str(source), cfg)
-            _apply_cell_comment(cell, entry, item, source=str(source), raw=raw, value=result, context=context)
+            _apply_cell_comment(cell, entry, item, source=str(source), raw=comment_raw, value=result, context=context)
         return
 
     if mtype == "multi_column":
@@ -683,7 +746,7 @@ def apply_mapping_entry(
                 cell = _write_cell(ws, row, str(no_answer_col), mark, cfg)
                 _apply_confidence_heatmap(cell, item, str(source), cfg)
                 _apply_cell_comment(
-                    cell, entry, item, source=str(source), raw=raw, value=mark, context=context
+                    cell, entry, item, source=str(source), raw=comment_raw, value=mark, context=context
                 )
             return
 
@@ -692,7 +755,7 @@ def apply_mapping_entry(
         if target_col:
             cell = _write_cell(ws, row, str(target_col), mark, cfg)
             _apply_confidence_heatmap(cell, item, str(source), cfg)
-            _apply_cell_comment(cell, entry, item, source=str(source), raw=raw, value=mark, context=context)
+            _apply_cell_comment(cell, entry, item, source=str(source), raw=comment_raw, value=mark, context=context)
         return
 
     raise ValueError(f"Unknown mapping type: {mtype!r}")

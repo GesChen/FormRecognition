@@ -8,23 +8,34 @@
       "h": 34,
       "id": "r436ae571e",
       "llm_field_data_type": "id",
-      "llm_prompt_override": "You are a strict ID extractor for one OCR ROI field.\n\nOCR text to analyze:\n\"<ocr_text>\"\n\nReturn ONE valid JSON object only, no markdown and no extra text.\n\nRequired output schema:\n{\"id\":\"\"}\n\nTarget ID format:\nExactly 7 digits followed by A or B, for example 7011606A or 8011638B.\n\nRules:\n1. If OCR text is JSON and key \"id\" exists, inspect that value first.\n2. From the chosen text, extract only a complete ID token matching ^[0-9]{7}[AB]$.\n3. Strip surrounding labels such as \"Record ID:\", \"ID:\", \"Student ID\", quotes, colons, and whitespace.\n4. If the text contains exactly one complete matching ID token, return it exactly as the 8-character token.\n5. If there are multiple matching tokens, or none, return `{\"detected_text\":null}`.\n6. Do not add any extra keys or text.",
       "llm_validation_rules": "Must be exactly 7 digits followed by A or B, or null.",
       "name": "id",
-      "ocr_output_regex": "^[0-9]{7}[AB]$",
+      "output_regex": "^[0-9]{7}[AB]$",
+      "postprocess_passes": [
+        {
+          "type": "llm",
+          "prompt": "You are a strict ID extractor for one OCR ROI field.\n\nOCR text to analyze:\n\"<input_text>\"\n\nReturn ONE valid JSON object only, no markdown and no extra text.\n\nRequired output schema:\n{\"id\":\"\"}\n\nTarget ID format:\nExactly 7 digits followed by A or B, for example 7011606A or 8011638B.\n\nRules:\n1. If OCR text is JSON and key \"id\" exists, inspect that value first.\n2. From the chosen text, extract only a complete ID token matching ^[0-9]{7}[AB]$.\n3. Strip surrounding labels such as \"Record ID:\", \"ID:\", \"Student ID\", quotes, colons, and whitespace.\n4. If the text contains exactly one complete matching ID token, return it exactly as the 8-character token.\n5. If there are multiple matching tokens, or none, return `{\"detected_text\":null}`.\n6. Do not add any extra keys or text.",
+          "model": "llama3.2:latest"
+        }
+      ],
       "vlm_query": "Record ID:",
       "w": 245,
       "x": 54,
-      "y": 15
+      "y": 16
     },
     {
       "h": 40,
       "id": "rab62d9245",
       "llm_field_data_type": "date",
-      "llm_prompt_override": "You are an information extraction model.\n\nTask:\nExtract exactly one date from the input text.\n\nInput:\n\"<ocr_text>\"\n\nOutput requirements:\n* Return exactly one JSON object.\n* No markdown.\n* No explanations.\n* No extra text.\n\nOutput schema:\n{\"date\":\"MM-DD-YYYY\"}\n\nExtraction rules:\n1. Find exactly one complete date.\n2. Output the date in MM-DD-YYYY format.\n3. Dates are commonly written as MM/DD/YY, but other separators or slightly malformed OCR output may appear. Correct minor OCR mistakes such as numbers misidentified as letters.\n4. You may normalize separators (/, -, ., spaces) when the intended date is unambiguous.\n5. If the year has two digits, interpret it as 20YY.\n6. If the year is missing but month and day are present, use 2026.\n7. Never invent a missing month or day.\n8. Only correct obvious OCR or formatting errors when there is a single unambiguous interpretation.\n9. Verify that the final date is a valid calendar date.\n10. If no valid date can be extracted, return: {\"date\":null}\n11. If multiple valid dates are present or the result is ambiguous, return: {\"date\":null}\n12. Always produce valid JSON.\n13. Output MUST be in \"MM-DD-YYYY\" form",
-      "llm_validation_rules": "Must match ^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$ exactly, or null.",
+      "llm_validation_rules": "Must match ^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])-(20[0-9]{2})$ exactly, or null.",
       "name": "date",
-      "ocr_output_regex": "^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])-(20[0-9]{2})$",
+      "output_regex": "^(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])-(20[0-9]{2})$",
+      "postprocess_passes": [
+        {
+          "type": "llm",
+          "prompt": "You are an information extraction model.\n\nTask:\nExtract exactly one date from the input text.\n\nInput:\n\"<input_text>\"\n\nOutput requirements:\n* Return exactly one JSON object.\n* No markdown.\n* No explanations.\n* No extra text.\n\nOutput schema:\n{\"date\":\"MM-DD-YYYY\"}\n\nExtraction rules:\n1. Find exactly one complete date.\n2. Output the date in MM-DD-YYYY format.\n3. Dates are commonly written as MM/DD/YY, but other separators or slightly malformed OCR output may appear. Correct minor OCR mistakes such as numbers misidentified as letters.\n4. You may normalize separators (/, -, ., spaces) when the intended date is unambiguous.\n5. If the year has two digits, interpret it as 20YY.\n6. If the year is missing but month and day are present, use 2026.\n7. Never invent a missing month or day.\n8. Only correct obvious OCR or formatting errors when there is a single unambiguous interpretation.\n9. Verify that the final date is a valid calendar date.\n10. If no valid date can be extracted, return: {\"date\":null}\n11. If multiple valid dates are present or the result is ambiguous, return: {\"date\":null}\n12. Always produce valid JSON.\n13. Output MUST be in \"MM-DD-YYYY\" form"
+        }
+      ],
       "vlm_query": "Today's Date:",
       "w": 418,
       "x": 58,
@@ -33,8 +44,13 @@
     {
       "h": 36,
       "id": "r66d484627",
-      "llm_prompt_override": "You are an information extraction model.\n\nTask:\nExtract and normalize exactly one school name from the input text.\n\nInput:\n\"<ocr_text>\"\n\nOutput requirements:\n\n* Return exactly one JSON object.\n* No markdown.\n* No explanations.\n* No extra text.\n\nOutput schema:\n{\"detected_text\":\"string or null\"}\n\nExtraction rules:\n\n1. Extract only the school name from the input text.\n2. Remove surrounding labels such as \"School:\", \"School Name:\", \"Institution:\", or similar field labels.\n3. Preserve the school name conservatively.\n4. Normalize unnecessary surrounding punctuation and whitespace.\n5. Do not invent, infer, expand, translate, or explain any part of the name.\n6. Do not add words such as \"School\", \"Academy\", \"Elementary\", \"Middle\", or \"High\" unless they are present in the input.\n7. Only correct obvious OCR spacing or formatting errors when the intended school name is unambiguous.\n8. If exactly one unambiguous school name is present, return it as detected_text.\n9. If the input is empty, unreadable, ambiguous, contains multiple possible school names, or does not contain a school name, return:\n   {\"detected_text\":null}\n10. Always produce valid JSON.",
       "name": "school",
+      "postprocess_passes": [
+        {
+          "type": "llm",
+          "prompt": "You are an information extraction model.\n\nTask:\nExtract and normalize exactly one school name from the input text.\n\nInput:\n\"<input_text>\"\n\nOutput requirements:\n\n* Return exactly one JSON object.\n* No markdown.\n* No explanations.\n* No extra text.\n\nOutput schema:\n{\"detected_text\":\"string or null\"}\n\nExtraction rules:\n\n1. Extract only the school name from the input text.\n2. Remove surrounding labels such as \"School:\", \"School Name:\", \"Institution:\", or similar field labels.\n3. Preserve the school name conservatively.\n4. Normalize unnecessary surrounding punctuation and whitespace.\n5. Do not invent, infer, expand, translate, or explain any part of the name.\n6. Do not add words such as \"School\", \"Academy\", \"Elementary\", \"Middle\", or \"High\" unless they are present in the input.\n7. Only correct obvious OCR spacing or formatting errors when the intended school name is unambiguous.\n8. If exactly one unambiguous school name is present, return it as detected_text.\n9. If the input is empty, unreadable, ambiguous, contains multiple possible school names, or does not contain a school name, return:\n   {\"detected_text\":null}\n10. Always produce valid JSON."
+        }
+      ],
       "vlm_query": "Name of School:",
       "w": 528,
       "x": 55,
@@ -43,10 +59,15 @@
     {
       "h": 40,
       "id": "rb82092764",
-      "llm_prompt_override": "You are an information extraction model.\n\nTask:\nExtract and normalize exactly one teacher name from the input text.\n\nInput:\n\"<ocr_text>\"\n\nOutput requirements:\n\n* Return exactly one JSON object.\n* No markdown.\n* No explanations.\n* No extra text.\n\nOutput schema:\n{\"detected_text\":\"string or null\"}\n\nExtraction rules:\n\n1. Extract only the teacher name from the input text.\n2. Remove surrounding labels such as \"Teacher:\", \"Instructor:\", \"Name:\", or similar field labels.\n3. Remove titles such as \"Mr.\", \"Mrs.\", \"Ms.\", \"Miss\", and \"Dr.\" when present.\n4. Preserve the remaining name conservatively.\n5. Normalize unnecessary surrounding punctuation and whitespace.\n6. Do not invent, infer, expand, or repair missing name information.\n7. Only correct obvious OCR spacing or formatting errors when the intended name is unambiguous.\n8. If exactly one unambiguous teacher name is present, return it as detected_text.\n9. If the input is empty, unreadable, ambiguous, contains multiple possible teacher names, or does not contain a teacher name, return:\n   {\"detected_text\":null}\n10. Always produce valid JSON.",
       "name": "teacher",
       "post_normalize": true,
       "post_normalize_mode": "aggressive",
+      "postprocess_passes": [
+        {
+          "type": "llm",
+          "prompt": "You are an information extraction model.\n\nTask:\nExtract and normalize exactly one teacher name from the input text.\n\nInput:\n\"<input_text>\"\n\nOutput requirements:\n\n* Return exactly one JSON object.\n* No markdown.\n* No explanations.\n* No extra text.\n\nOutput schema:\n{\"detected_text\":\"string or null\"}\n\nExtraction rules:\n\n1. Extract only the teacher name from the input text.\n2. Remove surrounding labels such as \"Teacher:\", \"Instructor:\", \"Name:\", or similar field labels.\n3. Remove titles such as \"Mr.\", \"Mrs.\", \"Ms.\", \"Miss\", and \"Dr.\" when present.\n4. Preserve the remaining name conservatively.\n5. Normalize unnecessary surrounding punctuation and whitespace.\n6. Do not invent, infer, expand, or repair missing name information.\n7. Only correct obvious OCR spacing or formatting errors when the intended name is unambiguous.\n8. If exactly one unambiguous teacher name is present, return it as detected_text.\n9. If the input is empty, unreadable, ambiguous, contains multiple possible teacher names, or does not contain a teacher name, return:\n   {\"detected_text\":null}\n10. Always produce valid JSON."
+        }
+      ],
       "vlm_query": "Name of Teacher:",
       "w": 509,
       "x": 466,
@@ -56,6 +77,7 @@
       "h": 112,
       "id": "ree4df4e8f",
       "name": "1",
+      "postprocess_passes": [],
       "w": 898,
       "x": 53,
       "y": 292
@@ -64,6 +86,7 @@
       "h": 32,
       "id": "rf84b1266f",
       "name": "1a",
+      "postprocess_passes": [],
       "w": 205,
       "x": 101,
       "y": 345
@@ -72,6 +95,7 @@
       "h": 32,
       "id": "r73fff7c16",
       "name": "1b",
+      "postprocess_passes": [],
       "w": 280,
       "x": 677,
       "y": 344
@@ -80,6 +104,7 @@
       "h": 31,
       "id": "r93b3267ae",
       "name": "1c",
+      "postprocess_passes": [],
       "w": 204,
       "x": 101,
       "y": 373
@@ -88,6 +113,7 @@
       "h": 31,
       "id": "r601a68acc",
       "name": "1d",
+      "postprocess_passes": [],
       "w": 193,
       "x": 677,
       "y": 372
@@ -96,6 +122,7 @@
       "h": 90,
       "id": "rf5ccc1b77",
       "name": "2",
+      "postprocess_passes": [],
       "w": 899,
       "x": 53,
       "y": 422
@@ -104,6 +131,7 @@
       "h": 31,
       "id": "r65abf694b",
       "name": "2a",
+      "postprocess_passes": [],
       "w": 252,
       "x": 101,
       "y": 451
@@ -112,6 +140,7 @@
       "h": 31,
       "id": "r38c5f86c2",
       "name": "2b",
+      "postprocess_passes": [],
       "w": 278,
       "x": 677,
       "y": 450
@@ -120,6 +149,7 @@
       "h": 31,
       "id": "r439c1ebcd",
       "name": "2c",
+      "postprocess_passes": [],
       "w": 204,
       "x": 100,
       "y": 477
@@ -128,6 +158,7 @@
       "h": 35,
       "id": "r4b3d2cd49",
       "name": "2d",
+      "postprocess_passes": [],
       "w": 105,
       "x": 676,
       "y": 475
@@ -136,6 +167,7 @@
       "h": 111,
       "id": "r8d051ac54",
       "name": "3",
+      "postprocess_passes": [],
       "w": 1093,
       "x": 53,
       "y": 529
@@ -144,6 +176,7 @@
       "h": 55,
       "id": "r6e918f1cb",
       "name": "3a",
+      "postprocess_passes": [],
       "w": 550,
       "x": 101,
       "y": 557
@@ -152,6 +185,7 @@
       "h": 31,
       "id": "r8200d0f6e",
       "name": "3b",
+      "postprocess_passes": [],
       "w": 469,
       "x": 677,
       "y": 556
@@ -160,6 +194,7 @@
       "h": 31,
       "id": "rba65fee34",
       "name": "3c",
+      "postprocess_passes": [],
       "w": 255,
       "x": 100,
       "y": 606
@@ -168,6 +203,7 @@
       "h": 31,
       "id": "rda0ce3603",
       "name": "3d",
+      "postprocess_passes": [],
       "w": 358,
       "x": 678,
       "y": 608
@@ -176,6 +212,7 @@
       "h": 60,
       "id": "r27ed14a56",
       "name": "4",
+      "postprocess_passes": [],
       "w": 1081,
       "x": 53,
       "y": 658
@@ -184,6 +221,7 @@
       "h": 30,
       "id": "r5cf6be253",
       "name": "4a",
+      "postprocess_passes": [],
       "w": 90,
       "x": 100,
       "y": 685
@@ -192,6 +230,7 @@
       "h": 30,
       "id": "r87fd6fcdc",
       "name": "4b",
+      "postprocess_passes": [],
       "w": 82,
       "x": 388,
       "y": 684
@@ -200,6 +239,7 @@
       "h": 30,
       "id": "r6dff9991d",
       "name": "4c",
+      "postprocess_passes": [],
       "w": 82,
       "x": 676,
       "y": 685
@@ -208,6 +248,7 @@
       "h": 30,
       "id": "r75d881ea9",
       "name": "4d",
+      "postprocess_passes": [],
       "w": 163,
       "x": 967,
       "y": 686
@@ -216,6 +257,7 @@
       "h": 114,
       "id": "rf25dc4b2e",
       "name": "5",
+      "postprocess_passes": [],
       "w": 1132,
       "x": 54,
       "y": 738
@@ -224,6 +266,7 @@
       "h": 32,
       "id": "r0b5264e78",
       "name": "5a",
+      "postprocess_passes": [],
       "w": 144,
       "x": 99,
       "y": 788
@@ -232,6 +275,7 @@
       "h": 31,
       "id": "r9c94e4a10",
       "name": "5b",
+      "postprocess_passes": [],
       "w": 217,
       "x": 678,
       "y": 788
@@ -240,6 +284,7 @@
       "h": 31,
       "id": "r66a701372",
       "name": "5c",
+      "postprocess_passes": [],
       "w": 346,
       "x": 99,
       "y": 816
@@ -248,6 +293,7 @@
       "h": 34,
       "id": "re78bb1128",
       "name": "5d",
+      "postprocess_passes": [],
       "w": 507,
       "x": 678,
       "y": 817
@@ -256,6 +302,7 @@
       "h": 60,
       "id": "r037bfce9b",
       "name": "6",
+      "postprocess_passes": [],
       "w": 1163,
       "x": 54,
       "y": 891
@@ -264,6 +311,7 @@
       "h": 32,
       "id": "r808ef2607",
       "name": "6a",
+      "postprocess_passes": [],
       "w": 178,
       "x": 99,
       "y": 917
@@ -272,6 +320,7 @@
       "h": 33,
       "id": "r574925120",
       "name": "6b",
+      "postprocess_passes": [],
       "w": 176,
       "x": 387,
       "y": 916
@@ -280,6 +329,7 @@
       "h": 32,
       "id": "rf0ed53a4e",
       "name": "6c",
+      "postprocess_passes": [],
       "w": 188,
       "x": 677,
       "y": 917
@@ -288,6 +338,7 @@
       "h": 32,
       "id": "rf7fe6170b",
       "name": "6d",
+      "postprocess_passes": [],
       "w": 220,
       "x": 967,
       "y": 919
@@ -296,6 +347,7 @@
       "h": 41,
       "id": "r44663f619",
       "name": "7",
+      "postprocess_passes": [],
       "w": 234,
       "x": 53,
       "y": 995
@@ -304,6 +356,7 @@
       "h": 31,
       "id": "r9b65d8daf",
       "name": "7a",
+      "postprocess_passes": [],
       "w": 79,
       "x": 106,
       "y": 1019
@@ -312,6 +365,7 @@
       "h": 28,
       "id": "rf4a311655",
       "name": "7b",
+      "postprocess_passes": [],
       "w": 83,
       "x": 202,
       "y": 1021
@@ -320,6 +374,7 @@
       "h": 41,
       "id": "rb401afca8",
       "name": "8",
+      "postprocess_passes": [],
       "w": 237,
       "x": 53,
       "y": 1044
@@ -328,6 +383,7 @@
       "h": 29,
       "id": "r9ff2c7648",
       "name": "8a",
+      "postprocess_passes": [],
       "w": 76,
       "x": 108,
       "y": 1069
@@ -336,6 +392,7 @@
       "h": 29,
       "id": "rc4805aa1f",
       "name": "8b",
+      "postprocess_passes": [],
       "w": 85,
       "x": 201,
       "y": 1068
@@ -344,6 +401,7 @@
       "h": 40,
       "id": "rdae20bf89",
       "name": "9",
+      "postprocess_passes": [],
       "w": 237,
       "x": 54,
       "y": 1095
@@ -352,6 +410,7 @@
       "h": 29,
       "id": "r3870e5d0a",
       "name": "9a",
+      "postprocess_passes": [],
       "w": 75,
       "x": 109,
       "y": 1118
@@ -360,6 +419,7 @@
       "h": 29,
       "id": "r915282192",
       "name": "9b",
+      "postprocess_passes": [],
       "w": 85,
       "x": 201,
       "y": 1116
@@ -368,6 +428,7 @@
       "h": 42,
       "id": "rbcee778d8",
       "name": "10",
+      "postprocess_passes": [],
       "w": 238,
       "x": 54,
       "y": 1142
@@ -376,6 +437,7 @@
       "h": 29,
       "id": "r594be78b3",
       "name": "10a",
+      "postprocess_passes": [],
       "w": 76,
       "x": 108,
       "y": 1167
@@ -384,6 +446,7 @@
       "h": 29,
       "id": "rebfe9ae53",
       "name": "10b",
+      "postprocess_passes": [],
       "w": 84,
       "x": 201,
       "y": 1167
@@ -392,6 +455,7 @@
       "h": 40,
       "id": "r2b8d1509f",
       "name": "11",
+      "postprocess_passes": [],
       "w": 238,
       "x": 55,
       "y": 1192
@@ -400,6 +464,7 @@
       "h": 29,
       "id": "r46b2ce620",
       "name": "11a",
+      "postprocess_passes": [],
       "w": 75,
       "x": 108,
       "y": 1215
@@ -408,6 +473,7 @@
       "h": 29,
       "id": "rddc51729d",
       "name": "11b",
+      "postprocess_passes": [],
       "w": 84,
       "x": 201,
       "y": 1214
@@ -416,6 +482,7 @@
       "h": 41,
       "id": "r8d507f411",
       "name": "12",
+      "postprocess_passes": [],
       "w": 239,
       "x": 54,
       "y": 1239
@@ -424,6 +491,7 @@
       "h": 29,
       "id": "r4f46fc9c0",
       "name": "12a",
+      "postprocess_passes": [],
       "w": 75,
       "x": 108,
       "y": 1264
@@ -432,29 +500,48 @@
       "h": 29,
       "id": "r0a013943c",
       "name": "12b",
+      "postprocess_passes": [],
       "w": 84,
       "x": 201,
       "y": 1264
     },
     {
-      "h": 58,
+      "h": 31,
       "id": "raa609cb80",
-      "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "13",
+      "postprocess_passes": [
+        {
+          "type": "code",
+          "code": "text = \" \".join(str(input_text or \"\").split())\nif not text:\n    return None\nlow = text.lower()\nquery = \" \".join(str(meta.get(\"vlm_query\") or \"\").split())\nquery_low = query.lower()\nquestion_markers = [\n    \"the tube that carries urine\",\n    \"the two folds of the skin\",\n    \"part of the uterus\",\n    \"opening between the uterus and the vagina\",\n    \"pear-shaped reproductive organ\",\n    \"pregnancy develops\",\n    \"process of a sperm and egg\",\n    \"sperm and egg meeting\",\n    \"loose skin that covers the head\",\n    \"fluid that gets the urethra ready\",\n    \"passage of the sperm\",\n]\nif query_low and (low == query_low or low in query_low or query_low in low):\n    return None\nif any(marker in low for marker in question_markers):\n    return None\nreturn text"
+        },
+        {
+          "type": "llm",
+          "prompt": "You are an information extraction model.\n\nTask:\nDetermine exactly one answer choice letter from the input text.\n\nInput:\n\"<INPUT_TEXT>\"\n\nOutput:\n{\"answer_choice\":A-J or null}\n\nAnswer mapping:\n* ejaculation -> A\n* labia -> B\n* testicles -> C\n* menstruation -> D\n* uterus -> E\n* urethra -> F\n* pre-ejaculate -> G\n* cervix -> H\n* fertilization -> I\n* foreskin -> J\n\nExtraction rules:\n1. Output exactly one uppercase letter from A through J, or null.\n2. The input may contain substantial filler text before the answer, including the full question, instructions, numbering, labels, punctuation, or surrounding content.\n5. If exactly one explicit answer choice letter from A through J is presented as the selected answer, return that letter.\n6. Otherwise, map an answer term to its corresponding letter only when the term itself, or a tangible malformed fragment of it, is present in the input.\n7. The answer term may be incomplete, misspelled, distorted, split, merged, or otherwise malformed.\n8. A malformed answer may be normalized only when the visible characters clearly resemble exactly one mapped term.\n9. Do not solve the question, infer the correct answer from its meaning, or supply an answer that is not visibly represented in the input.\n10. Do not treat a mapped term appearing only as part of the question, instructions, or answer list as the respondent\u2019s selected answer.\n11. Use position and surrounding text to distinguish an entered answer from words that merely occur in the prompt.\n14. If no answer term, recognizable malformed fragment, or single answer choice is present, return: {\"detected_text\":null}\n16. Always produce valid JSON."
+        }
+      ],
       "vlm_query": "13. The tube that carries urine of the body.",
       "w": 474,
       "x": 55,
-      "y": 1474
+      "y": 1501
     },
     {
-      "h": 58,
+      "h": 36,
       "id": "r77bece819",
-      "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: ejaculation->A, labia->B, testicles->C, menstruation->D, uterus->E, urethra->F, pre-ejaculate->G, cervix->H, fertilization->I, foreskin->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "14",
+      "postprocess_passes": [
+        {
+          "type": "code",
+          "code": "text = \" \".join(str(input_text or \"\").split())\nif not text:\n    return None\nlow = text.lower()\nquery = \" \".join(str(meta.get(\"vlm_query\") or \"\").split())\nquery_low = query.lower()\nquestion_markers = [\n    \"the tube that carries urine\",\n    \"the two folds of the skin\",\n    \"part of the uterus\",\n    \"opening between the uterus and the vagina\",\n    \"pear-shaped reproductive organ\",\n    \"pregnancy develops\",\n    \"process of a sperm and egg\",\n    \"sperm and egg meeting\",\n    \"loose skin that covers the head\",\n    \"fluid that gets the urethra ready\",\n    \"passage of the sperm\",\n]\nif query_low and (low == query_low or low in query_low or query_low in low):\n    return None\nif any(marker in low for marker in question_markers):\n    return None\nreturn text"
+        },
+        {
+          "type": "llm",
+          "prompt": "You are an information extraction model.\n\nTask:\nDetermine exactly one answer choice letter from the input text.\n\nInput:\n\"<INPUT_TEXT>\"\n\nOutput:\n{\"answer_choice\":A-J or null}\n\nAnswer mapping:\n* ejaculation -> A\n* labia -> B\n* testicles -> C\n* menstruation -> D\n* uterus -> E\n* urethra -> F\n* pre-ejaculate -> G\n* cervix -> H\n* fertilization -> I\n* foreskin -> J\n\nExtraction rules:\n1. Output exactly one uppercase letter from A through J, or null.\n2. The input may contain substantial filler text before the answer, including the full question, instructions, numbering, labels, punctuation, or surrounding content.\n5. If exactly one explicit answer choice letter from A through J is presented as the selected answer, return that letter.\n6. Otherwise, map an answer term to its corresponding letter only when the term itself, or a tangible malformed fragment of it, is present in the input.\n7. The answer term may be incomplete, misspelled, distorted, split, merged, or otherwise malformed.\n8. A malformed answer may be normalized only when the visible characters clearly resemble exactly one mapped term.\n9. Do not solve the question, infer the correct answer from its meaning, or supply an answer that is not visibly represented in the input.\n10. Do not treat a mapped term appearing only as part of the question, instructions, or answer list as the respondent\u2019s selected answer.\n11. Use position and surrounding text to distinguish an entered answer from words that merely occur in the prompt.\n14. If no answer term, recognizable malformed fragment, or single answer choice is present, return: {\"detected_text\":null}\n16. Always produce valid JSON."
+        }
+      ],
       "vlm_query": "14. The two folds of the skin that surround the opening to the vagina.",
       "w": 681,
       "x": 55,
-      "y": 1528
+      "y": 1550
     }
   ]
 }

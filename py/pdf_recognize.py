@@ -29,6 +29,7 @@ import shutil
 import sys
 import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from difflib import SequenceMatcher
 from pathlib import Path
 from typing import Any
 
@@ -767,11 +768,9 @@ def _paddle_sidecar_from_meta(meta: dict[str, Any] | None) -> dict[str, Any] | N
 
 def _fusion_model() -> str | None:
     cfg = _text_roi_llm_cfg()
-    llm_cfg = getattr(_config_module, "LLM", {})
     model = str(
         cfg.get("paddle_vlm_fusion_model")
-        or cfg.get("model")
-        or (llm_cfg.get("model") if isinstance(llm_cfg, dict) else "")
+        or "qwen3.5:9b"
         or ""
     ).strip()
     return model or None
@@ -800,23 +799,18 @@ def _fusion_extra_params() -> dict[str, Any]:
 
 def _default_paddle_vlm_fusion_prompt_template() -> str:
     return (
-        "You are a strict OCR fusion engine for one ROI.\n"
-        "You are NOT reading an image. You only receive two OCR guesses for the same crop.\n"
-        "Return ONE valid JSON object only, no markdown and no extra text.\n"
-        "Required schema: {\"detected_text\":\"string or null\"}\n"
-        "Rules:\n"
-        "- Treat VLM and PaddleOCR as independent OCR guesses.\n"
-        "- Return the best supported raw OCR text, preserving visible characters and order.\n"
-        "- Prefer text supported by both guesses, but use the stronger single guess when only one has text.\n"
-        "- Do not apply ROI-specific validation, formatting, or semantic normalization.\n"
-        "- Do not invent unsupported characters or combine unrelated fragments.\n"
-        "- Return null only when both guesses are empty or null.\n\n"
-        "VLM extracted text:\n"
-        "{vlm_text}\n\n"
-        "PaddleOCR extracted text:\n"
-        "{paddle_text}\n\n"
-        "PaddleOCR confidence/debug JSON:\n"
-        "{paddle_confidence_json}\n"
+        "Two OCR tools read the same box. Produce one final OCR string with maximal unique information.\n"
+        "If both readings say the same thing or nearly the same thing, output only one version.\n"
+        "Prefer Paddle only when the readings are very similar but disagree in small OCR details.\n"
+        "Use VLM only to add information that is clearly missing from Paddle.\n"
+        "Do not repeat labels, headers, question text, or answer text that already appears in the other reading.\n"
+        "If one reading is mostly a noisy variant of the other, keep the cleaner single reading.\n"
+        "Do not rewrite meaning.\n"
+        "Return JSON only.\n\n"
+        "OCR A (VLM): {vlm_text}\n"
+        "OCR B (Paddle): {paddle_text}\n"
+        "Paddle metadata: {paddle_confidence_json}\n"
+        "Output: {\"detected_text\":\"combined text\"}\n"
     )
 
 
@@ -848,6 +842,517 @@ def _render_fusion_prompt(
     }.items():
         prompt = prompt.replace(key, value)
     return prompt
+
+
+def _compact_ocr_text(value: Any) -> str:
+    return re.sub(r"[^0-9A-Za-z]+", "", str(value or "")).lower()
+
+
+def _strip_ocr_markup(value: Any) -> str:
+    text = _normalize_text_value(value)
+    if not text:
+        return ""
+    text = re.sub(r"`{3,}", " ", text)
+    text = re.sub(r"`+", " ", text)
+    text = re.sub(r"\bjson\b", " ", text, flags=re.IGNORECASE)
+    return _normalize_text_value(text)
+
+
+def _canonicalize_labeled_ocr_text(value: Any) -> str:
+    text = _strip_ocr_markup(value)
+    if not text:
+        return ""
+    text = re.sub(r"\bRecordID\s*:", "Record ID: ", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bRecord\s*ID\s*:", "Record ID: ", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bName\s+of\s+Teacher\s*:", "Name of Teacher: ", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bName\s+of\s+School\s*:", "Name of School: ", text, flags=re.IGNORECASE)
+    text = re.sub(r"\bToday'?s\s+Date\s*:", "Today's Date: ", text, flags=re.IGNORECASE)
+    # Handle value-first OCR like "Mrs. Smith Name of Teacher:"
+    text = re.sub(
+        r"^(.+?)\s+(Record ID|Name of Teacher|Name of School|Today's Date):\s*$",
+        lambda m: f"{m.group(2)}: {m.group(1).strip()}",
+        text,
+        flags=re.IGNORECASE,
+    )
+    # Normalize jumbled date-label OCR when both label words and a date are present.
+    if "today" in text.lower() and "date" in text.lower():
+        dates = list(re.finditer(r"(?<!\d)\d{1,2}[/-]\d{1,2}[/-](?:\d{2}|\d{4})(?!\d)", text))
+        if dates:
+            text = f"Today's Date: {dates[0].group(0)}"
+    text = re.sub(r"\s+:", ":", text)
+    text = re.sub(r":(?=\S)", ": ", text)
+    return _normalize_text_value(text)
+
+
+def _digit_ratio(value: str) -> float:
+    compact = _compact_ocr_text(value)
+    if not compact:
+        return 0.0
+    return sum(1 for ch in compact if ch.isdigit()) / len(compact)
+
+
+def _text_like_for_fuzzy_dedupe(value: str) -> bool:
+    compact = _compact_ocr_text(value)
+    if len(compact) < 5:
+        return False
+    if _digit_ratio(value) >= 0.45:
+        return False
+    return any(ch.isalpha() for ch in compact)
+
+
+def _ocr_similarity(a: str, b: str) -> float:
+    a_norm = _compact_ocr_text(a)
+    b_norm = _compact_ocr_text(b)
+    if not a_norm or not b_norm:
+        return 0.0
+    return SequenceMatcher(None, a_norm, b_norm).ratio()
+
+
+def _digit_groups(value: Any) -> list[str]:
+    return re.findall(r"\d+", str(value or ""))
+
+
+def _digit_groups_preserved(candidate: str, source: str) -> bool:
+    candidate_digits = re.sub(r"\D+", "", str(candidate or ""))
+    return all(group in candidate_digits for group in _digit_groups(source))
+
+
+def _word_signatures(value: Any) -> set[str]:
+    return {token.lower() for token in re.findall(r"[A-Za-z]{2,}", str(value or ""))}
+
+
+def _nontrivial_word_signatures(value: Any) -> set[str]:
+    stop = {
+        "the", "of", "to", "that", "what", "your", "name", "date", "record",
+        "id", "school", "teacher", "optional", "question", "is", "again",
+    }
+    return {w for w in _word_signatures(value) if w not in stop}
+
+
+def _looks_like_low_signal_ocr_text(value: Any) -> bool:
+    text = _canonicalize_labeled_ocr_text(value)
+    if not text:
+        return True
+    compact = _compact_ocr_text(text)
+    if len(compact) <= 1:
+        return True
+    if re.fullmatch(r"[_\-\.\?\s]+", text):
+        return True
+    if not any(ch.isalnum() for ch in text):
+        return True
+    if len(compact) <= 4 and not any(ch.isdigit() for ch in compact) and text.count(" ") == 0 and text.islower():
+        return True
+    return False
+
+
+def _placeholder_only_text(value: Any) -> bool:
+    text = _canonicalize_labeled_ocr_text(value)
+    if not text:
+        return True
+    if re.fullmatch(r"(?:_+\s*)+", text):
+        return True
+    return False
+
+
+def _near_duplicate_ocr_texts(a: str, b: str) -> bool:
+    if not (_text_like_for_fuzzy_dedupe(a) and _text_like_for_fuzzy_dedupe(b)):
+        return False
+    a_norm = _compact_ocr_text(a)
+    b_norm = _compact_ocr_text(b)
+    if a_norm == b_norm or a_norm in b_norm or b_norm in a_norm:
+        return True
+    return _ocr_similarity(a, b) >= 0.78
+
+
+def _ocr_text_quality_score(value: str) -> tuple[int, int, int, int]:
+    text = _normalize_text_value(value)
+    compact = _compact_ocr_text(text)
+    weird = sum(1 for ch in text if not (ch.isalnum() or ch.isspace() or ch in ".,:/#'()-_?&"))
+    return (
+        -weird,
+        sum(1 for ch in text if ch.isalpha()),
+        sum(1 for ch in text if ch.isdigit()),
+        len(compact),
+    )
+
+
+def _prefer_cleaner_ocr_text(a: str, b: str) -> str:
+    a_text = _canonicalize_labeled_ocr_text(a)
+    b_text = _canonicalize_labeled_ocr_text(b)
+    a_norm = _compact_ocr_text(a_text)
+    b_norm = _compact_ocr_text(b_text)
+    if a_norm and b_norm:
+        if (a_norm.startswith(b_norm) or b_norm.startswith(a_norm)) and abs(len(a_norm) - len(b_norm)) <= 2:
+            return a_text if len(a_norm) <= len(b_norm) else b_text
+        if a_norm in b_norm and len(b_norm) > len(a_norm):
+            return b_text
+        if b_norm in a_norm and len(a_norm) > len(b_norm):
+            return a_text
+    return a_text if _ocr_text_quality_score(a_text) >= _ocr_text_quality_score(b_text) else b_text
+
+
+def _prefer_paddle_when_similar(vlm_text: str, paddle_text: str) -> str:
+    paddle = _normalize_text_value(paddle_text)
+    vlm = _normalize_text_value(vlm_text)
+    if _has_ocr_evidence(paddle):
+        return paddle
+    return vlm
+
+
+def _ambiguous_single_token_ocr_match(vlm_text: str, paddle_text: str) -> bool:
+    vlm = _normalize_text_value(vlm_text)
+    paddle = _normalize_text_value(paddle_text)
+    vlm_norm = _compact_ocr_text(vlm)
+    paddle_norm = _compact_ocr_text(paddle)
+    return bool(
+        vlm_norm
+        and paddle_norm
+        and " " not in vlm
+        and " " not in paddle
+        and any(ch.isalpha() for ch in vlm_norm)
+        and any(ch.isalpha() for ch in paddle_norm)
+        and (any(ch.isdigit() for ch in vlm_norm) or any(ch.isdigit() for ch in paddle_norm))
+        and abs(len(vlm_norm) - len(paddle_norm)) <= 2
+        and _ocr_similarity(vlm, paddle) >= 0.5
+    )
+
+
+def _prefer_similar_ocr_text(vlm_text: str, paddle_text: str) -> str:
+    vlm = _normalize_text_value(vlm_text)
+    paddle = _normalize_text_value(paddle_text)
+    if _ambiguous_single_token_ocr_match(vlm, paddle):
+        return _prefer_paddle_when_similar(vlm, paddle)
+    return _prefer_cleaner_ocr_text(vlm, paddle)
+
+
+def _date_signatures(value: Any) -> set[tuple[int, int, int]]:
+    signatures: set[tuple[int, int, int]] = set()
+    for m in re.finditer(r"(?<!\d)(\d{1,2})[/-](\d{1,2})[/-](\d{2}|\d{4})(?!\d)", str(value or "")):
+        try:
+            month = int(m.group(1))
+            day = int(m.group(2))
+            year = int(m.group(3))
+        except ValueError:
+            continue
+        if year < 100:
+            year += 2000
+        if 1 <= month <= 12 and 1 <= day <= 31:
+            signatures.add((month, day, year))
+    return signatures
+
+
+def _candidate_preserves_ocr_source(candidate: str, source: str) -> bool:
+    candidate = _canonicalize_labeled_ocr_text(candidate)
+    source = _canonicalize_labeled_ocr_text(source)
+    source_norm = _compact_ocr_text(source)
+    if not source_norm:
+        return True
+    candidate_norm = _compact_ocr_text(candidate)
+    if source_norm in candidate_norm:
+        return True
+    source_dates = _date_signatures(source)
+    if source_dates and source_dates.issubset(_date_signatures(candidate)):
+        without_dates = re.sub(r"(?<!\d)\d{1,2}[/-]\d{1,2}[/-](?:\d{2}|\d{4})(?!\d)", "", str(source or ""))
+        return _candidate_preserves_ocr_source(candidate, without_dates)
+    if _digit_groups(source) and not _digit_groups_preserved(candidate, source):
+        return False
+    if _near_duplicate_ocr_texts(candidate, source):
+        return True
+    return False
+
+
+def _append_nonduplicate_vlm_detail(base_text: str, supplementary_text: str) -> str:
+    base = _canonicalize_labeled_ocr_text(base_text)
+    supplementary = _canonicalize_labeled_ocr_text(supplementary_text)
+    if not _has_ocr_evidence(base):
+        return supplementary
+    if not _has_ocr_evidence(supplementary):
+        return base
+    if _near_duplicate_ocr_texts(base, supplementary):
+        return base
+    base_words = _word_signatures(base)
+    supplementary_words = _word_signatures(supplementary)
+    base_dates = _date_signatures(base)
+    supplementary_dates = _date_signatures(supplementary)
+    # If the supplementary reading mostly repeats the same label/header words and
+    # contributes only date-less numeric noise, keep the base reading only.
+    if (
+        base_words
+        and supplementary_words
+        and supplementary_words.issubset(base_words)
+        and base_dates
+        and not supplementary_dates
+    ):
+        remaining_digit_groups = [group for group in _digit_groups(supplementary) if group not in re.sub(r"\D+", "", base)]
+        if remaining_digit_groups and not (supplementary_words - base_words):
+            return base
+    kept_tokens: list[str] = []
+    base_token_norms = [_compact_ocr_text(token) for token in base.split()]
+    for token in supplementary.split():
+        token_norm = _compact_ocr_text(token)
+        if not token_norm:
+            continue
+        if any(
+            token_norm == existing
+            or token_norm in existing
+            or existing in token_norm
+            for existing in base_token_norms
+            if existing
+        ):
+            continue
+        kept_tokens.append(token)
+    if not kept_tokens:
+        return base
+    return f"{base} {' '.join(kept_tokens)}"
+
+
+def _split_prompt_and_tail(value: Any) -> tuple[str, str]:
+    text = _canonicalize_labeled_ocr_text(value)
+    if not text:
+        return "", ""
+    m = re.match(r"^((?:Record ID|Name of Teacher|Name of School|Today's Date):)\s*(.+)$", text, flags=re.IGNORECASE)
+    if m:
+        return _normalize_text_value(m.group(1)), _normalize_text_value(m.group(2))
+    for punct in (".", "?", ":"):
+        idx = text.rfind(punct)
+        if idx == -1:
+            continue
+        prefix = _normalize_text_value(text[: idx + 1])
+        tail = _normalize_text_value(text[idx + 1 :])
+        if len(prefix.split()) >= 5 and 0 < len(tail.split()) <= 5:
+            return prefix, tail
+    return "", text
+
+
+def _prompt_field_kind(prompt: str) -> str:
+    low = _canonicalize_labeled_ocr_text(prompt).lower()
+    if "today's date:" in low:
+        return "date"
+    if "record id:" in low:
+        return "id"
+    if "name of teacher:" in low:
+        return "teacher"
+    if "name of school:" in low:
+        return "school"
+    if "what is your age?" in low:
+        return "age"
+    if low:
+        return "question"
+    return ""
+
+
+def _numeric_answer_strength(value: str) -> int:
+    text = _canonicalize_labeled_ocr_text(value)
+    if not text:
+        return 0
+    digits = re.sub(r"\D+", "", text)
+    if not digits:
+        return 0
+    return len(digits)
+
+
+def _choose_tail_text(a: str, b: str, *, prompt: str = "") -> str:
+    a_text = _canonicalize_labeled_ocr_text(a)
+    b_text = _canonicalize_labeled_ocr_text(b)
+    kind = _prompt_field_kind(prompt)
+    if not _has_ocr_evidence(a_text):
+        return b_text
+    if not _has_ocr_evidence(b_text):
+        return a_text
+    if _placeholder_only_text(a_text):
+        return b_text
+    if _placeholder_only_text(b_text):
+        return a_text
+    if kind == "date":
+        a_dates = _date_signatures(a_text)
+        b_dates = _date_signatures(b_text)
+        if a_dates and not b_dates:
+            return a_text
+        if b_dates and not a_dates:
+            return b_text
+        a_num = _numeric_answer_strength(a_text)
+        b_num = _numeric_answer_strength(b_text)
+        if a_num >= 4 and b_num == 0:
+            return a_text
+        if b_num >= 4 and a_num == 0:
+            return b_text
+    if kind == "age":
+        a_num = _numeric_answer_strength(a_text)
+        b_num = _numeric_answer_strength(b_text)
+        if a_num and not b_num:
+            return a_text
+        if b_num and not a_num:
+            return b_text
+        prompt_words = _word_signatures(prompt)
+        if prompt_words and _word_signatures(a_text).issubset(prompt_words) and b_num:
+            return b_text
+        if prompt_words and _word_signatures(b_text).issubset(prompt_words) and a_num:
+            return a_text
+    if kind == "id":
+        a_compact = _compact_ocr_text(a_text)
+        b_compact = _compact_ocr_text(b_text)
+        if len(a_compact) >= 6 and len(b_compact) < 6:
+            return a_text
+        if len(b_compact) >= 6 and len(a_compact) < 6:
+            return b_text
+    if kind in {"teacher", "school"}:
+        if _looks_like_low_signal_ocr_text(a_text) and not _looks_like_low_signal_ocr_text(b_text):
+            return b_text
+        if _looks_like_low_signal_ocr_text(b_text) and not _looks_like_low_signal_ocr_text(a_text):
+            return a_text
+    if _near_duplicate_ocr_texts(a_text, b_text) or _ambiguous_single_token_ocr_match(a_text, b_text):
+        return _prefer_cleaner_ocr_text(a_text, b_text)
+    # Prefer the tail that looks less like junk when one side is short/noisy.
+    if _looks_like_low_signal_ocr_text(a_text) and not _looks_like_low_signal_ocr_text(b_text):
+        return b_text
+    if _looks_like_low_signal_ocr_text(b_text) and not _looks_like_low_signal_ocr_text(a_text):
+        return a_text
+    return _prefer_cleaner_ocr_text(a_text, b_text)
+
+
+def _join_prompt_and_tail(prompt: str, tail: str) -> str:
+    prompt = _canonicalize_labeled_ocr_text(prompt)
+    tail = _canonicalize_labeled_ocr_text(tail)
+    if not prompt:
+        return tail
+    if not tail:
+        return prompt
+    if prompt.endswith(":"):
+        return f"{prompt} {tail}"
+    return f"{prompt} {tail}"
+
+
+def _structured_prompt_tail_merge(vlm_text: str, paddle_text: str) -> str | None:
+    vlm = _canonicalize_labeled_ocr_text(vlm_text)
+    paddle = _canonicalize_labeled_ocr_text(paddle_text)
+    v_prompt, v_tail = _split_prompt_and_tail(vlm)
+    p_prompt, p_tail = _split_prompt_and_tail(paddle)
+    if not (v_prompt or p_prompt):
+        return None
+    prompt = ""
+    if v_prompt and p_prompt:
+        if _near_duplicate_ocr_texts(v_prompt, p_prompt) or _compact_ocr_text(v_prompt) == _compact_ocr_text(p_prompt):
+            prompt = _prefer_cleaner_ocr_text(v_prompt, p_prompt)
+        else:
+            prompt = _prefer_cleaner_ocr_text(v_prompt, p_prompt)
+    else:
+        prompt = v_prompt or p_prompt
+    tail = _choose_tail_text(v_tail, p_tail, prompt=prompt)
+    if not _has_ocr_evidence(tail):
+        return prompt or None
+    prompt_words = _word_signatures(prompt)
+    if prompt_words:
+        tail_words = _word_signatures(tail)
+        if tail_words and tail_words.issubset(prompt_words) and _prompt_field_kind(prompt) in {"age", "question"}:
+            return prompt
+    if prompt and (_near_duplicate_ocr_texts(prompt, tail) or _compact_ocr_text(tail) in _compact_ocr_text(prompt)):
+        return prompt
+    return _join_prompt_and_tail(prompt, tail)
+
+
+def _prefer_substantial_source(vlm_text: str, paddle_text: str) -> str:
+    vlm = _canonicalize_labeled_ocr_text(vlm_text)
+    paddle = _canonicalize_labeled_ocr_text(paddle_text)
+    if _looks_like_low_signal_ocr_text(vlm) and _has_ocr_evidence(paddle):
+        return paddle
+    if _looks_like_low_signal_ocr_text(paddle) and _has_ocr_evidence(vlm):
+        return vlm
+    return _prefer_cleaner_ocr_text(vlm, paddle)
+
+
+def _deterministic_fusion_reason(vlm_text: str, paddle_text: str) -> str | None:
+    vlm = _canonicalize_labeled_ocr_text(vlm_text)
+    paddle = _canonicalize_labeled_ocr_text(paddle_text)
+    if not _has_ocr_evidence(vlm) or not _has_ocr_evidence(paddle):
+        return "single_source"
+    if _looks_like_low_signal_ocr_text(vlm) or _looks_like_low_signal_ocr_text(paddle):
+        return "low_signal_source"
+    if _structured_prompt_tail_merge(vlm, paddle):
+        return "structured_prompt_tail"
+    if _ambiguous_single_token_ocr_match(vlm, paddle):
+        return "ambiguous_single_token"
+    if _near_duplicate_ocr_texts(vlm, paddle):
+        return "near_duplicate"
+    return None
+
+
+def _unionize_ocr_texts(vlm_text: str, paddle_text: str) -> str:
+    vlm = _canonicalize_labeled_ocr_text(vlm_text)
+    paddle = _canonicalize_labeled_ocr_text(paddle_text)
+    if not _has_ocr_evidence(vlm):
+        return paddle
+    if not _has_ocr_evidence(paddle):
+        return vlm
+    if _looks_like_low_signal_ocr_text(vlm) and not _looks_like_low_signal_ocr_text(paddle):
+        return paddle
+    if _looks_like_low_signal_ocr_text(paddle) and not _looks_like_low_signal_ocr_text(vlm):
+        return vlm
+    structured = _structured_prompt_tail_merge(vlm, paddle)
+    if structured and (
+        _split_prompt_and_tail(vlm)[0]
+        or _split_prompt_and_tail(paddle)[0]
+    ):
+        return structured
+    vlm_norm = _compact_ocr_text(vlm)
+    paddle_norm = _compact_ocr_text(paddle)
+    if vlm_norm and paddle_norm:
+        if vlm_norm == paddle_norm:
+            return _prefer_similar_ocr_text(vlm, paddle)
+        if (vlm_norm.startswith(paddle_norm) or paddle_norm.startswith(vlm_norm)) and abs(len(vlm_norm) - len(paddle_norm)) <= 2:
+            return _prefer_similar_ocr_text(vlm, paddle)
+        if vlm_norm in paddle_norm:
+            return paddle
+        if paddle_norm in vlm_norm:
+            return vlm
+    if _ambiguous_single_token_ocr_match(vlm, paddle):
+        return _prefer_similar_ocr_text(vlm, paddle)
+    if _near_duplicate_ocr_texts(vlm, paddle):
+        return _prefer_similar_ocr_text(vlm, paddle)
+    if vlm == paddle:
+        return _prefer_similar_ocr_text(vlm, paddle)
+    # Reject very low-information supplements instead of merging them into a
+    # much stronger source.
+    if _looks_like_low_signal_ocr_text(vlm):
+        return paddle
+    if _looks_like_low_signal_ocr_text(paddle):
+        return vlm
+    if _nontrivial_word_signatures(vlm) and _nontrivial_word_signatures(vlm).issubset(_nontrivial_word_signatures(paddle)):
+        return _prefer_substantial_source(vlm, paddle)
+    if _nontrivial_word_signatures(paddle) and _nontrivial_word_signatures(paddle).issubset(_nontrivial_word_signatures(vlm)):
+        return _prefer_substantial_source(vlm, paddle)
+    if _date_signatures(vlm) and not _date_signatures(paddle):
+        return _append_nonduplicate_vlm_detail(vlm, paddle)
+    if _date_signatures(paddle) and not _date_signatures(vlm):
+        return _append_nonduplicate_vlm_detail(paddle, vlm)
+    return _append_nonduplicate_vlm_detail(vlm, paddle)
+
+
+def _dedupe_exact_repeated_tokens(value: str) -> str:
+    text = _normalize_text_value(value)
+    tokens = text.split()
+    if len(tokens) < 2 or len(tokens) % 2:
+        return text
+    mid = len(tokens) // 2
+    if tokens[:mid] == tokens[mid:]:
+        return " ".join(tokens[:mid])
+    return text
+
+
+def _clean_fusion_candidate(value: str) -> str:
+    text = _normalize_text_value(value)
+    if not text:
+        return ""
+    text = re.sub(r"\b(?:OCR\s*[AB]|Output)\s*:\s*", " ", text, flags=re.IGNORECASE)
+    return _dedupe_exact_repeated_tokens(text)
+
+
+def _fusion_candidate_preserves_union(candidate: str, vlm_text: str, paddle_text: str) -> bool:
+    if not _has_ocr_evidence(candidate):
+        return False
+    return (
+        _candidate_preserves_ocr_source(candidate, vlm_text)
+        and _candidate_preserves_ocr_source(candidate, paddle_text)
+    )
 
 
 def _deferred_fusion_candidate(meta: dict[str, Any] | None, raw_ocr: dict[str, Any] | None = None) -> bool:
@@ -907,7 +1412,7 @@ def _run_deferred_paddle_vlm_fusion(
             else vlm_text_raw
         )
         paddle_text = _paddle_text(paddle_sidecar)
-        fallback = vlm_text if _has_ocr_evidence(vlm_text) else paddle_text
+        fallback = _unionize_ocr_texts(vlm_text, paddle_text)
         trace: dict[str, Any] = {
             "uid": uid,
             "enabled": True,
@@ -931,6 +1436,13 @@ def _run_deferred_paddle_vlm_fusion(
             fused[uid] = ""
             per_roi.append(trace)
             continue
+        deterministic_reason = _deterministic_fusion_reason(vlm_text, paddle_text)
+        if deterministic_reason:
+            trace["skipped"] = deterministic_reason
+            trace["result"] = fallback
+            fused[uid] = fallback
+            per_roi.append(trace)
+            continue
         prompt = _render_fusion_prompt(
             template=template,
             vlm_text=vlm_text,
@@ -950,12 +1462,35 @@ def _run_deferred_paddle_vlm_fusion(
             candidate = ""
             if isinstance(parsed, dict) and "detected_text" in parsed:
                 value = parsed.get("detected_text")
-                candidate = "" if value is None else _normalize_text_value(value)
+                candidate = "" if value is None else _clean_fusion_candidate(str(value))
+            if candidate and (_near_duplicate_ocr_texts(vlm_text, paddle_text) or _ambiguous_single_token_ocr_match(vlm_text, paddle_text)):
+                candidate = _prefer_similar_ocr_text(vlm_text, paddle_text)
+            elif candidate and fallback:
+                candidate_norm = _compact_ocr_text(candidate)
+                fallback_norm = _compact_ocr_text(fallback)
+                single_source_text = ""
+                if _has_ocr_evidence(vlm_text) and not _has_ocr_evidence(paddle_text):
+                    single_source_text = _normalize_text_value(vlm_text)
+                elif _has_ocr_evidence(paddle_text) and not _has_ocr_evidence(vlm_text):
+                    single_source_text = _normalize_text_value(paddle_text)
+                if single_source_text and candidate != single_source_text and single_source_text in candidate:
+                    candidate = single_source_text
+                elif (
+                    candidate != fallback
+                    and candidate_norm
+                    and fallback_norm
+                    and (candidate_norm == fallback_norm or fallback_norm in candidate_norm)
+                ):
+                    candidate = fallback
             if candidate.lower() in {"null", "none", "n/a", "na", "unknown", "unreadable"}:
                 candidate = ""
             if not _has_ocr_evidence(candidate) and fallback:
                 candidate = fallback
                 trace["fallback_reason"] = "empty_or_null_fusion_output"
+            elif not _fusion_candidate_preserves_union(candidate, vlm_text, paddle_text):
+                trace["model_result_before_union_repair"] = candidate
+                candidate = fallback
+                trace["fallback_reason"] = "fusion_output_dropped_source_text"
             trace.update(
                 {
                     "raw_response": raw_text,
@@ -1309,9 +1844,11 @@ def _strip_text_llm_internal_metadata(all_page_data: list[list[dict[str, Any]]])
             row.pop("_llm_validation_rules", None)
             row.pop("_llm_prompt_instruction", None)
             row.pop("_llm_prompt_override", None)
+            row.pop("_llm_passes", None)
+            row.pop("_postprocess_passes", None)
             row.pop("_ocr_paddle_confidence", None)
             row.pop("_ocr_workflow", None)
-            row.pop("_ocr_output_regex", None)
+            row.pop("_output_regex", None)
             row.pop("_ocr_retry_image_path", None)
             row.pop("_ocr_retry_bbox_xyxy", None)
 
@@ -1324,7 +1861,7 @@ def _run_deferred_text_llm_postprocess(
 ) -> None:
     """
     Run non-header text ROI postprocessing once after all OCR extraction is complete.
-    Then, for ROIs with `ocr_output_regex`, run queued OCR retry steps in rounds:
+    Then, for ROIs with `output_regex`, run queued OCR retry steps in rounds:
       1) OCR all pending rows for current step
       2) LLM normalize all those OCR outputs together
       3) re-check regex; keep unresolved rows queued for next step
@@ -1360,11 +1897,12 @@ def _run_deferred_text_llm_postprocess(
                 "llm_validation_rules": row.get("_llm_validation_rules"),
                 "llm_prompt_instruction": row.get("_llm_prompt_instruction"),
                 "llm_prompt_override": row.get("_llm_prompt_override"),
+                "postprocess_passes": row.get("_postprocess_passes") or row.get("_llm_passes"),
                 "ocr_paddle_confidence": row.get("_ocr_paddle_confidence"),
                 "ocr_workflow": row.get("_ocr_workflow") or row.get("ocr_workflow"),
             }
             retry_ctx_by_uid[uid] = {
-                "ocr_output_regex": row.get("_ocr_output_regex"),
+                "output_regex": row.get("_output_regex"),
                 "image_path": row.get("_ocr_retry_image_path"),
                 "bbox_xyxy": row.get("_ocr_retry_bbox_xyxy"),
             }
@@ -1400,6 +1938,11 @@ def _run_deferred_text_llm_postprocess(
         use_tqdm=bool(verbose and _tqdm_enabled()),
         tqdm_desc="      Paddle/VLM fusion deferred",
     )
+    for uid, fused_text in fused_text_by_uid.items():
+        row = row_refs.get(uid)
+        if isinstance(row, dict) and _deferred_fusion_candidate(meta_by_uid.get(uid)):
+            row["ocr_fusion_text"] = _normalize_text_value(fused_text)
+
     llm_debug_initial: dict[str, Any] | None = {} if isinstance(debug_out, dict) else None
     initial_processed = postprocess_text_rois(
         fused_text_by_uid,
@@ -1427,11 +1970,11 @@ def _run_deferred_text_llm_postprocess(
     invalid_regex_uids: list[str] = []
     if regex_check_enabled:
         for uid, ctx in retry_ctx_by_uid.items():
-            pat = _compile_output_regex(ctx.get("ocr_output_regex"))
+            pat = _compile_output_regex(ctx.get("output_regex"))
             if pat is not None:
                 regex_by_uid[uid] = pat
                 continue
-            raw = str(ctx.get("ocr_output_regex", "") or "").strip()
+            raw = str(ctx.get("output_regex", "") or "").strip()
             if raw:
                 invalid_regex_uids.append(uid)
 
@@ -1563,6 +2106,9 @@ def _run_deferred_text_llm_postprocess(
                     if isinstance(raw_entry, dict):
                         raw_entry["deferred_fusion"] = row_debug
                         raw_entry["detected_text_after_deferred_fusion"] = step_ocr_texts.get(uid)
+                    row = row_refs.get(uid)
+                    if isinstance(row, dict) and uid in step_ocr_texts:
+                        row["ocr_fusion_text"] = _normalize_text_value(step_ocr_texts.get(uid, ""))
             llm_step_debug: dict[str, Any] | None = {} if isinstance(debug_out, dict) else None
             step_meta = {uid: meta_by_uid.get(uid, {}) for uid in step_ocr_texts}
             step_processed = postprocess_text_rois(

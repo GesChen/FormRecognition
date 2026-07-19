@@ -594,6 +594,7 @@ def _id_llm_meta_from_roi(roi: dict[str, Any]) -> dict[str, dict[str, Any]]:
             "llm_validation_rules": _roi_meta_value(roi, "llm_validation_rules"),
             "llm_prompt_instruction": _roi_meta_value(roi, "llm_prompt_instruction"),
             "llm_prompt_override": _roi_meta_value(roi, "llm_prompt_override"),
+            "postprocess_passes": _roi_meta_value(roi, "postprocess_passes"),
         }
     }
 

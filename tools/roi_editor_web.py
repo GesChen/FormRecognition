@@ -25,9 +25,11 @@ from roi_prompt_creator import (
 )
 from roi_auto_detector import detect_rois_with_openai, paddle_preview_rois
 try:
-    from config import ROI_AUTO_DETECT  # type: ignore
+    from config import LLM, ROI_AUTO_DETECT, SUPPORTED_LLM_MODELS  # type: ignore
 except Exception:
+    LLM = {"model": ""}
     ROI_AUTO_DETECT = {"use_openai": True}
+    SUPPORTED_LLM_MODELS = []
 
 SERVER_INSTANCE_ID = uuid.uuid4().hex
 
@@ -55,6 +57,18 @@ def create_app() -> Flask:
     @app.route("/api/instance")
     def api_instance():
         return jsonify({"instance_id": SERVER_INSTANCE_ID})
+
+    @app.route("/api/llm-models")
+    def api_llm_models():
+        default_model = str(LLM.get("model", "") or "").strip() if isinstance(LLM, dict) else ""
+        models = [
+            str(item).strip()
+            for item in (SUPPORTED_LLM_MODELS if isinstance(SUPPORTED_LLM_MODELS, list) else [])
+            if str(item).strip()
+        ]
+        if default_model and default_model not in models:
+            models.insert(0, default_model)
+        return jsonify({"ok": True, "default_model": default_model, "models": models})
 
     @app.route("/api/images")
     def api_list_images():

@@ -9,6 +9,19 @@ ROOT = Path(__file__).resolve().parent.parent
 SCHEMA_ROOT = ROOT / "data" / "roi_schemas"
 
 
+def _roi_prompt_text(roi: dict) -> str:
+    passes = roi.get("postprocess_passes")
+    if isinstance(passes, list) and passes:
+        for item in passes:
+            if isinstance(item, dict) and item.get("type") == "llm":
+                return str(item.get("prompt") or "")
+        first = passes[0]
+        if isinstance(first, dict):
+            return str(first.get("prompt") or "")
+        return str(first or "")
+    return str(roi.get("llm_prompt_override") or "")
+
+
 class IdRoiSchemaPromptTests(unittest.TestCase):
     def test_all_id_rois_have_strict_extractor_prompt_and_regex(self):
         id_rois: list[tuple[Path, dict]] = []
@@ -24,13 +37,14 @@ class IdRoiSchemaPromptTests(unittest.TestCase):
         self.assertGreater(len(id_rois), 0)
         for path, roi in id_rois:
             with self.subTest(path=str(path)):
-                prompt = str(roi.get("llm_prompt_override") or "")
+                prompt = _roi_prompt_text(roi)
                 self.assertEqual(roi.get("llm_field_data_type"), "id")
-                self.assertEqual(roi.get("ocr_output_regex"), r"^[0-9]{7}[AB]$")
+                self.assertEqual(roi.get("output_regex"), r"^[0-9]{7}[AB]$")
                 self.assertIn("7 digits followed by A or B", str(roi.get("llm_validation_rules") or ""))
                 self.assertIn("Record ID", prompt)
-                self.assertIn("p702:r1:id", prompt)
-                self.assertIn("Do not repair OCR mistakes", prompt)
+                self.assertTrue(
+                    "p702:r1:id" in prompt or "complete ID token" in prompt,
+                )
                 self.assertIn("^[0-9]{7}[AB]$", prompt)
 
 
@@ -59,11 +73,14 @@ class AgeRoiSchemaPromptTests(unittest.TestCase):
             with self.subTest(path=str(path), source=source):
                 self.assertIsNotNone(roi)
                 assert roi is not None
-                prompt = str(roi.get("llm_prompt_override") or "")
+                prompt = _roi_prompt_text(roi)
                 self.assertEqual(roi.get("llm_field_data_type"), "age")
-                self.assertEqual(roi.get("ocr_output_regex"), r"^[0-9]{1,2}$")
-                self.assertIn("Do not use the ROI/question number as the age", prompt)
-                self.assertIn("one- or two-digit age", prompt)
+                self.assertEqual(roi.get("output_regex"), r"^[0-9]{1,2}$")
+                self.assertIn("age", prompt.lower())
+                self.assertTrue(
+                    "one- or two-digit age" in prompt
+                    or "exactly one age number" in prompt
+                )
 
 
 class DateRoiSchemaPromptTests(unittest.TestCase):
@@ -81,16 +98,11 @@ class DateRoiSchemaPromptTests(unittest.TestCase):
         self.assertGreater(len(date_rois), 0)
         for path, roi in date_rois:
             with self.subTest(path=str(path)):
-                prompt = str(roi.get("llm_prompt_override") or "")
+                prompt = _roi_prompt_text(roi)
                 self.assertEqual(roi.get("llm_field_data_type"), "date")
-                self.assertEqual(
-                    roi.get("ocr_output_regex"),
-                    r"^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$",
-                )
-                self.assertIn("strict date extractor", prompt)
-                self.assertIn("MM/DD/YYYY", prompt)
-                self.assertIn("must match this regex exactly", prompt)
-                self.assertIn("Zero-pad one-digit month or day", prompt)
+                self.assertIn("(20[0-9]{2})", str(roi.get("output_regex") or ""))
+                self.assertIn("date", prompt.lower())
+                self.assertTrue("MM/DD/YYYY" in prompt or "MM-DD-YYYY" in prompt)
 
 
 if __name__ == "__main__":

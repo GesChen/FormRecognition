@@ -27,7 +27,7 @@ class VlmCustomPromptTests(unittest.TestCase):
         self.assertIsNone(ocr_engine.build_vlm_roi_prompt(None))
 
     def test_roi_output_regex_respects_config_toggle(self):
-        meta = {"ocr_output_regex": r"^\d+$"}
+        meta = {"output_regex": r"^\d+$"}
         with patch.dict(roi_page_module.ROI_PAGE_RECOGNITION, {"ocr_regex_check_enabled": True}, clear=False):
             self.assertEqual(roi_page_module._roi_output_regex(meta), r"^\d+$")
         with patch.dict(roi_page_module.ROI_PAGE_RECOGNITION, {"ocr_regex_check_enabled": False}, clear=False):

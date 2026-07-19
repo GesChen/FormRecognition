@@ -413,13 +413,13 @@ def _serialize_raw_ocr(raw_result: dict[str, Any] | None) -> dict[str, Any]:
 def _roi_output_regex(meta: Dict[str, Any] | None) -> str | None:
     """
     Optional strict regex for final normalized ROI text.
-    Stored in schema metadata as `ocr_output_regex`.
+    Stored in schema metadata as `output_regex`.
     """
     if not bool(ROI_PAGE_RECOGNITION.get("ocr_regex_check_enabled", True)):
         return None
     if not isinstance(meta, dict):
         return None
-    value = meta.get("ocr_output_regex")
+    value = meta.get("output_regex")
     if value is None:
         return None
     text = str(value).strip()
@@ -565,7 +565,7 @@ def recognize_text_fields(
                     "bbox_xyxy": [int(x1), int(y1), int(x2), int(y2)],
                     "text_roi_expand_px": int(text_roi_expand_px),
                     "horizontal_line_cleanup": dict(horizontal_line_cleanup),
-                    "ocr_output_regex": strict_regex,
+                    "output_regex": strict_regex,
                     "vlm_query": vlm_query,
                     "vlm_prompt_override": vlm_prompt,
                 }
@@ -1009,6 +1009,7 @@ def analyze_page(
             "name": str(name),
             "kind": "text",
             "text": "" if value is None else str(value),
+            "_raw_ocr_text": "" if value is None else str(value),
             "ocr_confidence_score": None,
             "ocr_confidence_label": None,
             "ocr_confidence_source": None,
@@ -1076,7 +1077,15 @@ def analyze_page(
             row["_llm_prompt_override"] = str(
                 meta.get("llm_prompt_override", "") or ""
             ).strip() or None
-            row["_ocr_output_regex"] = str(meta.get("ocr_output_regex", "") or "").strip() or None
+            postprocess_passes = meta.get("postprocess_passes")
+            if postprocess_passes is None:
+                postprocess_passes = meta.get("llm_passes")
+            row["_postprocess_passes"] = (
+                json.loads(json.dumps(postprocess_passes, default=str))
+                if isinstance(postprocess_passes, list)
+                else None
+            )
+            row["_output_regex"] = str(meta.get("output_regex", "") or "").strip() or None
         if isinstance(row.get("ocr_paddle_confidence"), dict):
             row["_ocr_paddle_confidence"] = json.loads(
                 json.dumps(row.get("ocr_paddle_confidence"), default=str)
@@ -1087,9 +1096,9 @@ def analyze_page(
         if retry_meta:
             row["_ocr_retry_image_path"] = str(retry_meta.get("image_path", "") or "").strip() or None
             row["_ocr_retry_bbox_xyxy"] = retry_meta.get("bbox_xyxy")
-            if row.get("_ocr_output_regex") in {None, ""}:
-                row["_ocr_output_regex"] = str(
-                    retry_meta.get("ocr_output_regex", "") or ""
+            if row.get("_output_regex") in {None, ""}:
+                row["_output_regex"] = str(
+                    retry_meta.get("output_regex", "") or ""
                 ).strip() or None
         items.append(row)
     for name, value in (mcq_data or {}).items():

@@ -8,49 +8,69 @@
       "h": 32,
       "id": "rf77f6f166",
       "llm_field_data_type": "id",
-      "llm_prompt_override": "You are a strict ID extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the ID box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget ID format:\nExactly 7 digits followed by A or B, for example 7011606A or 8011638B.\n\nRules:\n1. If OCR text is JSON and key \"id\" exists, inspect that value first.\n2. From the chosen text, extract only a complete ID token matching ^[0-9]{7}[AB]$.\n3. Strip surrounding labels such as \"Record ID:\", \"ID:\", \"Student ID\", quotes, colons, and whitespace.\n4. If the text contains exactly one complete matching ID token, return it exactly as the 8-character token.\n5. If there are multiple matching tokens, or none, return {\"detected_text\":null}.\n6. Do not repair OCR mistakes: do not convert / to B, 8 to B, O to 0, I/l to 1, U to 0, or add/delete characters.\n7. Reject internal pipeline IDs such as p702:r1:id; never return them.\n8. Reject dates, page numbers, answer choices, form labels, school names, teacher names, and explanatory text.\n9. Do not add any extra keys or text.",
       "llm_validation_rules": "Must be exactly 7 digits followed by A or B, or null.",
       "name": "id",
-      "ocr_output_regex": "^[0-9]{7}[AB]$",
+      "output_regex": "^[0-9]{7}[AB]$",
       "vlm_query": "Record ID:",
       "w": 207,
       "x": 56,
-      "y": 10
+      "y": 10,
+      "postprocess_passes": [
+        {
+          "type": "llm",
+          "prompt": "You are a strict ID extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the ID box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget ID format:\nExactly 7 digits followed by A or B, for example 7011606A or 8011638B.\n\nRules:\n1. If OCR text is JSON and key \"id\" exists, inspect that value first.\n2. From the chosen text, extract only a complete ID token matching ^[0-9]{7}[AB]$.\n3. Strip surrounding labels such as \"Record ID:\", \"ID:\", \"Student ID\", quotes, colons, and whitespace.\n4. If the text contains exactly one complete matching ID token, return it exactly as the 8-character token.\n5. If there are multiple matching tokens, or none, return {\"detected_text\":null}.\n6. Do not repair OCR mistakes: do not convert / to B, 8 to B, O to 0, I/l to 1, U to 0, or add/delete characters.\n7. Reject internal pipeline IDs such as p702:r1:id; never return them.\n8. Reject dates, page numbers, answer choices, form labels, school names, teacher names, and explanatory text.\n9. Do not add any extra keys or text."
+        }
+      ]
     },
     {
       "h": 33,
       "id": "rad194ab08",
       "llm_field_data_type": "date",
-      "llm_prompt_override": "You are a strict date extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the date box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget date format:\nMM/DD/YYYY, with a four-digit year from 2000 through 2099.\nThe final detected_text must match this regex exactly:\n^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$\n\nRules:\n1. Extract only the date written in this ROI.\n2. If OCR text contains a date with a two-digit year YY, interpret it as 20YY only when the month and day are clear.\n3. Zero-pad one-digit month or day.\n4. Return only a valid date-shaped value in MM/DD/YYYY that matches the regex above.\n5. If the date is missing, ambiguous, unreadable, incomplete, or cannot be made to match the regex using only visible OCR evidence, return null as {\"detected_text\":null}.\n6. Do not invent missing digits, do not guess a date from context, and do not use page numbers, IDs, question numbers, or form labels.\n7. Reject impossible or malformed OCR dates such as 02/80/2026, 04/79/2026, 0413126, 04/13, or 04/13/1926 by returning null.\n8. Do not add any extra keys or text.",
       "llm_validation_rules": "Must match ^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$ exactly, or null.",
       "name": "date",
-      "ocr_output_regex": "^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$",
+      "output_regex": "^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$",
       "vlm_query": "Today's Date:",
       "w": 355,
       "x": 32,
-      "y": 136
+      "y": 136,
+      "postprocess_passes": [
+        {
+          "type": "llm",
+          "prompt": "You are a strict date extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the date box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget date format:\nMM/DD/YYYY, with a four-digit year from 2000 through 2099.\nThe final detected_text must match this regex exactly:\n^(0[1-9]|1[0-2])/(0[1-9]|[12][0-9]|3[01])/(20[0-9]{2})$\n\nRules:\n1. Extract only the date written in this ROI.\n2. If OCR text contains a date with a two-digit year YY, interpret it as 20YY only when the month and day are clear.\n3. Zero-pad one-digit month or day.\n4. Return only a valid date-shaped value in MM/DD/YYYY that matches the regex above.\n5. If the date is missing, ambiguous, unreadable, incomplete, or cannot be made to match the regex using only visible OCR evidence, return null as {\"detected_text\":null}.\n6. Do not invent missing digits, do not guess a date from context, and do not use page numbers, IDs, question numbers, or form labels.\n7. Reject impossible or malformed OCR dates such as 02/80/2026, 04/79/2026, 0413126, 04/13, or 04/13/1926 by returning null.\n8. Do not add any extra keys or text."
+        }
+      ]
     },
     {
       "h": 34,
       "id": "rc79597c5b",
-      "llm_prompt_override": "You are a strict text normalizer for ROI 'teacher'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the teacher name text from OCR input.\n- Remove titles (Mr., Mrs., Ms., Dr.) when present.\n- Do not invent, infer, or explain.\n- If OCR text is empty/unreadable, return detected_text as null.\nTask:\n- Normalize teacher name text conservatively.",
       "name": "teacher",
       "post_normalize": true,
       "post_normalize_mode": "aggressive",
       "vlm_query": "Name of Teacher:",
       "w": 368,
       "x": 392,
-      "y": 137
+      "y": 137,
+      "postprocess_passes": [
+        {
+          "type": "llm",
+          "prompt": "You are a strict text normalizer for ROI 'teacher'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the teacher name text from OCR input.\n- Remove titles (Mr., Mrs., Ms., Dr.) when present.\n- Do not invent, infer, or explain.\n- If OCR text is empty/unreadable, return detected_text as null.\nTask:\n- Normalize teacher name text conservatively."
+        }
+      ]
     },
     {
       "h": 28,
       "id": "r1034923b2",
-      "llm_prompt_override": "You are a strict text normalizer for ROI 'school'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the school name text from OCR input.\n- Do not invent, infer, or explain.\n- If OCR text is empty/unreadable, return detected_text as null.\nTask:\n- Normalize school name text conservatively.",
       "name": "school",
       "vlm_query": "Name of School:",
       "w": 454,
       "x": 31,
-      "y": 159
+      "y": 159,
+      "postprocess_passes": [
+        {
+          "type": "llm",
+          "prompt": "You are a strict text normalizer for ROI 'school'.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Keep only the school name text from OCR input.\n- Do not invent, infer, or explain.\n- If OCR text is empty/unreadable, return detected_text as null.\nTask:\n- Normalize school name text conservatively."
+        }
+      ]
     },
     {
       "h": 94,
@@ -58,7 +78,8 @@
       "name": "1",
       "w": 896,
       "x": 39,
-      "y": 231
+      "y": 231,
+      "postprocess_passes": []
     },
     {
       "h": 24,
@@ -66,7 +87,8 @@
       "name": "1a",
       "w": 173,
       "x": 86,
-      "y": 273
+      "y": 273,
+      "postprocess_passes": []
     },
     {
       "h": 25,
@@ -74,7 +96,8 @@
       "name": "1b",
       "w": 181,
       "x": 677,
-      "y": 273
+      "y": 273,
+      "postprocess_passes": []
     },
     {
       "h": 26,
@@ -82,7 +105,8 @@
       "name": "1c",
       "w": 167,
       "x": 85,
-      "y": 294
+      "y": 294,
+      "postprocess_passes": []
     },
     {
       "h": 26,
@@ -90,7 +114,8 @@
       "name": "1d",
       "w": 259,
       "x": 678,
-      "y": 295
+      "y": 295,
+      "postprocess_passes": []
     },
     {
       "h": 77,
@@ -98,7 +123,8 @@
       "name": "2",
       "w": 922,
       "x": 38,
-      "y": 340
+      "y": 340,
+      "postprocess_passes": []
     },
     {
       "h": 25,
@@ -106,7 +132,8 @@
       "name": "2a",
       "w": 173,
       "x": 84,
-      "y": 362
+      "y": 362,
+      "postprocess_passes": []
     },
     {
       "h": 25,
@@ -114,7 +141,8 @@
       "name": "2b",
       "w": 110,
       "x": 677,
-      "y": 363
+      "y": 363,
+      "postprocess_passes": []
     },
     {
       "h": 22,
@@ -122,7 +150,8 @@
       "name": "2c",
       "w": 75,
       "x": 85,
-      "y": 388
+      "y": 388,
+      "postprocess_passes": []
     },
     {
       "h": 26,
@@ -130,7 +159,8 @@
       "name": "2d",
       "w": 288,
       "x": 677,
-      "y": 386
+      "y": 386,
+      "postprocess_passes": []
     },
     {
       "h": 53,
@@ -138,7 +168,8 @@
       "name": "3",
       "w": 1030,
       "x": 39,
-      "y": 433
+      "y": 433,
+      "postprocess_passes": []
     },
     {
       "h": 30,
@@ -146,7 +177,8 @@
       "name": "3a",
       "w": 89,
       "x": 84,
-      "y": 452
+      "y": 452,
+      "postprocess_passes": []
     },
     {
       "h": 31,
@@ -154,7 +186,8 @@
       "name": "3b",
       "w": 93,
       "x": 379,
-      "y": 451
+      "y": 451,
+      "postprocess_passes": []
     },
     {
       "h": 33,
@@ -162,7 +195,8 @@
       "name": "3c",
       "w": 93,
       "x": 675,
-      "y": 450
+      "y": 450,
+      "postprocess_passes": []
     },
     {
       "h": 31,
@@ -170,7 +204,8 @@
       "name": "3d",
       "w": 93,
       "x": 972,
-      "y": 451
+      "y": 451,
+      "postprocess_passes": []
     },
     {
       "h": 76,
@@ -178,7 +213,8 @@
       "name": "4",
       "w": 1208,
       "x": 39,
-      "y": 499
+      "y": 499,
+      "postprocess_passes": []
     },
     {
       "h": 22,
@@ -186,7 +222,8 @@
       "name": "4a",
       "w": 335,
       "x": 87,
-      "y": 523
+      "y": 523,
+      "postprocess_passes": []
     },
     {
       "h": 22,
@@ -194,7 +231,8 @@
       "name": "4b",
       "w": 569,
       "x": 678,
-      "y": 523
+      "y": 523,
+      "postprocess_passes": []
     },
     {
       "h": 25,
@@ -202,7 +240,8 @@
       "name": "4c",
       "w": 551,
       "x": 86,
-      "y": 545
+      "y": 545,
+      "postprocess_passes": []
     },
     {
       "h": 22,
@@ -210,7 +249,8 @@
       "name": "4d",
       "w": 569,
       "x": 678,
-      "y": 546
+      "y": 546,
+      "postprocess_passes": []
     },
     {
       "h": 75,
@@ -218,7 +258,8 @@
       "name": "5",
       "w": 860,
       "x": 39,
-      "y": 591
+      "y": 591,
+      "postprocess_passes": []
     },
     {
       "h": 24,
@@ -226,7 +267,8 @@
       "name": "5a",
       "w": 122,
       "x": 85,
-      "y": 613
+      "y": 613,
+      "postprocess_passes": []
     },
     {
       "h": 24,
@@ -234,7 +276,8 @@
       "name": "5b",
       "w": 220,
       "x": 677,
-      "y": 612
+      "y": 612,
+      "postprocess_passes": []
     },
     {
       "h": 22,
@@ -242,7 +285,8 @@
       "name": "5c",
       "w": 236,
       "x": 86,
-      "y": 638
+      "y": 638,
+      "postprocess_passes": []
     },
     {
       "h": 30,
@@ -250,7 +294,8 @@
       "name": "5d",
       "w": 134,
       "x": 676,
-      "y": 634
+      "y": 634,
+      "postprocess_passes": []
     },
     {
       "h": 74,
@@ -258,7 +303,8 @@
       "name": "6",
       "w": 867,
       "x": 39,
-      "y": 682
+      "y": 682,
+      "postprocess_passes": []
     },
     {
       "h": 22,
@@ -266,7 +312,8 @@
       "name": "6a",
       "w": 195,
       "x": 86,
-      "y": 705
+      "y": 705,
+      "postprocess_passes": []
     },
     {
       "h": 22,
@@ -274,7 +321,8 @@
       "name": "6b",
       "w": 221,
       "x": 678,
-      "y": 705
+      "y": 705,
+      "postprocess_passes": []
     },
     {
       "h": 26,
@@ -282,7 +330,8 @@
       "name": "6c",
       "w": 197,
       "x": 85,
-      "y": 727
+      "y": 727,
+      "postprocess_passes": []
     },
     {
       "h": 26,
@@ -290,7 +339,8 @@
       "name": "6d",
       "w": 162,
       "x": 677,
-      "y": 727
+      "y": 727,
+      "postprocess_passes": []
     },
     {
       "h": 52,
@@ -298,7 +348,8 @@
       "name": "7",
       "w": 1007,
       "x": 38,
-      "y": 772
+      "y": 772,
+      "postprocess_passes": []
     },
     {
       "h": 22,
@@ -306,7 +357,8 @@
       "name": "7a",
       "w": 73,
       "x": 85,
-      "y": 794
+      "y": 794,
+      "postprocess_passes": []
     },
     {
       "h": 30,
@@ -314,7 +366,8 @@
       "name": "7b",
       "w": 98,
       "x": 379,
-      "y": 792
+      "y": 792,
+      "postprocess_passes": []
     },
     {
       "h": 24,
@@ -322,7 +375,8 @@
       "name": "7c",
       "w": 118,
       "x": 677,
-      "y": 794
+      "y": 794,
+      "postprocess_passes": []
     },
     {
       "h": 25,
@@ -330,7 +384,8 @@
       "name": "7d",
       "w": 72,
       "x": 973,
-      "y": 793
+      "y": 793,
+      "postprocess_passes": []
     },
     {
       "h": 53,
@@ -338,7 +393,8 @@
       "name": "8",
       "w": 1027,
       "x": 38,
-      "y": 838
+      "y": 838,
+      "postprocess_passes": []
     },
     {
       "h": 23,
@@ -346,7 +402,8 @@
       "name": "8a",
       "w": 144,
       "x": 85,
-      "y": 862
+      "y": 862,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -354,7 +411,8 @@
       "name": "8b",
       "w": 122,
       "x": 380,
-      "y": 860
+      "y": 860,
+      "postprocess_passes": []
     },
     {
       "h": 25,
@@ -362,7 +420,8 @@
       "name": "8c",
       "w": 165,
       "x": 676,
-      "y": 860
+      "y": 860,
+      "postprocess_passes": []
     },
     {
       "h": 22,
@@ -370,7 +429,8 @@
       "name": "8d",
       "w": 86,
       "x": 974,
-      "y": 862
+      "y": 862,
+      "postprocess_passes": []
     },
     {
       "h": 76,
@@ -378,7 +438,8 @@
       "name": "9",
       "w": 745,
       "x": 38,
-      "y": 905
+      "y": 905,
+      "postprocess_passes": []
     },
     {
       "h": 25,
@@ -386,7 +447,8 @@
       "name": "9a",
       "w": 204,
       "x": 84,
-      "y": 927
+      "y": 927,
+      "postprocess_passes": []
     },
     {
       "h": 25,
@@ -394,7 +456,8 @@
       "name": "9b",
       "w": 77,
       "x": 676,
-      "y": 927
+      "y": 927,
+      "postprocess_passes": []
     },
     {
       "h": 24,
@@ -402,7 +465,8 @@
       "name": "9c",
       "w": 117,
       "x": 85,
-      "y": 952
+      "y": 952,
+      "postprocess_passes": []
     },
     {
       "h": 25,
@@ -410,7 +474,8 @@
       "name": "9d",
       "w": 99,
       "x": 677,
-      "y": 952
+      "y": 952,
+      "postprocess_passes": []
     },
     {
       "h": 74,
@@ -418,7 +483,8 @@
       "name": "10",
       "w": 1025,
       "x": 40,
-      "y": 998
+      "y": 998,
+      "postprocess_passes": []
     },
     {
       "h": 24,
@@ -426,7 +492,8 @@
       "name": "10a",
       "w": 188,
       "x": 86,
-      "y": 1019
+      "y": 1019,
+      "postprocess_passes": []
     },
     {
       "h": 25,
@@ -434,7 +501,8 @@
       "name": "10b",
       "w": 341,
       "x": 677,
-      "y": 1018
+      "y": 1018,
+      "postprocess_passes": []
     },
     {
       "h": 26,
@@ -442,7 +510,8 @@
       "name": "10c",
       "w": 393,
       "x": 85,
-      "y": 1042
+      "y": 1042,
+      "postprocess_passes": []
     },
     {
       "h": 24,
@@ -450,7 +519,8 @@
       "name": "10d",
       "w": 386,
       "x": 677,
-      "y": 1042
+      "y": 1042,
+      "postprocess_passes": []
     },
     {
       "h": 76,
@@ -458,7 +528,8 @@
       "name": "11",
       "w": 1027,
       "x": 39,
-      "y": 1088
+      "y": 1088,
+      "postprocess_passes": []
     },
     {
       "h": 20,
@@ -466,7 +537,8 @@
       "name": "11a",
       "w": 296,
       "x": 87,
-      "y": 1112
+      "y": 1112,
+      "postprocess_passes": []
     },
     {
       "h": 20,
@@ -474,7 +546,8 @@
       "name": "11b",
       "w": 387,
       "x": 679,
-      "y": 1112
+      "y": 1112,
+      "postprocess_passes": []
     },
     {
       "h": 24,
@@ -482,7 +555,8 @@
       "name": "11c",
       "w": 262,
       "x": 86,
-      "y": 1134
+      "y": 1134,
+      "postprocess_passes": []
     },
     {
       "h": 24,
@@ -490,7 +564,8 @@
       "name": "11d",
       "w": 183,
       "x": 678,
-      "y": 1134
+      "y": 1134,
+      "postprocess_passes": []
     },
     {
       "h": 27,
@@ -498,7 +573,8 @@
       "name": "12",
       "w": 205,
       "x": 43,
-      "y": 1205
+      "y": 1205,
+      "postprocess_passes": []
     },
     {
       "h": 21,
@@ -506,7 +582,8 @@
       "name": "12a",
       "w": 67,
       "x": 94,
-      "y": 1223
+      "y": 1223,
+      "postprocess_passes": []
     },
     {
       "h": 21,
@@ -514,7 +591,8 @@
       "name": "12b",
       "w": 73,
       "x": 176,
-      "y": 1223
+      "y": 1223,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -522,7 +600,8 @@
       "name": "13",
       "w": 205,
       "x": 42,
-      "y": 1243
+      "y": 1243,
+      "postprocess_passes": []
     },
     {
       "h": 22,
@@ -530,7 +609,8 @@
       "name": "13a",
       "w": 67,
       "x": 94,
-      "y": 1263
+      "y": 1263,
+      "postprocess_passes": []
     },
     {
       "h": 22,
@@ -538,7 +618,8 @@
       "name": "13b",
       "w": 73,
       "x": 176,
-      "y": 1263
+      "y": 1263,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -546,7 +627,8 @@
       "name": "14",
       "w": 204,
       "x": 43,
-      "y": 1283
+      "y": 1283,
+      "postprocess_passes": []
     },
     {
       "h": 22,
@@ -554,7 +636,8 @@
       "name": "14a",
       "w": 67,
       "x": 94,
-      "y": 1304
+      "y": 1304,
+      "postprocess_passes": []
     },
     {
       "h": 22,
@@ -562,7 +645,8 @@
       "name": "14b",
       "w": 74,
       "x": 175,
-      "y": 1304
+      "y": 1304,
+      "postprocess_passes": []
     },
     {
       "h": 26,
@@ -570,7 +654,8 @@
       "name": "15",
       "w": 205,
       "x": 44,
-      "y": 1326
+      "y": 1326,
+      "postprocess_passes": []
     },
     {
       "h": 21,
@@ -578,7 +663,8 @@
       "name": "15a",
       "w": 67,
       "x": 94,
-      "y": 1344
+      "y": 1344,
+      "postprocess_passes": []
     },
     {
       "h": 21,
@@ -586,7 +672,8 @@
       "name": "15b",
       "w": 74,
       "x": 175,
-      "y": 1344
+      "y": 1344,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -594,7 +681,8 @@
       "name": "16",
       "w": 205,
       "x": 43,
-      "y": 1364
+      "y": 1364,
+      "postprocess_passes": []
     },
     {
       "h": 21,
@@ -602,7 +690,8 @@
       "name": "16a",
       "w": 66,
       "x": 95,
-      "y": 1385
+      "y": 1385,
+      "postprocess_passes": []
     },
     {
       "h": 22,
@@ -610,7 +699,8 @@
       "name": "16b",
       "w": 72,
       "x": 176,
-      "y": 1384
+      "y": 1384,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -618,7 +708,8 @@
       "name": "17",
       "w": 206,
       "x": 43,
-      "y": 1405
+      "y": 1405,
+      "postprocess_passes": []
     },
     {
       "h": 22,
@@ -626,7 +717,8 @@
       "name": "17a",
       "w": 67,
       "x": 94,
-      "y": 1425
+      "y": 1425,
+      "postprocess_passes": []
     },
     {
       "h": 22,
@@ -634,7 +726,8 @@
       "name": "17b",
       "w": 74,
       "x": 175,
-      "y": 1425
+      "y": 1425,
+      "postprocess_passes": []
     }
   ]
 }

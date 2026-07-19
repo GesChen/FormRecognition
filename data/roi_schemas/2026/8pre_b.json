@@ -10,7 +10,8 @@
       "name": "13",
       "w": 225,
       "x": 60,
-      "y": 78
+      "y": 78,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -18,7 +19,8 @@
       "name": "13a",
       "w": 74,
       "x": 114,
-      "y": 101
+      "y": 101,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -26,7 +28,8 @@
       "name": "13b",
       "w": 80,
       "x": 206,
-      "y": 101
+      "y": 101,
+      "postprocess_passes": []
     },
     {
       "h": 52,
@@ -34,7 +37,8 @@
       "name": "14",
       "w": 225,
       "x": 59,
-      "y": 127
+      "y": 127,
+      "postprocess_passes": []
     },
     {
       "h": 26,
@@ -42,7 +46,8 @@
       "name": "14a",
       "w": 72,
       "x": 115,
-      "y": 153
+      "y": 153,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -50,7 +55,8 @@
       "name": "14b",
       "w": 80,
       "x": 206,
-      "y": 151
+      "y": 151,
+      "postprocess_passes": []
     },
     {
       "h": 52,
@@ -58,7 +64,8 @@
       "name": "15",
       "w": 225,
       "x": 60,
-      "y": 177
+      "y": 177,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -66,7 +73,8 @@
       "name": "15a",
       "w": 74,
       "x": 114,
-      "y": 200
+      "y": 200,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -74,7 +82,8 @@
       "name": "15b",
       "w": 80,
       "x": 206,
-      "y": 200
+      "y": 200,
+      "postprocess_passes": []
     },
     {
       "h": 52,
@@ -82,7 +91,8 @@
       "name": "16",
       "w": 226,
       "x": 59,
-      "y": 226
+      "y": 226,
+      "postprocess_passes": []
     },
     {
       "h": 25,
@@ -90,7 +100,8 @@
       "name": "16a",
       "w": 73,
       "x": 115,
-      "y": 251
+      "y": 251,
+      "postprocess_passes": []
     },
     {
       "h": 25,
@@ -98,7 +109,8 @@
       "name": "16b",
       "w": 78,
       "x": 207,
-      "y": 251
+      "y": 251,
+      "postprocess_passes": []
     },
     {
       "h": 50,
@@ -106,7 +118,8 @@
       "name": "17",
       "w": 225,
       "x": 60,
-      "y": 278
+      "y": 278,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -114,7 +127,8 @@
       "name": "17a",
       "w": 75,
       "x": 114,
-      "y": 299
+      "y": 299,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -122,7 +136,8 @@
       "name": "17b",
       "w": 80,
       "x": 206,
-      "y": 299
+      "y": 299,
+      "postprocess_passes": []
     },
     {
       "h": 55,
@@ -130,7 +145,8 @@
       "name": "18",
       "w": 227,
       "x": 58,
-      "y": 323
+      "y": 323,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -138,7 +154,8 @@
       "name": "18a",
       "w": 74,
       "x": 114,
-      "y": 348
+      "y": 348,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -146,7 +163,8 @@
       "name": "18b",
       "w": 80,
       "x": 206,
-      "y": 348
+      "y": 348,
+      "postprocess_passes": []
     },
     {
       "h": 50,
@@ -154,7 +172,8 @@
       "name": "19",
       "w": 225,
       "x": 60,
-      "y": 377
+      "y": 377,
+      "postprocess_passes": []
     },
     {
       "h": 27,
@@ -162,7 +181,8 @@
       "name": "19a",
       "w": 75,
       "x": 114,
-      "y": 399
+      "y": 399,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -170,7 +190,8 @@
       "name": "19b",
       "w": 80,
       "x": 206,
-      "y": 398
+      "y": 398,
+      "postprocess_passes": []
     },
     {
       "h": 52,
@@ -178,7 +199,8 @@
       "name": "20",
       "w": 227,
       "x": 58,
-      "y": 424
+      "y": 424,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -186,7 +208,8 @@
       "name": "20a",
       "w": 74,
       "x": 114,
-      "y": 447
+      "y": 447,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -194,7 +217,8 @@
       "name": "20b",
       "w": 80,
       "x": 206,
-      "y": 447
+      "y": 447,
+      "postprocess_passes": []
     },
     {
       "h": 51,
@@ -202,7 +226,8 @@
       "name": "21",
       "w": 225,
       "x": 59,
-      "y": 475
+      "y": 475,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -210,7 +235,8 @@
       "name": "21a",
       "w": 76,
       "x": 113,
-      "y": 497
+      "y": 497,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -218,7 +244,8 @@
       "name": "21b",
       "w": 80,
       "x": 206,
-      "y": 496
+      "y": 496,
+      "postprocess_passes": []
     },
     {
       "h": 51,
@@ -226,7 +253,8 @@
       "name": "22",
       "w": 225,
       "x": 59,
-      "y": 524
+      "y": 524,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -234,7 +262,8 @@
       "name": "22a",
       "w": 74,
       "x": 114,
-      "y": 546
+      "y": 546,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -242,7 +271,8 @@
       "name": "22b",
       "w": 80,
       "x": 206,
-      "y": 544
+      "y": 544,
+      "postprocess_passes": []
     },
     {
       "h": 54,
@@ -250,7 +280,8 @@
       "name": "23",
       "w": 225,
       "x": 58,
-      "y": 572
+      "y": 572,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -258,7 +289,8 @@
       "name": "23a",
       "w": 74,
       "x": 114,
-      "y": 596
+      "y": 596,
+      "postprocess_passes": []
     },
     {
       "h": 31,
@@ -266,7 +298,8 @@
       "name": "23b",
       "w": 81,
       "x": 205,
-      "y": 594
+      "y": 594,
+      "postprocess_passes": []
     },
     {
       "h": 26,
@@ -274,7 +307,8 @@
       "name": "24",
       "w": 800,
       "x": 60,
-      "y": 674
+      "y": 674,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -282,7 +316,8 @@
       "name": "24a",
       "w": 38,
       "x": 617,
-      "y": 673
+      "y": 673,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -290,7 +325,8 @@
       "name": "24b",
       "w": 36,
       "x": 660,
-      "y": 673
+      "y": 673,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -298,7 +334,8 @@
       "name": "24c",
       "w": 35,
       "x": 708,
-      "y": 673
+      "y": 673,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -306,7 +343,8 @@
       "name": "24d",
       "w": 36,
       "x": 755,
-      "y": 673
+      "y": 673,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -314,20 +352,26 @@
       "name": "24e",
       "w": 70,
       "x": 796,
-      "y": 674
+      "y": 674,
+      "postprocess_passes": []
     },
     {
       "h": 30,
       "id": "r04702dea5",
       "llm_field_data_type": "age",
-      "llm_prompt_override": "You are a strict age extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the age box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget age format:\nOne or two digits only, normally 10 through 19 for these school forms.\n\nRules:\n1. Extract only the student's written age from the OCR text.\n2. Strip labels such as \"Age:\", punctuation, whitespace, and surrounding words.\n3. If OCR text contains exactly one clear one- or two-digit age, return digits only.\n4. If OCR text is empty, unreadable, crossed out, or does not contain a clear age, return {\"detected_text\":null}.\n5. Do not use the ROI/question number as the age. For example, if this field is named 21, 25, 27, or 31, that number is not evidence of the student's age.\n6. Do not repair or guess digits from unrelated marks, answer choices, form labels, page numbers, or OCR artifacts.\n7. Do not add any extra keys or text.",
       "llm_validation_rules": "Must be one or two digits only, or null. Do not use the ROI/question number as the value.",
       "name": "25",
-      "ocr_output_regex": "^[0-9]{1,2}$",
+      "output_regex": "^[0-9]{1,2}$",
       "w": 309,
       "x": 59,
       "y": 704,
-      "vlm_query": "25. What is your age?"
+      "vlm_query": "25. What is your age?",
+      "postprocess_passes": [
+        {
+          "type": "llm",
+          "prompt": "You are a strict age extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the age box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget age format:\nOne or two digits only, normally 10 through 19 for these school forms.\n\nRules:\n1. Extract only the student's written age from the OCR text.\n2. Strip labels such as \"Age:\", punctuation, whitespace, and surrounding words.\n3. If OCR text contains exactly one clear one- or two-digit age, return digits only.\n4. If OCR text is empty, unreadable, crossed out, or does not contain a clear age, return {\"detected_text\":null}.\n5. Do not use the ROI/question number as the age. For example, if this field is named 21, 25, 27, or 31, that number is not evidence of the student's age.\n6. Do not repair or guess digits from unrelated marks, answer choices, form labels, page numbers, or OCR artifacts.\n7. Do not add any extra keys or text."
+        }
+      ]
     },
     {
       "h": 118,
@@ -335,7 +379,8 @@
       "name": "26",
       "w": 785,
       "x": 107,
-      "y": 762
+      "y": 762,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -343,7 +388,8 @@
       "name": "26a",
       "w": 319,
       "x": 106,
-      "y": 763
+      "y": 763,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -351,7 +397,8 @@
       "name": "26b",
       "w": 90,
       "x": 678,
-      "y": 763
+      "y": 763,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -359,7 +406,8 @@
       "name": "26c",
       "w": 256,
       "x": 106,
-      "y": 791
+      "y": 791,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -367,7 +415,8 @@
       "name": "26d",
       "w": 195,
       "x": 678,
-      "y": 791
+      "y": 791,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -375,7 +424,8 @@
       "name": "26e",
       "w": 333,
       "x": 106,
-      "y": 819
+      "y": 819,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -383,7 +433,8 @@
       "name": "26f",
       "w": 202,
       "x": 676,
-      "y": 817
+      "y": 817,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -391,7 +442,8 @@
       "name": "26g",
       "w": 209,
       "x": 106,
-      "y": 848
+      "y": 848,
+      "postprocess_passes": []
     },
     {
       "h": 30,
@@ -399,7 +451,8 @@
       "name": "26h",
       "w": 220,
       "x": 677,
-      "y": 846
+      "y": 846,
+      "postprocess_passes": []
     },
     {
       "h": 94,
@@ -407,7 +460,8 @@
       "name": "27",
       "w": 805,
       "x": 105,
-      "y": 928
+      "y": 928,
+      "postprocess_passes": []
     },
     {
       "h": 34,
@@ -415,7 +469,8 @@
       "name": "27a",
       "w": 126,
       "x": 103,
-      "y": 927
+      "y": 927,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -423,7 +478,8 @@
       "name": "27b",
       "w": 139,
       "x": 678,
-      "y": 929
+      "y": 929,
+      "postprocess_passes": []
     },
     {
       "h": 31,
@@ -431,7 +487,8 @@
       "name": "27c",
       "w": 94,
       "x": 105,
-      "y": 956
+      "y": 956,
+      "postprocess_passes": []
     },
     {
       "h": 27,
@@ -439,7 +496,8 @@
       "name": "27d",
       "w": 235,
       "x": 679,
-      "y": 958
+      "y": 958,
+      "postprocess_passes": []
     },
     {
       "h": 26,
@@ -447,7 +505,8 @@
       "name": "27e",
       "w": 215,
       "x": 106,
-      "y": 986
+      "y": 986,
+      "postprocess_passes": []
     }
   ]
 }

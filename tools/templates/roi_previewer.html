@@ -289,6 +289,43 @@
       line-height: 1.35;
       font-family: var(--font-mono);
     }
+    .pass-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .pass-empty {
+      min-height: 70px;
+      background: var(--panel-bg);
+      color: var(--muted);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px;
+      font-size: 0.8rem;
+      display: flex;
+      align-items: center;
+    }
+    .pass-card {
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--bg);
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .pass-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .pass-card-title {
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
   </style>
 </head>
 <body>
@@ -348,13 +385,13 @@
         </div>
         <div>
           <div class="prompt-header">
-            <span class="label">LLM Prompt</span>
+            <span class="label">Postprocess Passes</span>
             <span class="prompt-actions">
               <button type="button" class="copy-btn" id="btn-copy-llm">Copy</button>
               <span class="copy-status" id="copy-llm-status"></span>
             </span>
           </div>
-          <textarea id="llm-prompt" readonly placeholder="Select an ROI to view its LLM prompt."></textarea>
+          <div class="pass-list" id="postprocess-passes"></div>
         </div>
       </div>
     </div>
@@ -394,7 +431,7 @@
   const ocrRegexEl = document.getElementById("ocr-regex");
   const postNormalizeEl = document.getElementById("post-normalize");
   const postNormalizeModeEl = document.getElementById("post-normalize-mode");
-  const llmPromptEl = document.getElementById("llm-prompt");
+  const postprocessPassesEl = document.getElementById("postprocess-passes");
   const btnCopyLlm = document.getElementById("btn-copy-llm");
   const copyLlmStatusEl = document.getElementById("copy-llm-status");
 
@@ -423,6 +460,57 @@
     let mode = String(value || "").trim().toLowerCase();
     mode = POST_NORMALIZE_MODE_ALIASES[mode] || mode;
     return POST_NORMALIZE_MODES.has(mode) ? mode : "aggressive";
+  }
+
+  function normalizePostprocessPass(value) {
+    if (typeof value === "string") {
+      const text = value.trim();
+      return text ? { type: "llm", prompt: text } : null;
+    }
+    if (!value || typeof value !== "object") return null;
+    const rawType = String(value.type || value.kind || "llm").trim().toLowerCase();
+    if (rawType === "code") {
+      const code = String(value.code || value.snippet || "").trim();
+      return code ? { type: "code", code } : null;
+    }
+    const prompt = String(value.prompt || value.text || "").trim();
+    if (!prompt) return null;
+    const out = { type: "llm", prompt };
+    const model = String(value.model || value.llm_model || "").trim();
+    if (model) out.model = model;
+    return out;
+  }
+
+  function normalizedPostprocessPasses(roi) {
+    if (!roi) return [];
+    if (Array.isArray(roi.postprocess_passes)) {
+      return roi.postprocess_passes.map(normalizePostprocessPass).filter(Boolean);
+    }
+    if (Array.isArray(roi.llm_passes)) {
+      return roi.llm_passes.map(normalizePostprocessPass).filter(Boolean);
+    }
+    if (typeof roi.llm_prompt_override === "string" && roi.llm_prompt_override.trim()) {
+      return [{ type: "llm", prompt: roi.llm_prompt_override.trim() }];
+    }
+    return [];
+  }
+
+  function passTypeLabel(passCfg) {
+    if (passCfg && passCfg.type === "code") return "Code";
+    return passCfg && passCfg.model ? `LLM · ${passCfg.model}` : "LLM";
+  }
+
+  function passText(passCfg) {
+    if (!passCfg) return "";
+    return passCfg.type === "code" ? (passCfg.code || "") : (passCfg.prompt || "");
+  }
+
+  function passesCopyText(roi) {
+    const passes = normalizedPostprocessPasses(roi);
+    if (!passes.length) return "";
+    return passes.map((passCfg, index) => {
+      return `Pass ${index + 1} (${passTypeLabel(passCfg)}):\n${passText(passCfg)}`;
+    }).join("\n\n");
   }
 
   const COLORS_BASE = [
@@ -532,11 +620,18 @@
       nameSpan.textContent = roi.name;
       nameSpan.style.color = roiColor(i);
       nameWrap.appendChild(nameSpan);
-      if (typeof roi.ocr_output_regex === "string" && roi.ocr_output_regex.trim()) {
+      if (typeof roi.output_regex === "string" && roi.output_regex.trim()) {
         const rxBadge = document.createElement("span");
         rxBadge.className = "badge active";
         rxBadge.textContent = "regex";
         nameWrap.appendChild(rxBadge);
+      }
+      const passes = normalizedPostprocessPasses(roi);
+      if (passes.length) {
+        const passBadge = document.createElement("span");
+        passBadge.className = "badge active";
+        passBadge.textContent = `${passes.length} pass${passes.length === 1 ? "" : "es"}`;
+        nameWrap.appendChild(passBadge);
       }
       if (roi.post_normalize === true) {
         const pnBadge = document.createElement("span");
@@ -570,15 +665,37 @@
       ocrRegexEl.value = "";
       postNormalizeEl.checked = false;
       postNormalizeModeEl.textContent = "Select an ROI.";
-      llmPromptEl.value = "";
+      postprocessPassesEl.innerHTML = '<div class="pass-empty">Select an ROI to view its postprocess passes.</div>';
       return;
     }
-    ocrRegexEl.value = typeof roi.ocr_output_regex === "string" ? roi.ocr_output_regex : "";
+    ocrRegexEl.value = typeof roi.output_regex === "string" ? roi.output_regex : "";
     postNormalizeEl.checked = roi.post_normalize === true;
     postNormalizeModeEl.textContent = roi.post_normalize === true
       ? normalizedPostNormalizeMode(roi.post_normalize_mode)
       : "(off)";
-    llmPromptEl.value = typeof roi.llm_prompt_override === "string" ? roi.llm_prompt_override : "";
+    const passes = normalizedPostprocessPasses(roi);
+    postprocessPassesEl.innerHTML = "";
+    if (!passes.length) {
+      postprocessPassesEl.innerHTML = '<div class="pass-empty">No postprocess passes for this ROI.</div>';
+      return;
+    }
+    passes.forEach((passCfg, index) => {
+      const card = document.createElement("div");
+      card.className = "pass-card";
+      const head = document.createElement("div");
+      head.className = "pass-card-head";
+      const title = document.createElement("span");
+      title.className = "pass-card-title";
+      title.textContent = `Pass ${index + 1} · ${passTypeLabel(passCfg)}`;
+      head.appendChild(title);
+      card.appendChild(head);
+      const body = document.createElement("textarea");
+      body.readOnly = true;
+      body.value = passText(passCfg);
+      body.placeholder = "Empty pass.";
+      card.appendChild(body);
+      postprocessPassesEl.appendChild(card);
+    });
   }
 
   function setCopyStatus(el, msg) {
@@ -835,7 +952,20 @@
   chkNames.addEventListener("change", draw);
   chkBoxes.addEventListener("change", draw);
   chkFill.addEventListener("change",  draw);
-  btnCopyLlm.addEventListener("click", () => copyTextFrom(llmPromptEl, copyLlmStatusEl));
+  btnCopyLlm.addEventListener("click", async () => {
+    const roi = rois.find(r => r.id === selectedId) || null;
+    const text = passesCopyText(roi);
+    if (!text) {
+      setCopyStatus(copyLlmStatusEl, "Empty");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyStatus(copyLlmStatusEl, "Copied");
+    } catch (_) {
+      setCopyStatus(copyLlmStatusEl, "Blocked");
+    }
+  });
 
   /* --- Pan & zoom (middle/right-drag + scroll wheel) --- */
   canvas.addEventListener("mousedown", (e) => {

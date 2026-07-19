@@ -10,7 +10,8 @@
       "name": "15",
       "w": 750,
       "x": 58,
-      "y": 78
+      "y": 78,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -18,7 +19,8 @@
       "name": "15a",
       "w": 76,
       "x": 112,
-      "y": 104
+      "y": 104,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -26,7 +28,8 @@
       "name": "15b",
       "w": 80,
       "x": 206,
-      "y": 104
+      "y": 104,
+      "postprocess_passes": []
     },
     {
       "h": 59,
@@ -34,7 +37,8 @@
       "name": "16",
       "w": 810,
       "x": 57,
-      "y": 128
+      "y": 128,
+      "postprocess_passes": []
     },
     {
       "h": 60,
@@ -42,7 +46,8 @@
       "name": "16a",
       "w": 77,
       "x": 111,
-      "y": 154
+      "y": 154,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -50,7 +55,8 @@
       "name": "16b",
       "w": 80,
       "x": 206,
-      "y": 155
+      "y": 155,
+      "postprocess_passes": []
     },
     {
       "h": 58,
@@ -58,7 +64,8 @@
       "name": "17",
       "w": 735,
       "x": 58,
-      "y": 179
+      "y": 179,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -66,7 +73,8 @@
       "name": "17a",
       "w": 76,
       "x": 111,
-      "y": 205
+      "y": 205,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -74,7 +82,8 @@
       "name": "17b",
       "w": 80,
       "x": 206,
-      "y": 206
+      "y": 206,
+      "postprocess_passes": []
     },
     {
       "h": 58,
@@ -82,7 +91,8 @@
       "name": "18",
       "w": 770,
       "x": 58,
-      "y": 232
+      "y": 232,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -90,7 +100,8 @@
       "name": "18a",
       "w": 78,
       "x": 110,
-      "y": 257
+      "y": 257,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -98,7 +109,8 @@
       "name": "18b",
       "w": 80,
       "x": 206,
-      "y": 257
+      "y": 257,
+      "postprocess_passes": []
     },
     {
       "h": 56,
@@ -106,7 +118,8 @@
       "name": "19",
       "w": 680,
       "x": 58,
-      "y": 284
+      "y": 284,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -114,7 +127,8 @@
       "name": "19a",
       "w": 74,
       "x": 112,
-      "y": 309
+      "y": 309,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -122,7 +136,8 @@
       "name": "19b",
       "w": 81,
       "x": 205,
-      "y": 308
+      "y": 308,
+      "postprocess_passes": []
     },
     {
       "h": 58,
@@ -130,7 +145,8 @@
       "name": "20",
       "w": 840,
       "x": 57,
-      "y": 334
+      "y": 334,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -138,7 +154,8 @@
       "name": "20a",
       "w": 74,
       "x": 112,
-      "y": 360
+      "y": 360,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -146,37 +163,53 @@
       "name": "20b",
       "w": 81,
       "x": 205,
-      "y": 359
+      "y": 359,
+      "postprocess_passes": []
     },
     {
       "h": 60,
       "id": "r9d4d5513a",
-      "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: Pharmacy->A, IUD->B, Emergency contraception->C, Abstinence->D, The shot->E, The ring->F, The pill->G, Dental dam->H, Health center->I, Condoms->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "21",
       "vlm_query": "21. A latex square that prevents STI transmission during oral sex on the vulva or anus.",
       "w": 1080,
       "x": 60,
-      "y": 581
+      "y": 581,
+      "postprocess_passes": [
+        {
+          "type": "llm",
+          "prompt": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: Pharmacy->A, IUD->B, Emergency contraception->C, Abstinence->D, The shot->E, The ring->F, The pill->G, Dental dam->H, Health center->I, Condoms->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter."
+        }
+      ]
     },
     {
       "h": 62,
       "id": "r45a2d541f",
-      "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: Pharmacy->A, IUD->B, Emergency contraception->C, Abstinence->D, The shot->E, The ring->F, The pill->G, Dental dam->H, Health center->I, Condoms->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "22",
       "vlm_query": "22. Methods that can be used in the event of unprotected sex to prevent pregnancy which can be found at a pharmacy.",
       "w": 1133,
       "x": 60,
-      "y": 632
+      "y": 632,
+      "postprocess_passes": [
+        {
+          "type": "llm",
+          "prompt": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: Pharmacy->A, IUD->B, Emergency contraception->C, Abstinence->D, The shot->E, The ring->F, The pill->G, Dental dam->H, Health center->I, Condoms->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter."
+        }
+      ]
     },
     {
       "h": 59,
       "id": "r233dba0db",
-      "llm_prompt_override": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: Pharmacy->A, IUD->B, Emergency contraception->C, Abstinence->D, The shot->E, The ring->F, The pill->G, Dental dam->H, Health center->I, Condoms->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter.",
       "name": "23",
       "vlm_query": "23. Only place where hormonal birth control methods can be obtained.",
       "w": 690,
       "x": 60,
-      "y": 687
+      "y": 687,
+      "postprocess_passes": [
+        {
+          "type": "llm",
+          "prompt": "You are a strict text normalizer for ROI choice extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be exactly one uppercase letter A-J, or null.\n- If OCR text already contains a clear choice letter A-J, return that letter.\n- Otherwise map semantic content to letters: Pharmacy->A, IUD->B, Emergency contraception->C, Abstinence->D, The shot->E, The ring->F, The pill->G, Dental dam->H, Health center->I, Condoms->J.\n- Do not output words, explanations, arrows, markup, or placeholders.\n- If no single mapping is clearly supported, return detected_text as null.\nTask:\n- Convert the provided OCR text into the final answer letter."
+        }
+      ]
     },
     {
       "h": 42,
@@ -184,7 +217,8 @@
       "name": "24",
       "w": 850,
       "x": 57,
-      "y": 796
+      "y": 796,
+      "postprocess_passes": []
     },
     {
       "h": 32,
@@ -192,7 +226,8 @@
       "name": "24a",
       "w": 45,
       "x": 650,
-      "y": 800
+      "y": 800,
+      "postprocess_passes": []
     },
     {
       "h": 32,
@@ -200,7 +235,8 @@
       "name": "24b",
       "w": 43,
       "x": 697,
-      "y": 800
+      "y": 800,
+      "postprocess_passes": []
     },
     {
       "h": 32,
@@ -208,7 +244,8 @@
       "name": "24c",
       "w": 42,
       "x": 743,
-      "y": 800
+      "y": 800,
+      "postprocess_passes": []
     },
     {
       "h": 32,
@@ -216,7 +253,8 @@
       "name": "24d",
       "w": 42,
       "x": 794,
-      "y": 799
+      "y": 799,
+      "postprocess_passes": []
     },
     {
       "h": 32,
@@ -224,20 +262,26 @@
       "name": "24e",
       "w": 90,
       "x": 836,
-      "y": 800
+      "y": 800,
+      "postprocess_passes": []
     },
     {
       "h": 38,
       "id": "r39b41a521",
       "llm_field_data_type": "age",
-      "llm_prompt_override": "You are a strict age extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the age box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget age format:\nOne or two digits only, normally 10 through 19 for these school forms.\n\nRules:\n1. Extract only the student's written age from the OCR text.\n2. Strip labels such as \"Age:\", punctuation, whitespace, and surrounding words.\n3. If OCR text contains exactly one clear one- or two-digit age, return digits only.\n4. If OCR text is empty, unreadable, crossed out, or does not contain a clear age, return {\"detected_text\":null}.\n5. Do not use the ROI/question number as the age. For example, if this field is named 21, 25, 27, or 31, that number is not evidence of the student's age.\n6. Do not repair or guess digits from unrelated marks, answer choices, form labels, page numbers, or OCR artifacts.\n7. Do not add any extra keys or text.",
       "llm_validation_rules": "Must be one or two digits only, or null. Do not use the ROI/question number as the value.",
       "name": "25",
-      "ocr_output_regex": "^[0-9]{1,2}$",
+      "output_regex": "^[0-9]{1,2}$",
       "vlm_query": "25. What is your age?",
       "w": 357,
       "x": 61,
-      "y": 828
+      "y": 828,
+      "postprocess_passes": [
+        {
+          "type": "llm",
+          "prompt": "You are a strict age extractor for one OCR ROI field.\nYou are NOT reading an image. You only receive OCR-extracted text for the age box.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired output schema:\n{\"detected_text\":\"string or null\"}\n\nTarget age format:\nOne or two digits only, normally 10 through 19 for these school forms.\n\nRules:\n1. Extract only the student's written age from the OCR text.\n2. Strip labels such as \"Age:\", punctuation, whitespace, and surrounding words.\n3. If OCR text contains exactly one clear one- or two-digit age, return digits only.\n4. If OCR text is empty, unreadable, crossed out, or does not contain a clear age, return {\"detected_text\":null}.\n5. Do not use the ROI/question number as the age. For example, if this field is named 21, 25, 27, or 31, that number is not evidence of the student's age.\n6. Do not repair or guess digits from unrelated marks, answer choices, form labels, page numbers, or OCR artifacts.\n7. Do not add any extra keys or text."
+        }
+      ]
     },
     {
       "h": 119,
@@ -245,7 +289,8 @@
       "name": "26",
       "w": 840,
       "x": 58,
-      "y": 892
+      "y": 892,
+      "postprocess_passes": []
     },
     {
       "h": 30,
@@ -253,7 +298,8 @@
       "name": "26a",
       "w": 320,
       "x": 105,
-      "y": 893
+      "y": 893,
+      "postprocess_passes": []
     },
     {
       "h": 30,
@@ -261,7 +307,8 @@
       "name": "26b",
       "w": 94,
       "x": 676,
-      "y": 892
+      "y": 892,
+      "postprocess_passes": []
     },
     {
       "h": 30,
@@ -269,7 +316,8 @@
       "name": "26c",
       "w": 260,
       "x": 104,
-      "y": 920
+      "y": 920,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -277,7 +325,8 @@
       "name": "26d",
       "w": 198,
       "x": 678,
-      "y": 922
+      "y": 922,
+      "postprocess_passes": []
     },
     {
       "h": 31,
@@ -285,7 +334,8 @@
       "name": "26e",
       "w": 338,
       "x": 105,
-      "y": 949
+      "y": 949,
+      "postprocess_passes": []
     },
     {
       "h": 30,
@@ -293,7 +343,8 @@
       "name": "26f",
       "w": 205,
       "x": 676,
-      "y": 948
+      "y": 948,
+      "postprocess_passes": []
     },
     {
       "h": 31,
@@ -301,7 +352,8 @@
       "name": "26g",
       "w": 215,
       "x": 104,
-      "y": 978
+      "y": 978,
+      "postprocess_passes": []
     },
     {
       "h": 30,
@@ -309,7 +361,8 @@
       "name": "26h",
       "w": 222,
       "x": 677,
-      "y": 977
+      "y": 977,
+      "postprocess_passes": []
     },
     {
       "h": 95,
@@ -317,7 +370,8 @@
       "name": "27",
       "w": 855,
       "x": 58,
-      "y": 1061
+      "y": 1061,
+      "postprocess_passes": []
     },
     {
       "h": 33,
@@ -325,7 +379,8 @@
       "name": "27a",
       "w": 125,
       "x": 104,
-      "y": 1062
+      "y": 1062,
+      "postprocess_passes": []
     },
     {
       "h": 31,
@@ -333,7 +388,8 @@
       "name": "27b",
       "w": 140,
       "x": 677,
-      "y": 1063
+      "y": 1063,
+      "postprocess_passes": []
     },
     {
       "h": 33,
@@ -341,7 +397,8 @@
       "name": "27c",
       "w": 95,
       "x": 104,
-      "y": 1091
+      "y": 1091,
+      "postprocess_passes": []
     },
     {
       "h": 31,
@@ -349,7 +406,8 @@
       "name": "27d",
       "w": 235,
       "x": 678,
-      "y": 1092
+      "y": 1092,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -357,7 +415,8 @@
       "name": "27e",
       "w": 216,
       "x": 106,
-      "y": 1119
+      "y": 1119,
+      "postprocess_passes": []
     }
   ]
 }

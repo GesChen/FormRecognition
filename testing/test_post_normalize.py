@@ -186,3 +186,37 @@ def test_placeholder_detection_uses_roi_name_not_specific_field_names(monkeypatc
     normalized, original = post_normalize.normalize_items(items, {"form_a": {"custom_field"}})
 
     assert normalized == original == items
+
+
+def test_normalize_items_original_snapshot_uses_preserved_raw_ocr_text(monkeypatch):
+    items = [
+        {
+            "id": "7011606A",
+            "form_type": "form_a",
+            "data": [
+                {
+                    "name": "id",
+                    "kind": "text",
+                    "text": "7011606A",
+                    "_raw_ocr_text": "70116064",
+                },
+                {
+                    "name": "teacher",
+                    "kind": "text",
+                    "text": "Jane Smith",
+                    "_raw_ocr_text": "Jarne Smith",
+                },
+            ],
+        }
+    ]
+
+    def fake_generate(*args, **kwargs):
+        return {"text": json.dumps({"Jane Smith": "Jane Smith"})}
+
+    monkeypatch.setattr(post_normalize, "generate", fake_generate)
+    normalized, original = post_normalize.normalize_items(items, {"form_a": {"teacher"}})
+
+    assert normalized[0]["id"] == "7011606A"
+    assert original[0]["id"] == "70116064"
+    assert normalized[0]["data"][1]["text"] == "Jane Smith"
+    assert original[0]["data"][1]["text"] == "Jarne Smith"

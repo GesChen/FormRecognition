@@ -10,7 +10,8 @@
       "name": "14",
       "w": 1058,
       "x": 61,
-      "y": 116
+      "y": 116,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -18,7 +19,8 @@
       "name": "14a",
       "w": 212,
       "x": 107,
-      "y": 143
+      "y": 143,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -26,7 +28,8 @@
       "name": "14b",
       "w": 386,
       "x": 679,
-      "y": 144
+      "y": 144,
+      "postprocess_passes": []
     },
     {
       "h": 27,
@@ -34,7 +37,8 @@
       "name": "14c",
       "w": 444,
       "x": 107,
-      "y": 172
+      "y": 172,
+      "postprocess_passes": []
     },
     {
       "h": 27,
@@ -42,7 +46,8 @@
       "name": "14d",
       "w": 439,
       "x": 679,
-      "y": 172
+      "y": 172,
+      "postprocess_passes": []
     },
     {
       "h": 82,
@@ -50,7 +55,8 @@
       "name": "15",
       "w": 1060,
       "x": 60,
-      "y": 222
+      "y": 222,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -58,7 +64,8 @@
       "name": "15a",
       "w": 337,
       "x": 107,
-      "y": 251
+      "y": 251,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -66,7 +73,8 @@
       "name": "15b",
       "w": 440,
       "x": 680,
-      "y": 251
+      "y": 251,
+      "postprocess_passes": []
     },
     {
       "h": 27,
@@ -74,7 +82,8 @@
       "name": "15c",
       "w": 296,
       "x": 107,
-      "y": 279
+      "y": 279,
+      "postprocess_passes": []
     },
     {
       "h": 27,
@@ -82,7 +91,8 @@
       "name": "15d",
       "w": 208,
       "x": 679,
-      "y": 279
+      "y": 279,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -90,7 +100,8 @@
       "name": "16",
       "w": 810,
       "x": 60,
-      "y": 357
+      "y": 357,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -98,7 +109,8 @@
       "name": "16a",
       "w": 38,
       "x": 614,
-      "y": 358
+      "y": 358,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -106,7 +118,8 @@
       "name": "16b",
       "w": 36,
       "x": 659,
-      "y": 359
+      "y": 359,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -114,7 +127,8 @@
       "name": "16c",
       "w": 37,
       "x": 709,
-      "y": 360
+      "y": 360,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -122,7 +136,8 @@
       "name": "16d",
       "w": 37,
       "x": 756,
-      "y": 359
+      "y": 359,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -130,17 +145,23 @@
       "name": "16e",
       "w": 80,
       "x": 793,
-      "y": 359
+      "y": 359,
+      "postprocess_passes": []
     },
     {
       "h": 36,
       "id": "r0abdaca3f",
-      "llm_prompt_override": "You are a strict text normalizer for ROI age extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be digits only (0-9), or null.\n- Remove surrounding words/symbols if a clear numeric age exists.\n- Do not output units, explanations, or placeholders.\n- If unreadable/unclear, return detected_text as null.\nTask:\n- Normalize OCR text into age digits.",
       "name": "17",
       "vlm_query": "17. What is your age?",
       "w": 429,
       "x": 59,
-      "y": 385
+      "y": 385,
+      "postprocess_passes": [
+        {
+          "type": "llm",
+          "prompt": "You are a strict text normalizer for ROI age extraction.\nYou are NOT reading an image. You only receive OCR-extracted text for one ROI.\nReturn ONE valid JSON object only, no markdown and no extra text.\nRequired schema:\n{\n  \"detected_text\": \"string\"\n}\nRules:\n- Output must be digits only (0-9), or null.\n- Remove surrounding words/symbols if a clear numeric age exists.\n- Do not output units, explanations, or placeholders.\n- If unreadable/unclear, return detected_text as null.\nTask:\n- Normalize OCR text into age digits."
+        }
+      ]
     },
     {
       "h": 148,
@@ -148,7 +169,8 @@
       "name": "18",
       "w": 840,
       "x": 60,
-      "y": 415
+      "y": 415,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -156,7 +178,8 @@
       "name": "18a",
       "w": 322,
       "x": 106,
-      "y": 448
+      "y": 448,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -164,7 +187,8 @@
       "name": "18b",
       "w": 96,
       "x": 678,
-      "y": 448
+      "y": 448,
+      "postprocess_passes": []
     },
     {
       "h": 30,
@@ -172,7 +196,8 @@
       "name": "18c",
       "w": 262,
       "x": 105,
-      "y": 477
+      "y": 477,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -180,7 +205,8 @@
       "name": "18d",
       "w": 199,
       "x": 679,
-      "y": 477
+      "y": 477,
+      "postprocess_passes": []
     },
     {
       "h": 30,
@@ -188,7 +214,8 @@
       "name": "18e",
       "w": 337,
       "x": 104,
-      "y": 504
+      "y": 504,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -196,7 +223,8 @@
       "name": "18f",
       "w": 206,
       "x": 677,
-      "y": 505
+      "y": 505,
+      "postprocess_passes": []
     },
     {
       "h": 35,
@@ -204,7 +232,8 @@
       "name": "18g",
       "w": 217,
       "x": 102,
-      "y": 529
+      "y": 529,
+      "postprocess_passes": []
     },
     {
       "h": 30,
@@ -212,7 +241,8 @@
       "name": "18h",
       "w": 223,
       "x": 677,
-      "y": 531
+      "y": 531,
+      "postprocess_passes": []
     },
     {
       "h": 117,
@@ -220,7 +250,8 @@
       "name": "19",
       "w": 860,
       "x": 61,
-      "y": 586
+      "y": 586,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -228,7 +259,8 @@
       "name": "19a",
       "w": 126,
       "x": 106,
-      "y": 617
+      "y": 617,
+      "postprocess_passes": []
     },
     {
       "h": 28,
@@ -236,7 +268,8 @@
       "name": "19b",
       "w": 143,
       "x": 678,
-      "y": 617
+      "y": 617,
+      "postprocess_passes": []
     },
     {
       "h": 36,
@@ -244,7 +277,8 @@
       "name": "19c",
       "w": 101,
       "x": 102,
-      "y": 640
+      "y": 640,
+      "postprocess_passes": []
     },
     {
       "h": 27,
@@ -252,7 +286,8 @@
       "name": "19d",
       "w": 238,
       "x": 678,
-      "y": 644
+      "y": 644,
+      "postprocess_passes": []
     },
     {
       "h": 29,
@@ -260,7 +295,8 @@
       "name": "19e",
       "w": 221,
       "x": 105,
-      "y": 672
+      "y": 672,
+      "postprocess_passes": []
     }
   ]
 }

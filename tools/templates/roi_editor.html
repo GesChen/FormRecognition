@@ -452,6 +452,81 @@
       font-family: var(--font-mono);
       font-size: 0.8rem;
     }
+    .llm-pass-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .llm-pass {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .llm-pass-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .llm-pass-head span {
+      flex: 1 1 auto;
+      min-width: 68px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .llm-pass-controls {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex: 0 1 auto;
+      min-width: 0;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+    .field-group select.llm-pass-type,
+    .field-group select.llm-pass-model {
+      width: auto;
+      height: 30px;
+      flex: 0 0 auto;
+      padding: 6px 8px;
+      font-size: 0.78rem;
+      line-height: 1.1;
+    }
+    .field-group select.llm-pass-type {
+      min-width: 82px;
+    }
+    .field-group select.llm-pass-model {
+      max-width: 142px;
+      min-width: 116px;
+    }
+    .llm-pass-move-group {
+      display: flex;
+      gap: 4px;
+      flex: 0 0 auto;
+      justify-content: flex-end;
+      min-width: 64px;
+    }
+    .llm-pass-move,
+    .llm-pass-delete {
+      width: auto;
+      height: 30px;
+      flex: 0 0 auto;
+      padding: 6px 10px;
+      font-size: 0.78rem;
+      line-height: 1.1;
+      white-space: nowrap;
+      overflow-wrap: normal;
+    }
+    .llm-pass-move {
+      min-width: 30px;
+      padding-left: 8px;
+      padding-right: 8px;
+    }
+    .llm-pass textarea.prompt {
+      min-height: 120px;
+      resize: vertical;
+    }
     .field-group textarea:disabled {
       opacity: 0.6;
       cursor: not-allowed;
@@ -650,7 +725,7 @@
           <summary>What is this?</summary>
           <div class="help-body">
             Use these fields to generate a custom ROI prompt modeled after the default text-LLM postprocess prompt.
-            Generation fills the top prompt override field automatically.
+            Generation fills the first LLM pass automatically.
           </div>
         </details>
         <div class="field-group" style="margin-top:10px;">
@@ -731,9 +806,10 @@
           <div class="field-hint">Optional. Saved per ROI as <code>vlm_query</code> and used to build the VLM OCR prompt.</div>
         </div>
         <div class="field-group" style="margin-top:0;">
-          <label for="roi-prompt-override">Final LLM prompt (editable)</label>
-          <textarea class="prompt" id="roi-prompt-override" placeholder="Generated prompt appears here. You can edit it."></textarea>
-          <div class="field-hint">Saved per ROI as <code>llm_prompt_override</code>. Use <code>&lt;ocr_text&gt;</code> or <code>{{ocr_text}}</code> to inject the OCR string exactly where you want it; otherwise the OCR text is appended automatically.</div>
+          <label>Final LLM passes</label>
+          <div class="llm-pass-list" id="roi-llm-passes"></div>
+          <button type="button" class="btn subtle" id="btn-add-llm-pass" style="margin-top:8px;">Add Pass</button>
+          <div class="field-hint">Saved per ROI as <code>postprocess_passes</code>. Use <code>&lt;input_text&gt;</code> or <code>{{input_text}}</code> in LLM prompts; code passes can read <code>input_text</code>.</div>
           <div class="stream-status" id="roi-prompt-stream-status">Idle.</div>
         </div>
         <div class="btn-grid">
@@ -742,7 +818,7 @@
         <div class="field-group" style="margin-top:10px;">
           <label for="roi-ocr-output-regex">Strict OCR Output Regex</label>
           <input type="text" id="roi-ocr-output-regex" placeholder="Example: ^[0-9]{7}[AB]$" />
-          <div class="field-hint">Optional. Saved as <code>ocr_output_regex</code> and used for end-of-ROI retry flow.</div>
+          <div class="field-hint">Optional. Saved as <code>output_regex</code> and used for end-of-ROI retry flow.</div>
         </div>
         <div class="post-normalize-fields">
           <div class="field-group">
@@ -827,7 +903,8 @@
   const roiGeneratorTemplateWrapEl = document.getElementById("roi-generator-template-wrap");
   const roiGeneratorTemplateEl = document.getElementById("roi-generator-template");
   const roiVlmQueryEl = document.getElementById("roi-vlm-query");
-  const roiPromptOverrideEl = document.getElementById("roi-prompt-override");
+  const roiLlmPassesEl = document.getElementById("roi-llm-passes");
+  const btnAddLlmPass = document.getElementById("btn-add-llm-pass");
   const roiPromptStreamStatusEl = document.getElementById("roi-prompt-stream-status");
   const btnOpenPromptCreator = document.getElementById("btn-open-prompt-creator");
   const btnGenerateRoiPrompt = document.getElementById("btn-generate-roi-prompt");
@@ -857,6 +934,8 @@
   let autosaveTimer = null;
   let roiGeneratorTemplateLoaded = false;
   let promptGenAbortController = null;
+  let supportedLlmModels = [];
+  let defaultLlmModel = "";
   const UNDO_LIMIT = 100;
   const undoStack = [];
   const redoStack = [];
@@ -1173,6 +1252,172 @@
     return rois.find(r => r.id === primarySelectedId) || null;
   }
 
+  function normalizePostprocessPass(value) {
+    if (typeof value === "string") {
+      return { type: "llm", prompt: value };
+    }
+    if (!value || typeof value !== "object") {
+      return null;
+    }
+    const rawType = String(value.type || value.kind || "llm").toLowerCase();
+    if (rawType === "code") {
+      return { type: "code", code: String(value.code || value.snippet || "") };
+    }
+    const out = { type: "llm", prompt: String(value.prompt || value.text || "") };
+    const model = String(value.model || value.llm_model || "").trim();
+    if (model) out.model = model;
+    return out;
+  }
+
+  function modelLabel(model) {
+    return model ? model : `Default${defaultLlmModel ? ` (${defaultLlmModel})` : ""}`;
+  }
+
+  function buildModelSelect(passCfg, index, disabled) {
+    const select = document.createElement("select");
+    select.className = "llm-pass-model";
+    select.dataset.passModel = String(index);
+    select.title = "LLM model override";
+    select.setAttribute("aria-label", `Model override for pass ${index + 1}`);
+    select.disabled = !!disabled;
+    const current = String((passCfg && passCfg.model) || "").trim();
+    const choices = [""].concat(supportedLlmModels);
+    if (current && !choices.includes(current)) choices.push(current);
+    choices.forEach((model) => {
+      const option = document.createElement("option");
+      option.value = model;
+      option.textContent = modelLabel(model);
+      select.appendChild(option);
+    });
+    select.value = current;
+    return select;
+  }
+
+  function normalizedPostprocessPasses(roi) {
+    if (!roi) return [];
+    if (Array.isArray(roi.postprocess_passes)) {
+      return roi.postprocess_passes
+        .map(normalizePostprocessPass)
+        .filter(Boolean);
+    }
+    if (Array.isArray(roi.llm_passes)) {
+      return roi.llm_passes
+        .map(normalizePostprocessPass)
+        .filter(Boolean);
+    }
+    if (typeof roi.llm_prompt_override === "string" && roi.llm_prompt_override.trim()) {
+      return [{ type: "llm", prompt: roi.llm_prompt_override }];
+    }
+    return [];
+  }
+
+  function setRoiPostprocessPasses(roi, passes) {
+    if (!roi) return;
+    roi.postprocess_passes = (Array.isArray(passes) ? passes : [])
+      .map(normalizePostprocessPass)
+      .filter(Boolean);
+    delete roi.llm_prompt_override;
+    delete roi.llm_passes;
+  }
+
+  function renderLlmPasses(roi, disabled) {
+    roiLlmPassesEl.innerHTML = "";
+    const passes = normalizedPostprocessPasses(roi);
+    if (roi) setRoiPostprocessPasses(roi, passes);
+    if (!passes.length) {
+      const empty = document.createElement("div");
+      empty.className = "field-hint";
+      empty.textContent = "No postprocess passes.";
+      roiLlmPassesEl.appendChild(empty);
+    }
+    passes.forEach((passCfg, index) => {
+      const passType = passCfg.type === "code" ? "code" : "llm";
+      const passText = passType === "code" ? (passCfg.code || "") : (passCfg.prompt || "");
+      const wrap = document.createElement("div");
+      wrap.className = "llm-pass";
+      const head = document.createElement("div");
+      head.className = "llm-pass-head";
+      const title = document.createElement("span");
+      title.textContent = `Pass ${index + 1}`;
+      const moveGroup = document.createElement("div");
+      moveGroup.className = "llm-pass-move-group";
+      if (passes.length > 1 && index > 0) {
+        const up = document.createElement("button");
+        up.type = "button";
+        up.className = "btn subtle llm-pass-move";
+        up.textContent = "↑";
+        up.title = "Move pass up";
+        up.setAttribute("aria-label", `Move pass ${index + 1} up`);
+        up.dataset.passMove = "up";
+        up.dataset.passIndex = String(index);
+        up.disabled = !!disabled;
+        moveGroup.appendChild(up);
+      }
+      if (passes.length > 1 && index < passes.length - 1) {
+        const down = document.createElement("button");
+        down.type = "button";
+        down.className = "btn subtle llm-pass-move";
+        down.textContent = "↓";
+        down.title = "Move pass down";
+        down.setAttribute("aria-label", `Move pass ${index + 1} down`);
+        down.dataset.passMove = "down";
+        down.dataset.passIndex = String(index);
+        down.disabled = !!disabled;
+        moveGroup.appendChild(down);
+      }
+      const typeSelect = document.createElement("select");
+      typeSelect.className = "llm-pass-type";
+      typeSelect.dataset.passType = String(index);
+      typeSelect.disabled = !!disabled;
+      for (const opt of [["llm", "LLM"], ["code", "Code"]]) {
+        const option = document.createElement("option");
+        option.value = opt[0];
+        option.textContent = opt[1];
+        typeSelect.appendChild(option);
+      }
+      typeSelect.value = passType;
+      const controls = document.createElement("div");
+      controls.className = "llm-pass-controls";
+      if (passes.length > 1) controls.appendChild(moveGroup);
+      controls.appendChild(typeSelect);
+      if (passType === "llm") controls.appendChild(buildModelSelect(passCfg, index, disabled));
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "btn subtle llm-pass-delete";
+      del.textContent = "Delete";
+      del.dataset.passDelete = String(index);
+      del.disabled = !!disabled;
+      controls.appendChild(del);
+      head.appendChild(title);
+      head.appendChild(controls);
+      const textarea = document.createElement("textarea");
+      textarea.className = "prompt";
+      textarea.placeholder = passType === "code"
+        ? "return input_text"
+        : "Prompt for this pass.";
+      textarea.value = passText;
+      textarea.dataset.passIndex = String(index);
+      textarea.disabled = !!disabled;
+      wrap.appendChild(head);
+      wrap.appendChild(textarea);
+      roiLlmPassesEl.appendChild(wrap);
+    });
+    btnAddLlmPass.disabled = !!disabled;
+  }
+
+  function updateGeneratedPromptPass(roi, text) {
+    if (!roi) return;
+    const passes = normalizedPostprocessPasses(roi);
+    if (!passes.length) passes.push({ type: "llm", prompt: "" });
+    const model = passes[0] && passes[0].type === "llm" ? String(passes[0].model || "").trim() : "";
+    passes[0] = { type: "llm", prompt: String(text || "") };
+    if (model) passes[0].model = model;
+    setRoiPostprocessPasses(roi, passes);
+    const first = roiLlmPassesEl.querySelector('textarea[data-pass-index="0"]');
+    if (first) first.value = passes[0].prompt || "";
+    else renderLlmPasses(roi, false);
+  }
+
   function syncRoiEditorFields() {
     const roi = getPrimaryRoi();
     if (!roi) {
@@ -1184,8 +1429,7 @@
       roiPromptInstructionEl.disabled = true;
       roiVlmQueryEl.value = "";
       roiVlmQueryEl.disabled = true;
-      roiPromptOverrideEl.value = "";
-      roiPromptOverrideEl.disabled = true;
+      renderLlmPasses(null, true);
       roiOcrOutputRegexEl.value = "";
       roiOcrOutputRegexEl.disabled = true;
       roiPostNormalizeEl.checked = false;
@@ -1213,13 +1457,10 @@
     roiVlmQueryEl.value = (typeof roi.vlm_query === "string")
       ? roi.vlm_query
       : "";
-    roiPromptOverrideEl.disabled = false;
-    roiPromptOverrideEl.value = (typeof roi.llm_prompt_override === "string")
-      ? roi.llm_prompt_override
-      : "";
+    renderLlmPasses(roi, false);
     roiOcrOutputRegexEl.disabled = false;
-    roiOcrOutputRegexEl.value = (typeof roi.ocr_output_regex === "string")
-      ? roi.ocr_output_regex
+    roiOcrOutputRegexEl.value = (typeof roi.output_regex === "string")
+      ? roi.output_regex
       : "";
     roiPostNormalizeEl.disabled = false;
     roiPostNormalizeEl.checked = roi.post_normalize === true;
@@ -1721,15 +1962,19 @@
 
   function normalizeIncomingRois(inputRois) {
     if (!Array.isArray(inputRois)) return [];
-    return inputRois.map(r => ({
-      ...r,
-      id: r.id || ("r" + Math.random().toString(36).slice(2, 10)),
-      name: r.name || "ROI",
-      x: Math.max(0, parseInt(r.x, 10) || 0),
-      y: Math.max(0, parseInt(r.y, 10) || 0),
-      w: Math.max(MIN_ROI_SIZE, parseInt(r.w, 10) || MIN_ROI_SIZE),
-      h: Math.max(MIN_ROI_SIZE, parseInt(r.h, 10) || MIN_ROI_SIZE)
-    }));
+    return inputRois.map(r => {
+      const out = {
+        ...r,
+        id: r.id || ("r" + Math.random().toString(36).slice(2, 10)),
+        name: r.name || "ROI",
+        x: Math.max(0, parseInt(r.x, 10) || 0),
+        y: Math.max(0, parseInt(r.y, 10) || 0),
+        w: Math.max(MIN_ROI_SIZE, parseInt(r.w, 10) || MIN_ROI_SIZE),
+        h: Math.max(MIN_ROI_SIZE, parseInt(r.h, 10) || MIN_ROI_SIZE)
+      };
+      setRoiPostprocessPasses(out, normalizedPostprocessPasses(out));
+      return out;
+    });
   }
 
   async function loadImage(path) {
@@ -1993,21 +2238,37 @@
               : "";
             if (ins) out.llm_prompt_instruction = ins;
             else delete out.llm_prompt_instruction;
-            const pov = typeof out.llm_prompt_override === "string"
-              ? out.llm_prompt_override.trim()
-              : "";
-            if (pov) out.llm_prompt_override = pov;
-            else delete out.llm_prompt_override;
+            const passes = Array.isArray(out.postprocess_passes)
+              ? out.postprocess_passes
+                  .map(normalizePostprocessPass)
+                  .filter(Boolean)
+                  .map(p => {
+                    if (p.type === "code") {
+                      const code = String(p.code || "").trim();
+                      return code ? { type: "code", code } : null;
+                    }
+                    const prompt = String(p.prompt || "").trim();
+                    if (!prompt) return null;
+                    const model = String(p.model || "").trim();
+                    const next = { type: "llm", prompt };
+                    if (model) next.model = model;
+                    return next;
+                  })
+                  .filter(Boolean)
+              : [];
+            out.postprocess_passes = passes;
+            delete out.llm_prompt_override;
+            delete out.llm_passes;
             const vq = typeof out.vlm_query === "string"
               ? out.vlm_query.trim()
               : "";
             if (vq) out.vlm_query = vq;
             else delete out.vlm_query;
-            const ocrRx = typeof out.ocr_output_regex === "string"
-              ? out.ocr_output_regex.trim()
+            const ocrRx = typeof out.output_regex === "string"
+              ? out.output_regex.trim()
               : "";
-            if (ocrRx) out.ocr_output_regex = ocrRx;
-            else delete out.ocr_output_regex;
+            if (ocrRx) out.output_regex = ocrRx;
+            else delete out.output_regex;
             if (out.post_normalize === true) {
               out.post_normalize = true;
               out.post_normalize_mode = normalizedPostNormalizeMode(out.post_normalize_mode);
@@ -2642,14 +2903,99 @@
     else delete roi.llm_prompt_instruction;
     scheduleAutosave();
   });
-  roiPromptOverrideEl.addEventListener("input", () => {
+  roiLlmPassesEl.addEventListener("input", (e) => {
     const roi = getPrimaryRoi();
-    if (!roi) return;
-    const value = roiPromptOverrideEl.value || "";
-    if (value.trim()) roi.llm_prompt_override = value;
-    else delete roi.llm_prompt_override;
+    if (!roi || !e.target || !e.target.matches("textarea[data-pass-index]")) return;
+    const passes = normalizedPostprocessPasses(roi);
+    const index = parseInt(e.target.dataset.passIndex || "-1", 10);
+    if (isNaN(index) || index < 0) return;
+    const current = normalizePostprocessPass(passes[index]) || { type: "llm", prompt: "" };
+    if (current.type === "code") current.code = e.target.value || "";
+    else current.prompt = e.target.value || "";
+    passes[index] = current;
+    setRoiPostprocessPasses(roi, passes);
     scheduleAutosave();
   });
+  roiLlmPassesEl.addEventListener("change", (e) => {
+    const roi = getPrimaryRoi();
+    if (!roi || !e.target || !e.target.matches("select[data-pass-type], select[data-pass-model]")) return;
+    const passes = normalizedPostprocessPasses(roi);
+    const index = parseInt(e.target.dataset.passType || e.target.dataset.passModel || "-1", 10);
+    if (isNaN(index) || index < 0) return;
+    const current = normalizePostprocessPass(passes[index]) || { type: "llm", prompt: "" };
+    if (e.target.matches("select[data-pass-model]")) {
+      if (current.type !== "llm") return;
+      const model = String(e.target.value || "").trim();
+      if (model) current.model = model;
+      else delete current.model;
+      passes[index] = current;
+    } else {
+      const text = current.type === "code" ? (current.code || "") : (current.prompt || "");
+      const model = current.type === "llm" ? String(current.model || "").trim() : "";
+      passes[index] = e.target.value === "code"
+        ? { type: "code", code: text }
+        : { type: "llm", prompt: text };
+      if (model && passes[index].type === "llm") passes[index].model = model;
+    }
+    setRoiPostprocessPasses(roi, passes);
+    renderLlmPasses(roi, false);
+    scheduleAutosave();
+  });
+  roiLlmPassesEl.addEventListener("click", (e) => {
+    const moveBtn = e.target && e.target.closest("button[data-pass-move]");
+    if (moveBtn) {
+      const roi = getPrimaryRoi();
+      if (!roi) return;
+      const index = parseInt(moveBtn.dataset.passIndex || "-1", 10);
+      const direction = moveBtn.dataset.passMove;
+      if (isNaN(index) || index < 0) return;
+      const passes = normalizedPostprocessPasses(roi);
+      const targetIndex = direction === "up" ? index - 1 : index + 1;
+      if (targetIndex < 0 || targetIndex >= passes.length) return;
+      [passes[index], passes[targetIndex]] = [passes[targetIndex], passes[index]];
+      setRoiPostprocessPasses(roi, passes);
+      renderLlmPasses(roi, false);
+      const moved = roiLlmPassesEl.querySelector(`textarea[data-pass-index="${targetIndex}"]`);
+      if (moved) moved.focus();
+      scheduleAutosave();
+      return;
+    }
+    const btn = e.target && e.target.closest("button[data-pass-delete]");
+    if (!btn) return;
+    const roi = getPrimaryRoi();
+    if (!roi) return;
+    const index = parseInt(btn.dataset.passDelete || "-1", 10);
+    if (isNaN(index) || index < 0) return;
+    const passes = normalizedPostprocessPasses(roi);
+    passes.splice(index, 1);
+    setRoiPostprocessPasses(roi, passes);
+    renderLlmPasses(roi, false);
+    scheduleAutosave();
+  });
+  btnAddLlmPass.addEventListener("click", () => {
+    const roi = getPrimaryRoi();
+    if (!roi) return;
+    const passes = normalizedPostprocessPasses(roi);
+    passes.push({ type: "llm", prompt: "" });
+    setRoiPostprocessPasses(roi, passes);
+    renderLlmPasses(roi, false);
+    const last = roiLlmPassesEl.querySelector(`textarea[data-pass-index="${passes.length - 1}"]`);
+    if (last) last.focus();
+    scheduleAutosave();
+  });
+  async function loadLlmModels() {
+    try {
+      const res = await fetch("/api/llm-models");
+      const data = await res.json();
+      if (!res.ok || !data.ok) return;
+      defaultLlmModel = String(data.default_model || "").trim();
+      supportedLlmModels = Array.isArray(data.models)
+        ? data.models.map(v => String(v || "").trim()).filter(Boolean)
+        : [];
+      const roi = getPrimaryRoi();
+      renderLlmPasses(roi, !roi);
+    } catch (_) {}
+  }
   roiVlmQueryEl.addEventListener("input", () => {
     const roi = getPrimaryRoi();
     if (!roi) return;
@@ -2662,8 +3008,8 @@
     const roi = getPrimaryRoi();
     if (!roi) return;
     const value = roiOcrOutputRegexEl.value || "";
-    if (value.trim()) roi.ocr_output_regex = value;
-    else delete roi.ocr_output_regex;
+    if (value.trim()) roi.output_regex = value;
+    else delete roi.output_regex;
     scheduleAutosave();
   });
   roiPostNormalizeEl.addEventListener("change", () => {
@@ -2707,7 +3053,11 @@
     promptCreatorModal.setAttribute("aria-hidden", "true");
     setStatus("Generating ROI prompt...");
     setPromptStreamStatus("Generating prompt...", "generating");
-    const existingPromptBeforeGen = roiPromptOverrideEl.value || "";
+    const existingPassBeforeGen = normalizedPostprocessPasses(roi)[0] || { type: "llm", prompt: "" };
+    const existingPromptBeforeGen = existingPassBeforeGen.type === "llm"
+      ? (existingPassBeforeGen.prompt || "")
+      : "";
+    updateGeneratedPromptPass(roi, existingPromptBeforeGen);
     promptGenAbortController = new AbortController();
     const reqPayload = {
       instruction,
@@ -2743,16 +3093,13 @@
           const delta = String(evt.delta || "");
           if (!delta) return;
           fullPrompt += delta;
-          roiPromptOverrideEl.value = fullPrompt;
-          roi.llm_prompt_override = fullPrompt;
+          updateGeneratedPromptPass(roi, fullPrompt);
           return;
         }
         if (t === "done") {
           const finalPrompt = String(evt.prompt || fullPrompt || "").trim();
           fullPrompt = finalPrompt;
-          roiPromptOverrideEl.value = finalPrompt;
-          if (finalPrompt) roi.llm_prompt_override = finalPrompt;
-          else delete roi.llm_prompt_override;
+          updateGeneratedPromptPass(roi, finalPrompt);
           scheduleAutosave();
           doneSeen = true;
           const modelTxt = modelName ? ` (${modelName})` : "";
@@ -2793,9 +3140,7 @@
       }
       if (!doneSeen) {
         const finalPrompt = String(fullPrompt || "").trim();
-        roiPromptOverrideEl.value = finalPrompt;
-        if (finalPrompt) roi.llm_prompt_override = finalPrompt;
-        else delete roi.llm_prompt_override;
+        updateGeneratedPromptPass(roi, finalPrompt);
         scheduleAutosave();
         setStatus("Prompt generated.");
         setPromptStreamStatus("Generation finished.", "done");
@@ -2895,6 +3240,7 @@
   _startSingletonHeartbeat();
 
   resizeCanvas();
+  loadLlmModels();
   loadBrowseRoot();
   const params = new URLSearchParams(window.location.search);
   const path = params.get("path");

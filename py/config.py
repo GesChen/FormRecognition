@@ -31,6 +31,11 @@ PATHS = {
 # API / MODEL CONNECTIONS (top-level, high-priority)
 # ---------------------------------------------------------------------------
 
+SUPPORTED_LLM_MODELS = [
+    "qwen3.5:9b",
+    "llama3.2:latest",
+]
+
 LLM = {
     "host": "192.168.182.1",  # Model server host/IP (shared by LLM + VLM OCR unless overridden).
     "port": 11434,  # Model server port.
@@ -83,6 +88,7 @@ TEXT_ROI_LLM = {
     "max_reruns": 3,  # Retry count when model output does not conform to {"detected_text": string|null}.
     "extra_params": {"think": False},  # Prefer concise deterministic outputs.
     "paddle_vlm_fusion_enabled": True,  # In paddle_vlm_fusion workflow, defer OCR fusion until just before text ROI LLM normalization.
+    "paddle_vlm_fusion_model": "qwen3.5:9b",  # Dedicated Qwen model for unionizing VLM + PaddleOCR text.
     "paddle_vlm_fusion_prompt_template": "",  # Optional exact prompt template; supports {vlm_text}, {paddle_text}, {paddle_confidence_json}.
 }
 
@@ -145,7 +151,8 @@ OCR_ENGINE = {
     },
     "vlm_default_query_prompt": "Text recognition:\n```json\n{\n\"text\":\"\"\n}\n```",  # Default VLM prompt used when no custom ROI query override is active.
     "vlm_custom_query_enabled": False,  # Global toggle for schema-level custom vlm_query prompt overrides.
-    "vlm_roi_prompt_template": '请按下列JSON格式输 出图中信息: {"{query}":""}',  # Per-ROI VLM prompt template; {query} is inserted exactly.
+    # "vlm_roi_prompt_template": '请按下列JSON格式输 出图中信息: {"{query}":""}',  # Per-ROI VLM prompt template; {query} is inserted exactly.
+    "vlm_roi_prompt_template": 'Text recognition: {"{query}":""}',  # Per-ROI VLM prompt template; {query} is inserted exactly.
     "jpeg_quality": 20,  # JPEG quality used for VLM image payload.
     "stream": True,  # Stream VLM responses so completed JSON can be detected mid-call.
     "extra_params": 
@@ -156,8 +163,9 @@ OCR_ENGINE = {
 }
 
 HEADER_RECOGNITION = {
-    "model": "qwen3.5:9b",  # Dedicated text model for form-type inference.
-    "crop_top_percent": 15.0,  # Top portion of page used for ID/form_type OCR.
+    "model": "llama3.2:latest",  # Dedicated text model for form-type inference.
+    # "model": "qwen3.5:9b",  # Dedicated text model for form-type inference.
+    # "crop_top_percent": 15.0,  # Top portion of page used for ID/form_type OCR.
     "crop_write_debug_image": False,  # Write top-crop debug PNGs.
     "crop_debug_dir": PATHS["output"] / "debug_images" / "id_crop",  # Debug output dir for top-crops.
     "form_types": ["6pre", "7pre", "8pre", "hpre", "6post", "7post", "8post", "hpost"],  # Allowed form_type values.
@@ -276,12 +284,12 @@ ROI_PAGE_RECOGNITION = {
     "mcq_write_debug_images": False,  # Write per-question debug images.
     "mcq_debug_images_dir": PATHS["output"] / "debug_images" / "mcq",  # MCQ debug image root.
     # Regex-gated OCR redo loop for text ROIs (applied after deferred LLM normalization).
-    # If a text ROI defines `ocr_output_regex` in schema metadata and normalized text does
+    # If a text ROI defines `output_regex` in schema metadata and normalized text does
     # not match, each step below is attempted in order until match or steps are exhausted.
-    "ocr_regex_check_enabled": False,  # Master toggle for checking/enforcing schema `ocr_output_regex`.
+    "ocr_regex_check_enabled": False,  # Master toggle for checking/enforcing schema `output_regex`.
     "ocr_regex_retry_enabled": True,
     # After all regex retry steps are exhausted, clear values that still do not match
-    # their schema-provided `ocr_output_regex`. This is generic schema enforcement,
+    # their schema-provided `output_regex`. This is generic schema enforcement,
     # not field-specific cleanup; invalid values remain visible in debug/review traces.
     "ocr_regex_retry_clear_on_final_mismatch": True,
     # Ordered, editable list of retry method names. Keep this short to bound runtime.
